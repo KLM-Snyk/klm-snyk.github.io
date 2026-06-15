@@ -339,31 +339,52 @@ async function calFetchUpcomingEvents() {
       orderBy: 'startTime',
       maxResults: 20,
     });
-    // Fetch from OOO cal for holidays/recharge days
-    const res = await fetch(
-      `${CAL_API_BASE}/calendars/${OOO_CAL_ID}/events?${params}`,
-      { headers: { Authorization: `Bearer ${calState.token}` } }
-    );
-    if (!res.ok) { calState.upcoming = []; return; }
-    const data = await res.json();
-    const keywords = ['holiday', 'recharge', 'due', 'deadline', 'all hands', 'all-hands', 'offsite', 'kickoff'];
-    calState.upcoming = (data.items || [])
-      .filter(e => {
-        const t = (e.summary || '').toLowerCase();
-        return keywords.some(k => t.includes(k));
-      })
-      .map(e => ({
+
+    // Fetch from both OOO and Recharge calendars in parallel
+    const [oooRes, rechargeRes] = await Promise.all([
+      fetch(`${CAL_API_BASE}/calendars/${OOO_CAL_ID}/events?${params}`,
+        { headers: { Authorization: `Bearer ${calState.token}` } }),
+      fetch(`${CAL_API_BASE}/calendars/${RECHARGE_CAL_ID}/events?${params}`,
+        { headers: { Authorization: `Bearer ${calState.token}` } }),
+    ]);
+
+    const keywords = ['holiday', 'due', 'deadline', 'all hands', 'all-hands', 'offsite', 'kickoff'];
+    let events = [];
+
+    if (oooRes.ok) {
+      const data = await oooRes.json();
+      const filtered = (data.items || []).filter(e =>
+        keywords.some(k => (e.summary || '').toLowerCase().includes(k))
+      );
+      events = events.concat(filtered.map(e => ({
         title: e.summary,
         start: e.start?.date || e.start?.dateTime,
-      }));
+        type: 'ooo',
+      })));
+    }
+
+    if (rechargeRes.ok) {
+      const data = await rechargeRes.json();
+      // All events from the recharge calendar are relevant
+      events = events.concat((data.items || []).map(e => ({
+        title: e.summary,
+        start: e.start?.date || e.start?.dateTime,
+        type: 'recharge',
+      })));
+    }
+
+    // Sort by date
+    events.sort((a, b) => new Date(a.start) - new Date(b.start));
+    calState.upcoming = events;
   } catch (e) {
     console.warn('Upcoming events fetch error:', e);
     calState.upcoming = [];
   }
 }
 
-const ONCALL_CAL_ID = 'c_33c0731c98854b7a958fe6bb5880a5f0abbfa15be32df7119e2af8704fe033f1%40group.calendar.google.com';
-const OOO_CAL_ID    = 'support%40snyk.io';
+const ONCALL_CAL_ID  = 'c_33c0731c98854b7a958fe6bb5880a5f0abbfa15be32df7119e2af8704fe033f1%40group.calendar.google.com';
+const OOO_CAL_ID     = 'support%40snyk.io';
+const RECHARGE_CAL_ID = 'c_93af26c794d2c1cdbdcd2b0f4fc8f7b948582d268d4260f729c6b234d4f5074f%40group.calendar.google.com';
 
 // ── Helpers ──────────────────────────────────────────────────
 
