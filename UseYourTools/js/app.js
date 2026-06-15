@@ -65,6 +65,23 @@ function isoDateKey(date) {
   return `${y}-${m}-${d}`;
 }
 
+function getInboxZeroMessage() {
+  const messages = [
+    'Inbox zero. You beautiful, productive human.',
+    'Nothing here. Your future self is very proud of you.',
+    'All clear. Somewhere a project manager just shed a tear of joy.',
+    'Zero unread. This is what peak performance looks like.',
+    'Empty inbox. You\'re either very efficient or very scary.',
+    'No new emails. Go touch grass. You\'ve earned it.',
+    'Inbox zero achieved. The monks in Tibet are impressed.',
+    'Clean inbox. Have you considered a career in professional email management?',
+    'Nothing to see here. Your inbox thanks you for your service.',
+    'Zero. Zip. Nada. Absolutely crushing it today.',
+  ];
+  const day = new Date().getDate();
+  return messages[day % messages.length];
+}
+
 function getGreeting() {
   const h = new Date().getHours();
   if (h < 12) return 'Good morning';
@@ -463,6 +480,29 @@ function renderDashboard() {
     </div>
 
     <div class="dashboard-cards">
+      <div class="dash-card">
+        <div class="dash-card-header">
+          <div class="dash-card-icon">${ICONS.calendar}</div>
+          <div class="dash-card-title">Gmail</div>
+        </div>
+        ${!calIsConnected() ? `
+          <div class="dash-card-value">—</div>
+          <div class="dash-card-sub">Connect Google Calendar to also see your Gmail unread count</div>
+          <div class="dash-card-action" onclick="openSettings()" style="cursor:pointer">Connect ${ICONS.arrowRight}</div>
+        ` : calState.unreadCount === null ? `
+          <div class="dash-card-value">—</div>
+          <div class="dash-card-sub">Loading inbox…</div>
+        ` : calState.unreadCount === 0 ? `
+          <div class="dash-card-value" style="font-size:22px">0 📭</div>
+          <div class="dash-card-sub">${getInboxZeroMessage()}</div>
+          <div class="dash-card-action"><a href="https://mail.google.com" target="_blank" style="color:inherit;text-decoration:none">Enjoy it while it lasts ${ICONS.arrowRight}</a></div>
+        ` : `
+          <div class="dash-card-value" style="font-size:22px">${calState.unreadCount}</div>
+          <div class="dash-card-sub">unread email${calState.unreadCount === 1 ? '' : 's'} waiting for you</div>
+          <div class="dash-card-action"><a href="https://mail.google.com" target="_blank" style="color:inherit;text-decoration:none">Open Gmail ${ICONS.arrowRight}</a></div>
+        `}
+      </div>
+
       <div class="dash-card">
         <div class="dash-card-header">
           <div class="dash-card-icon">
