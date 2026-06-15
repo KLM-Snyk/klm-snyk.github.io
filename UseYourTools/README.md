@@ -110,14 +110,24 @@ Ported directly from the iOS app:
 
 ---
 
-## Roadmap
+## What's working
 
-- Google Calendar integration - done
-- Gmail unread count on dashboard - done
-- Google Drive shared / mentioned / created files - done
-- On-call, OOO, and recharge day banners in Calendar - done
-- Slack Threads unread count - pending Slack admin approval
-- Salesforce Cases live data - planned
-- PDF export for daily schedule - planned
-- Event creation and editing - planned
-- Notifications and reminders - planned
+- Google Calendar — meetings on dashboard and Calendar screen
+- Gmail — unread count with inbox link
+- Google Drive — shared, mentioned, and created files (last 30 days) with multi-select filters
+- On-call banner in Calendar screen
+- OOO strip in Calendar screen
+- Recharge days and holidays in Calendar (next 30 days)
+- 5 color themes + dark mode
+- All data saved locally — no account needed
+
+---
+
+## Coming soon
+
+- Slack Threads — unread count (pending Slack admin approval)
+- Salesforce Cases — live Platinum and Gold open case and escalation counts
+- Gmail inbox summary (beyond unread count)
+- PDF export for daily schedule
+- Event creation and editing from the Calendar screen
+- Notifications and reminders
