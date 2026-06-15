@@ -365,12 +365,39 @@ async function calFetchUpcomingEvents() {
 
     if (rechargeRes.ok) {
       const data = await rechargeRes.json();
-      // All events from the recharge calendar are relevant
-      events = events.concat((data.items || []).map(e => ({
-        title: e.summary,
-        start: e.start?.date || e.start?.dateTime,
-        type: 'recharge',
-      })));
+      const prefixes = ['US', 'CA', 'RO', 'AUS', 'JP', 'IN', 'PT', 'UK', 'IL'];
+
+      // Filter to only events starting with a known country code
+      const filtered = (data.items || []).filter(e =>
+        prefixes.some(p => (e.summary || '').toUpperCase().startsWith(p))
+      );
+
+      // Group by date — if multiple holidays on same day, collapse them
+      const byDate = {};
+      filtered.forEach(e => {
+        const start = e.start?.date || e.start?.dateTime;
+        const dateKey = start?.slice(0, 10);
+        if (!dateKey) return;
+        if (!byDate[dateKey]) byDate[dateKey] = [];
+        byDate[dateKey].push(e.summary);
+      });
+
+      Object.entries(byDate).forEach(([dateKey, summaries]) => {
+        if (summaries.length === 1) {
+          events.push({ title: summaries[0], start: dateKey, type: 'recharge' });
+        } else {
+          // Multiple holidays — extract country codes and collapse
+          const codes = summaries.map(s => {
+            const match = s.match(/^([A-Z]+)/);
+            return match ? match[1] : s;
+          });
+          events.push({
+            title: `Holiday (${[...new Set(codes)].join(', ')})`,
+            start: dateKey,
+            type: 'recharge',
+          });
+        }
+      });
     }
 
     // Sort by date
