@@ -601,7 +601,6 @@ function escHtml(str) {
 
 document.addEventListener('DOMContentLoaded', () => {
   applyTheme(state.prefs);
-  calInit();
 
   // Nav
   document.querySelectorAll('.nav-item[data-screen]').forEach(el => {
@@ -621,5 +620,8 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('planner-next').addEventListener('click', () => plannerChangeDay(1));
   document.getElementById('planner-today-btn').addEventListener('click', plannerGoToday);
 
+  // Render dashboard immediately with whatever state we have,
+  // then let calInit re-render once data is loaded
   navigate('dashboard');
+  calInit();
 });
