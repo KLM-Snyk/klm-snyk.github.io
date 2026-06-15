@@ -219,6 +219,40 @@ function renderSettingsPanel() {
       </div>
     </div>
 
+    <!-- Slack -->
+    <div class="settings-section">
+      <div class="settings-section-title">Slack</div>
+      ${slackIsConnected() ? `
+        <div class="cal-connect-box">
+          <div class="cal-connected-row">
+            <div class="cal-status-dot"></div>
+            <div class="cal-status-label">Connected</div>
+            <button class="cal-disconnect-btn" onclick="slackDisconnect()">Disconnect</button>
+          </div>
+        </div>
+      ` : `
+        <div class="cal-connect-box">
+          <p>
+            Connect Slack to see your unread thread mentions on the dashboard.
+            You'll need a Slack User OAuth Token —
+            <a href="https://api.slack.com/apps" target="_blank">create a Slack app here</a>,
+            add the scopes <code>channels:read</code>, <code>groups:read</code>,
+            <code>im:read</code>, <code>mpim:read</code>, install it to your workspace,
+            and copy the <strong>User OAuth Token</strong> (starts with <code>xoxp-</code>).
+          </p>
+          <div class="cal-input-row">
+            <input
+              class="cal-client-input"
+              id="slack-token-input"
+              type="password"
+              placeholder="xoxp-your-slack-token"
+              value="">
+            <button class="cal-connect-btn" onclick="slackConnect()">Connect</button>
+          </div>
+        </div>
+      `}
+    </div>
+
     <!-- Google Calendar -->
     <div class="settings-section">
       <div class="settings-section-title">Google Calendar</div>
@@ -427,13 +461,29 @@ function renderDashboard() {
     </div>
 
     <div class="dashboard-cards">
-      <div class="dash-card" onclick="navigate('planner')">
+      <div class="dash-card">
         <div class="dash-card-header">
-          <div class="dash-card-icon">${ICONS.planner}</div>
-          <div class="dash-card-title">Today's Planner</div>
+          <div class="dash-card-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 10c-.83 0-1.5-.67-1.5-1.5v-5c0-.83.67-1.5 1.5-1.5s1.5.67 1.5 1.5v5c0 .83-.67 1.5-1.5 1.5z"/><path d="M20.5 10H19V8.5c0-.83.67-1.5 1.5-1.5s1.5.67 1.5 1.5-.67 1.5-1.5 1.5z"/><path d="M9.5 14c.83 0 1.5.67 1.5 1.5v5c0 .83-.67 1.5-1.5 1.5S8 21.33 8 20.5v-5c0-.83.67-1.5 1.5-1.5z"/><path d="M3.5 14H5v1.5c0 .83-.67 1.5-1.5 1.5S2 16.33 2 15.5 2.67 14 3.5 14z"/><path d="M14 14.5c0-.83.67-1.5 1.5-1.5h5c.83 0 1.5.67 1.5 1.5s-.67 1.5-1.5 1.5h-5c-.83 0-1.5-.67-1.5-1.5z"/><path d="M15.5 19H14v1.5c0 .83.67 1.5 1.5 1.5s1.5-.67 1.5-1.5-.67-1.5-1.5-1.5z"/><path d="M10 9.5C10 8.67 9.33 8 8.5 8h-5C2.67 8 2 8.67 2 9.5S2.67 11 3.5 11h5c.83 0 1.5-.67 1.5-1.5z"/><path d="M8.5 5H10V3.5C10 2.67 9.33 2 8.5 2S7 2.67 7 3.5 7.67 5 8.5 5z"/></svg>
+          </div>
+          <div class="dash-card-title">Slack Threads</div>
         </div>
-        <div class="dash-card-value">${formatTime(now.getHours(), 0, p.use12HourClock)}</div>
-        <div class="dash-card-sub">Open your day view →</div>
+        ${!slackIsConnected() ? `
+          <div class="dash-card-value">—</div>
+          <div class="dash-card-sub">Connect Slack to see unread thread mentions</div>
+          <div class="dash-card-action" onclick="openSettings()" style="cursor:pointer">Connect ${ICONS.arrowRight}</div>
+        ` : slackState.threadCount === null ? `
+          <div class="dash-card-value">—</div>
+          <div class="dash-card-sub">Loading threads…</div>
+        ` : slackState.threadCount === 0 ? `
+          <div class="dash-card-value" style="font-size:22px">0 🧘</div>
+          <div class="dash-card-sub">No unread threads. Rare. Cherish this moment.</div>
+          <div class="dash-card-action"><a href="https://slack.com/app_redirect?channel=threads" target="_blank" style="color:inherit;text-decoration:none">Open Threads ${ICONS.arrowRight}</a></div>
+        ` : `
+          <div class="dash-card-value" style="font-size:22px">${slackState.threadCount}</div>
+          <div class="dash-card-sub">unread thread${slackState.threadCount === 1 ? '' : 's'} waiting for you</div>
+          <div class="dash-card-action"><a href="https://slack.com/app_redirect?channel=threads" target="_blank" style="color:inherit;text-decoration:none">Open Threads ${ICONS.arrowRight}</div>
+        `}
       </div>
 
       <div class="dash-card" onclick="navigate('cases')">
@@ -621,7 +671,8 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('planner-today-btn').addEventListener('click', plannerGoToday);
 
   // Render dashboard immediately with whatever state we have,
-  // then let calInit re-render once data is loaded
+  // then let calInit and slackInit re-render once data is loaded
   navigate('dashboard');
   calInit();
+  slackInit();
 });
