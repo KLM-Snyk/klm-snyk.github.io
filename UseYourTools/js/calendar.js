@@ -374,14 +374,20 @@ async function calFetchUpcomingEvents() {
 
       const formatRange = (start, end) => {
         const s = new Date(start);
-        // Google all-day end dates are exclusive (day after), subtract 1
-        const e = end ? new Date(new Date(end).setDate(new Date(end).getDate() - 1)) : null;
+        // Google stores end as the actual last day (not exclusive) for these events
+        const e = end ? new Date(end) : null;
         const sLabel = s.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
         if (!e || s.toDateString() === e.toDateString()) return sLabel;
         const eLabel = s.getMonth() === e.getMonth()
           ? e.getDate()
           : e.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
         return `${sLabel}–${eLabel}`;
+      };
+
+      // Determine event label — "Recharge Week" or "Holiday"
+      const getEventType = summary => {
+        if ((summary || '').toLowerCase().includes('recharge')) return 'recharge week';
+        return 'holiday';
       };
 
       // Group by start date — collapse same-day holidays into one chip
@@ -413,8 +419,9 @@ async function calFetchUpcomingEvents() {
             const e = i.end || i.start;
             return e > max ? e : max;
           }, items[0].end || items[0].start);
+          const eventLabel = getEventType(items[0].summary);
           events.push({
-            title: `Holiday (${[...new Set(codes)].join(', ')})`,
+            title: `${eventLabel.charAt(0).toUpperCase() + eventLabel.slice(1)} (${[...new Set(codes)].join(', ')})`,
             start: dateKey,
             dateLabel: formatRange(dateKey, latestEnd),
             type: 'recharge',
