@@ -35,13 +35,13 @@
         <span>Dashboard</span>
       </button>
 
-      <button class="nav-item" data-screen="planner">
-        <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-        <span>Daily Planner</span>
-      </button>
-
       <div class="nav-divider"></div>
       <div class="nav-section-label">Work</div>
+
+      <button class="nav-item" data-screen="calendar">
+        <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+        <span>Calendar</span>
+      </button>
 
       <button class="nav-item" data-screen="cases">
         <svg viewBox="0 0 24 24"><path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"/></svg>
@@ -77,10 +77,10 @@
       </div>
     </div>
 
-    <!-- Daily Planner -->
-    <div id="screen-planner" class="screen">
+    <!-- Calendar -->
+    <div id="screen-calendar" class="screen">
       <div class="screen-header">
-        <h2>Daily Planner</h2>
+        <h2>Calendar</h2>
         <div class="header-actions">
           <button class="icon-btn" onclick="openAbout()" title="About">
             <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
@@ -90,17 +90,9 @@
           </button>
         </div>
       </div>
-      <div class="planner-nav">
-        <button class="planner-nav-btn" id="planner-prev" title="Previous day">
-          <svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>
-        </button>
-        <div class="planner-date" id="planner-nav-date"></div>
-        <button class="planner-today-btn" id="planner-today-btn">Today</button>
-        <button class="planner-nav-btn" id="planner-next" title="Next day">
-          <svg viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg>
-        </button>
+      <div class="screen-body">
+        <div id="calendar-content"></div>
       </div>
-      <div class="planner-body" id="planner-blocks"></div>
     </div>
 
     <!-- Cases -->
@@ -212,10 +204,10 @@
   </div>
 </div>
 
-<script src="js/preferences.js?v=1.5"></script>
-<script src="js/calendar.js?v=1.5"></script>
-<script src="js/slack.js?v=1.5"></script>
-<script src="js/app.js?v=1.5"></script>
+<script src="js/preferences.js?v=1.6"></script>
+<script src="js/calendar.js?v=1.6"></script>
+<script src="js/slack.js?v=1.6"></script>
+<script src="js/app.js?v=1.6"></script>
 
 </body>
 </html>

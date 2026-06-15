@@ -20,6 +20,9 @@ const calState = {
   fetchError: null,
   userProfile: null,
   unreadCount: null,
+  oncall: null,       // string — name of who is on-call today
+  ooo: [],            // array of names who are OOO today
+  upcoming: [],       // array of notable upcoming events (next 30 days)
 };
 
 // ── Bootstrap ───────────────────────────────────────────────
@@ -37,9 +40,11 @@ function calInit() {
     Promise.all([
       calFetchUpcoming().catch((e) => {
         console.warn('[calInit] calFetchUpcoming error:', e);
-        // Only clear token on auth errors, not scope/network issues
       }),
       calFetchUnreadCount(),
+      calFetchOncall(),
+      calFetchOOO(),
+      calFetchUpcomingEvents(),
     ]).then(() => {
       if (typeof renderDashboard === 'function') renderDashboard();
     });
@@ -133,7 +138,7 @@ function calConnect() {
 
       // Fetch user's name/profile from Google
       await calFetchUserProfile();
-      await Promise.all([calFetchUpcoming(), calFetchUnreadCount()]);
+      await Promise.all([calFetchUpcoming(), calFetchUnreadCount(), calFetchOncall(), calFetchOOO(), calFetchUpcomingEvents()]);
 
       if (typeof renderSettingsPanel === 'function') renderSettingsPanel();
       if (typeof renderDashboard     === 'function') renderDashboard();
@@ -265,6 +270,100 @@ async function calFetchUpcoming(daysAhead = 7) {
     return [];
   }
 }
+
+async function calFetchOncall() {
+  if (!calState.token) return;
+  try {
+    const now = new Date();
+    const end = new Date(now); end.setHours(23, 59, 59);
+    const params = new URLSearchParams({
+      timeMin: now.toISOString(),
+      timeMax: end.toISOString(),
+      singleEvents: 'true',
+      orderBy: 'startTime',
+      maxResults: 5,
+    });
+    const res = await fetch(
+      `${CAL_API_BASE}/calendars/${ONCALL_CAL_ID}/events?${params}`,
+      { headers: { Authorization: `Bearer ${calState.token}` } }
+    );
+    if (!res.ok) { calState.oncall = null; return; }
+    const data = await res.json();
+    const event = (data.items || [])[0];
+    calState.oncall = event ? (event.summary || 'On-call') : null;
+  } catch (e) {
+    console.warn('On-call fetch error:', e);
+    calState.oncall = null;
+  }
+}
+
+async function calFetchOOO() {
+  if (!calState.token) return;
+  try {
+    const now = new Date();
+    const end = new Date(now); end.setHours(23, 59, 59);
+    const params = new URLSearchParams({
+      timeMin: now.toISOString(),
+      timeMax: end.toISOString(),
+      singleEvents: 'true',
+      orderBy: 'startTime',
+      maxResults: 20,
+    });
+    const res = await fetch(
+      `${CAL_API_BASE}/calendars/${OOO_CAL_ID}/events?${params}`,
+      { headers: { Authorization: `Bearer ${calState.token}` } }
+    );
+    if (!res.ok) { calState.ooo = []; return; }
+    const data = await res.json();
+    calState.ooo = (data.items || [])
+      .filter(e => {
+        const t = (e.summary || '').toLowerCase();
+        return t.includes('ooo') || t.includes('out of office') || t.includes('leave') || t.includes('vacation');
+      })
+      .map(e => e.summary || 'Unknown');
+  } catch (e) {
+    console.warn('OOO fetch error:', e);
+    calState.ooo = [];
+  }
+}
+
+async function calFetchUpcomingEvents() {
+  if (!calState.token) return;
+  try {
+    const now = new Date();
+    const end = new Date(now); end.setDate(end.getDate() + 30);
+    const params = new URLSearchParams({
+      timeMin: now.toISOString(),
+      timeMax: end.toISOString(),
+      singleEvents: 'true',
+      orderBy: 'startTime',
+      maxResults: 20,
+    });
+    // Fetch from OOO cal for holidays/recharge days
+    const res = await fetch(
+      `${CAL_API_BASE}/calendars/${OOO_CAL_ID}/events?${params}`,
+      { headers: { Authorization: `Bearer ${calState.token}` } }
+    );
+    if (!res.ok) { calState.upcoming = []; return; }
+    const data = await res.json();
+    const keywords = ['holiday', 'recharge', 'due', 'deadline', 'all hands', 'all-hands', 'offsite', 'kickoff'];
+    calState.upcoming = (data.items || [])
+      .filter(e => {
+        const t = (e.summary || '').toLowerCase();
+        return keywords.some(k => t.includes(k));
+      })
+      .map(e => ({
+        title: e.summary,
+        start: e.start?.date || e.start?.dateTime,
+      }));
+  } catch (e) {
+    console.warn('Upcoming events fetch error:', e);
+    calState.upcoming = [];
+  }
+}
+
+const ONCALL_CAL_ID = 'c_33c0731c98854b7a958fe6bb5880a5f0abbfa15be32df7119e2af8704fe033f1%40group.calendar.google.com';
+const OOO_CAL_ID    = 'support%40snyk.io';
 
 // ── Helpers ──────────────────────────────────────────────────
 

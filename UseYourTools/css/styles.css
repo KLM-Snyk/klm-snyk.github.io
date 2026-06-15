@@ -1323,3 +1323,155 @@ html, body {
   border-radius: 99px;
 }
 ::-webkit-scrollbar-thumb:hover { background: var(--text-secondary); }
+
+/* ============================================================
+   Calendar Screen
+   ============================================================ */
+
+.cal-banner {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px 16px;
+  border-radius: var(--radius);
+  margin-bottom: 12px;
+  font-size: 13.5px;
+  font-weight: 500;
+}
+
+.cal-banner--oncall {
+  background: #FEF3C7;
+  border: 1px solid #FCD34D;
+  color: #92400E;
+}
+
+.cal-banner--ooo {
+  background: #DBEAFE;
+  border: 1px solid #93C5FD;
+  color: #1E40AF;
+}
+
+.cal-banner--upcoming {
+  background: var(--primary-light);
+  border: 1px solid var(--primary);
+  color: var(--primary);
+}
+
+.upcoming-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.upcoming-chip {
+  font-size: 12px;
+  font-weight: 600;
+  padding: 3px 10px;
+  border-radius: 99px;
+  background: rgba(255,255,255,0.6);
+  border: 1px solid currentColor;
+}
+
+.cal-day-header {
+  display: flex;
+  align-items: center;
+  padding: 14px 0;
+  margin-bottom: 4px;
+}
+
+.cal-day-nav {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.cal-empty {
+  padding: 32px 16px;
+  text-align: center;
+  color: var(--text-secondary);
+  font-size: 14px;
+}
+
+.cal-meeting-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border);
+  text-decoration: none;
+  color: var(--text);
+  transition: color var(--transition);
+}
+
+.cal-meeting-item:hover { color: var(--primary); }
+
+.cal-meeting-time {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--primary);
+  width: 60px;
+  flex-shrink: 0;
+  padding-top: 2px;
+}
+
+.cal-meeting-title {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.cal-meeting-location {
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin-top: 2px;
+}
+
+.time-block-meeting-pill {
+  display: inline-block;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 3px 10px;
+  border-radius: 99px;
+  background: var(--primary-light);
+  color: var(--primary);
+  text-decoration: none;
+  border: 1px solid var(--primary);
+  transition: all var(--transition);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+
+.time-block-meeting-pill:hover {
+  background: var(--primary);
+  color: white;
+}
+
+.cal-connect-prompt {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 40px;
+  text-align: center;
+  gap: 12px;
+}
+
+.cal-connect-icon {
+  font-size: 48px;
+  margin-bottom: 8px;
+}
+
+.cal-connect-prompt h3 {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.cal-connect-prompt p {
+  font-size: 14px;
+  color: var(--text-secondary);
+  max-width: 360px;
+  line-height: 1.6;
+}

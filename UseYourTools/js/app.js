@@ -129,6 +129,7 @@ function navigate(screen) {
   });
 
   if (screen === 'dashboard') renderDashboard();
+  if (screen === 'calendar')  renderCalendar();
   if (screen === 'planner')   renderPlanner();
 }
 
@@ -557,6 +558,151 @@ function startClock() {
     const el = document.getElementById('live-time');
     if (el) el.textContent = formatCurrentTime();
   }, 10000);
+}
+
+/* ============================================================
+   Calendar Screen
+   ============================================================ */
+
+function renderCalendar() {
+  const el = document.getElementById('calendar-content');
+  if (!el) return;
+  const p   = state.prefs;
+  const now = new Date();
+  const todayEvents = calTodayEvents();
+
+  // ── On-call banner ──
+  const oncallBanner = calState.oncall ? `
+    <div class="cal-banner cal-banner--oncall">
+      <span>🚨</span>
+      <span>On-call today: <strong>${escHtml(calState.oncall)}</strong></span>
+    </div>` : '';
+
+  // ── OOO strip ──
+  const oooBanner = calState.ooo.length ? `
+    <div class="cal-banner cal-banner--ooo">
+      <span>🏖️</span>
+      <span>Out today: <strong>${calState.ooo.map(escHtml).join(', ')}</strong></span>
+    </div>` : '';
+
+  // ── Upcoming notable events (next 30 days) ──
+  const upcomingBanner = calState.upcoming.length ? `
+    <div class="cal-banner cal-banner--upcoming">
+      <span>📌</span>
+      <div>
+        <strong>Coming up in the next 30 days:</strong>
+        <div class="upcoming-list">
+          ${calState.upcoming.map(e => {
+            const d = new Date(e.start);
+            const label = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+            return `<span class="upcoming-chip">${label} — ${escHtml(e.title)}</span>`;
+          }).join('')}
+        </div>
+      </div>
+    </div>` : '';
+
+  // ── Not connected state ──
+  if (!calIsConnected()) {
+    el.innerHTML = `
+      ${oncallBanner}
+      <div class="cal-connect-prompt">
+        <div class="cal-connect-icon">📆</div>
+        <h3>Connect Google Calendar</h3>
+        <p>Connect your Google Calendar to see today's meetings, who's on-call, who's OOO, and upcoming events.</p>
+        <button class="connect-btn" onclick="calConnect()">Connect to Google</button>
+      </div>`;
+    return;
+  }
+
+  // ── Today's meetings ──
+  const planner = state.prefs;
+  const notes   = loadNotes();
+  const dateKey = isoDateKey(now);
+
+  let meetingsHtml = '';
+  if (todayEvents.length === 0) {
+    meetingsHtml = `<div class="cal-empty">No meetings today — enjoy the focus time 🎯</div>`;
+  } else {
+    meetingsHtml = todayEvents.map(e => `
+      <a class="cal-meeting-item" href="${escHtml(e.link)}" target="_blank">
+        <div class="cal-meeting-time">${calFormatEventTime(e)}</div>
+        <div class="cal-meeting-details">
+          <div class="cal-meeting-title">${escHtml(e.title)}</div>
+          ${e.location ? `<div class="cal-meeting-location">📍 ${escHtml(e.location)}</div>` : ''}
+        </div>
+      </a>
+    `).join('');
+  }
+
+  // ── Time blocks with meetings overlaid ──
+  let blocksHtml = '';
+  for (let h = p.startHour; h < p.endHour; h++) {
+    const savedNote = (notes[dateKey] && notes[dateKey][h]) || '';
+    const isCurrent = now.getHours() === h;
+    const hourMeetings = todayEvents.filter(e => new Date(e.start).getHours() === h);
+    const meetingPills = hourMeetings.map(e =>
+      `<a class="time-block-meeting-pill" href="${escHtml(e.link)}" target="_blank">${escHtml(e.title)}</a>`
+    ).join('');
+
+    blocksHtml += `
+      <div class="time-block${isCurrent ? ' current-hour' : ''}">
+        <div class="time-label">${formatTime(h, 0, p.use12HourClock)}</div>
+        <div class="time-block-content">
+          ${meetingPills}
+          <textarea class="time-block-notes" rows="1" placeholder="Notes..."
+            data-hour="${h}" data-date="${dateKey}">${escHtml(savedNote)}</textarea>
+        </div>
+      </div>`;
+  }
+
+  el.innerHTML = `
+    ${oncallBanner}
+    ${oooBanner}
+    ${upcomingBanner}
+
+    <div class="cal-day-header">
+      <div class="cal-day-nav">
+        <button class="planner-nav-btn" onclick="calendarChangeDay(-1)">
+          <svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>
+        </button>
+        <div class="planner-date">
+          <strong>${formatDateShort(now)}</strong>
+          <span class="day-name">${now.toLocaleDateString('en-US', { weekday: 'long' })}</span>
+        </div>
+        <button class="planner-nav-btn" onclick="calendarChangeDay(1)">
+          <svg viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg>
+        </button>
+      </div>
+    </div>
+
+    <div class="planner-body" id="calendar-blocks">
+      ${blocksHtml}
+    </div>
+  `;
+
+  // Scroll to current hour
+  setTimeout(() => {
+    const cur = el.querySelector('.current-hour');
+    if (cur) cur.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }, 50);
+
+  // Wire up note saving
+  el.querySelectorAll('.time-block-notes').forEach(ta => {
+    ta.addEventListener('input', () => {
+      saveNote(ta.dataset.date, Number(ta.dataset.hour), ta.value);
+      ta.style.height = 'auto';
+      ta.style.height = ta.scrollHeight + 'px';
+    });
+    if (ta.value) {
+      ta.style.height = 'auto';
+      ta.style.height = ta.scrollHeight + 'px';
+    }
+  });
+}
+
+function calendarChangeDay(delta) {
+  // For now just re-render — future: navigate to different day
+  renderCalendar();
 }
 
 /* ============================================================
