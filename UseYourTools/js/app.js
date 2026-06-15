@@ -868,10 +868,20 @@ function calendarGoToday() {
 
 function eventsForDate(date) {
   const key = isoDateKey(date);
-  return calState.events.filter(e => (e.start || '').startsWith(key));
+  return calState.events.filter(e => {
+    if (!e.start) return false;
+    // Extract date portion directly from string to avoid timezone shift
+    return e.start.slice(0, 10) === key;
+  });
 }
 
-// ── Day View ──
+function eventHour(event) {
+  if (!event.start) return 0;
+  // All-day events have no time component
+  if (event.start.length === 10) return 0;
+  // Parse hour from local time portion of ISO string
+  return new Date(event.start).getHours();
+}
 function renderCalDayView() {
   const p = state.prefs;
   const d = calView.date;
@@ -885,7 +895,7 @@ function renderCalDayView() {
   for (let h = p.startHour; h < p.endHour; h++) {
     const savedNote = (notes[dateKey] && notes[dateKey][h]) || '';
     const isCurrent = isToday && now.getHours() === h;
-    const hourEvents = dayEvents.filter(e => new Date(e.start).getHours() === h);
+    const hourEvents = dayEvents.filter(e => eventHour(e) === h);
     const pills = hourEvents.map(e =>
       `<a class="time-block-meeting-pill" href="${escHtml(e.link)}" target="_blank">${escHtml(e.title)}</a>`
     ).join('');
@@ -928,7 +938,7 @@ function renderCalWeekView() {
     days.forEach(d => {
       const isToday = isoDateKey(d) === isoDateKey(now);
       const isCurrent = isToday && now.getHours() === h;
-      const dayEvents = eventsForDate(d).filter(e => new Date(e.start).getHours() === h);
+      const dayEvents = eventsForDate(d).filter(e => eventHour(e) === h);
       rows += `<div class="week-cell${isCurrent ? ' current-hour' : ''}">
         ${dayEvents.map(e =>
           `<a class="week-event-pill" href="${escHtml(e.link)}" target="_blank">${escHtml(e.title)}</a>`
