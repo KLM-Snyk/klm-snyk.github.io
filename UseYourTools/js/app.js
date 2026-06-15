@@ -594,7 +594,7 @@ function renderCalendar() {
         <div class="upcoming-list">
           ${calState.upcoming.map(e => {
             const d = new Date(e.start);
-            const label = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+            const label = e.dateLabel || d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
             const icon = e.type === 'recharge' ? '🔋' : '📌';
             return `<span class="upcoming-chip">${icon} ${label} — ${escHtml(e.title)}</span>`;
           }).join('')}
