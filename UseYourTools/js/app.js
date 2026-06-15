@@ -130,6 +130,7 @@ function navigate(screen) {
 
   if (screen === 'dashboard') renderDashboard();
   if (screen === 'calendar')  renderCalendar();
+  if (screen === 'drive')     renderDrive();
   if (screen === 'planner')   renderPlanner();
 }
 
@@ -497,28 +498,32 @@ function renderDashboard() {
         <div class="dash-card-action">Open in Salesforce ${ICONS.arrowRight}</div>
       </div>
 
-      <div class="dash-card">
+      <div class="dash-card" onclick="navigate('drive')">
         <div class="dash-card-header">
-          <div class="dash-card-icon">${ICONS.calendar}</div>
+          <div class="dash-card-icon">${ICONS.cases}</div>
           <div class="dash-card-title">Google Drive</div>
         </div>
         ${!calIsConnected() ? `
           <div class="dash-card-value">—</div>
           <div class="dash-card-sub">Connect Google to see shared docs &amp; mentions</div>
-          <div class="dash-card-action" onclick="openSettings()" style="cursor:pointer">Connect ${ICONS.arrowRight}</div>
-        ` : `
+          <div class="dash-card-action" onclick="event.stopPropagation();openSettings()" style="cursor:pointer">Connect ${ICONS.arrowRight}</div>
+        ` : (() => {
+          const sharedSheets = calState.driveShared.filter(f => f.type === 'sheet').length;
+          const sharedDocs   = calState.driveShared.filter(f => f.type === 'doc').length;
+          const mentionSheets = calState.driveMentions.filter(f => f.type === 'sheet').length;
+          const mentionDocs   = calState.driveMentions.filter(f => f.type === 'doc').length;
+          return `
           <div class="sf-tier-row">
             <span class="sf-tier-label sf-tier-platinum">Shared</span>
-            <span class="sf-tier-stat">${calState.driveShared.length} file${calState.driveShared.length === 1 ? '' : 's'}</span>
-            ${calState.driveShared.length > 0 ? `<a href="https://drive.google.com/drive/shared-with-me" target="_blank" style="margin-left:auto;font-size:12px;color:var(--primary);font-weight:600;text-decoration:none">View ${ICONS.arrowRight}</a>` : ''}
+            <span class="sf-tier-stat">${sharedSheets} 📊 · ${sharedDocs} 📄</span>
           </div>
           <div class="sf-tier-row">
             <span class="sf-tier-label sf-tier-gold">Mentions</span>
-            <span class="sf-tier-stat">${calState.driveMentions.length} file${calState.driveMentions.length === 1 ? '' : 's'}</span>
-            ${calState.driveMentions.length > 0 ? `<a href="https://drive.google.com" target="_blank" style="margin-left:auto;font-size:12px;color:var(--primary);font-weight:600;text-decoration:none">View ${ICONS.arrowRight}</a>` : ''}
+            <span class="sf-tier-stat">${mentionSheets} 📊 · ${mentionDocs} 📄</span>
           </div>
-          <div class="dash-card-sub" style="margin-top:6px">Last 30 days</div>
-        `}
+          <div class="dash-card-sub" style="margin-top:6px">Last 30 days · click to browse</div>
+          `;
+        })()}
       </div>
 
       <div class="dash-card">
@@ -582,6 +587,93 @@ function startClock() {
     const el = document.getElementById('live-time');
     if (el) el.textContent = formatCurrentTime();
   }, 10000);
+}
+
+/* ============================================================
+   Drive Screen
+   ============================================================ */
+
+function renderDrive() {
+  const el = document.getElementById('drive-content');
+  if (!el) return;
+
+  if (!calIsConnected()) {
+    el.innerHTML = `
+      <div class="cal-connect-prompt">
+        <div class="cal-connect-icon">📁</div>
+        <h3>Connect Google Drive</h3>
+        <p>Connect your Google account to see docs and sheets shared with you or where you're mentioned.</p>
+        <button class="connect-btn" onclick="calConnect()">Connect to Google</button>
+      </div>`;
+    return;
+  }
+
+  const allFiles = [
+    ...calState.driveShared.map(f => ({ ...f, category: 'shared' })),
+    ...calState.driveMentions
+      .filter(f => !calState.driveShared.find(s => s.id === f.id))
+      .map(f => ({ ...f, category: 'mentioned' })),
+  ].sort((a, b) => new Date(b.modified) - new Date(a.modified));
+
+  const formatRelative = (iso) => {
+    const d = new Date(iso);
+    const now = new Date();
+    const diffH = Math.floor((now - d) / 3600000);
+    if (diffH < 1) return 'just now';
+    if (diffH < 24) return `${diffH}h ago`;
+    const diffD = Math.floor(diffH / 24);
+    if (diffD === 1) return 'yesterday';
+    return `${diffD}d ago`;
+  };
+
+  el.innerHTML = `
+    <div class="drive-toolbar">
+      <input class="drive-search" id="drive-search" type="text" placeholder="Search files…" oninput="filterDrive()">
+      <div class="drive-filters">
+        <button class="drive-filter active" data-filter="all" onclick="setDriveFilter(this,'all')">All</button>
+        <button class="drive-filter" data-filter="sheet" onclick="setDriveFilter(this,'sheet')">📊 Sheets</button>
+        <button class="drive-filter" data-filter="doc" onclick="setDriveFilter(this,'doc')">📄 Docs</button>
+        <button class="drive-filter" data-filter="shared" onclick="setDriveFilter(this,'shared')">Shared with me</button>
+        <button class="drive-filter" data-filter="mentioned" onclick="setDriveFilter(this,'mentioned')">Mentions</button>
+      </div>
+    </div>
+
+    <div class="drive-list" id="drive-list">
+      ${allFiles.map(f => `
+        <a class="drive-item" href="${escHtml(f.link)}" target="_blank"
+           data-type="${f.type}" data-category="${f.category}"
+           data-name="${escHtml(f.name.toLowerCase())}">
+          <span class="drive-item-icon">${f.type === 'sheet' ? '📊' : '📄'}</span>
+          <div class="drive-item-details">
+            <div class="drive-item-name">${escHtml(f.name)}</div>
+            <div class="drive-item-meta">
+              <span class="drive-badge drive-badge--${f.category}">${f.category === 'shared' ? 'Shared' : 'Mentioned'}</span>
+              ${f.sharedBy ? `<span>by ${escHtml(f.sharedBy)}</span>` : ''}
+              <span>${formatRelative(f.modified)}</span>
+            </div>
+          </div>
+        </a>
+      `).join('')}
+    </div>
+  `;
+}
+
+let _driveFilter = 'all';
+
+function setDriveFilter(btn, filter) {
+  _driveFilter = filter;
+  document.querySelectorAll('.drive-filter').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  filterDrive();
+}
+
+function filterDrive() {
+  const search = (document.getElementById('drive-search')?.value || '').toLowerCase();
+  document.querySelectorAll('.drive-item').forEach(item => {
+    const matchType = _driveFilter === 'all' || item.dataset.type === _driveFilter || item.dataset.category === _driveFilter;
+    const matchSearch = !search || item.dataset.name.includes(search);
+    item.style.display = matchType && matchSearch ? '' : 'none';
+  });
 }
 
 /* ============================================================

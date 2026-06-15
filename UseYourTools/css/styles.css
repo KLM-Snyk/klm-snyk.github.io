@@ -1523,3 +1523,130 @@ html, body {
   color: #DC2626;
   margin-left: auto;
 }
+
+/* ============================================================
+   Drive Screen
+   ============================================================ */
+
+.drive-toolbar {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.drive-search {
+  width: 100%;
+  padding: 10px 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--text);
+  font-family: var(--font);
+  font-size: 14px;
+  outline: none;
+  transition: border-color var(--transition);
+}
+
+.drive-search:focus {
+  border-color: var(--primary);
+}
+
+.drive-filters {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.drive-filter {
+  padding: 5px 12px;
+  border-radius: 99px;
+  border: 1.5px solid var(--border);
+  background: var(--surface);
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--transition);
+}
+
+.drive-filter:hover {
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
+.drive-filter.active {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: white;
+}
+
+.drive-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.drive-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border-radius: var(--radius);
+  text-decoration: none;
+  color: var(--text);
+  transition: background var(--transition);
+  border: 1px solid transparent;
+}
+
+.drive-item:hover {
+  background: var(--surface);
+  border-color: var(--border);
+}
+
+.drive-item-icon {
+  font-size: 20px;
+  flex-shrink: 0;
+  width: 28px;
+  text-align: center;
+}
+
+.drive-item-details {
+  flex: 1;
+  min-width: 0;
+}
+
+.drive-item-name {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-bottom: 3px;
+}
+
+.drive-item-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.drive-badge {
+  padding: 1px 7px;
+  border-radius: 99px;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.drive-badge--shared {
+  background: #EEF2FF;
+  color: #6366F1;
+}
+
+.drive-badge--mentioned {
+  background: #FEF3C7;
+  color: #92400E;
+}
