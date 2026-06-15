@@ -500,6 +500,30 @@ function renderDashboard() {
       <div class="dash-card">
         <div class="dash-card-header">
           <div class="dash-card-icon">${ICONS.calendar}</div>
+          <div class="dash-card-title">Google Drive</div>
+        </div>
+        ${!calIsConnected() ? `
+          <div class="dash-card-value">—</div>
+          <div class="dash-card-sub">Connect Google to see shared docs &amp; mentions</div>
+          <div class="dash-card-action" onclick="openSettings()" style="cursor:pointer">Connect ${ICONS.arrowRight}</div>
+        ` : `
+          <div class="sf-tier-row">
+            <span class="sf-tier-label sf-tier-platinum">Shared</span>
+            <span class="sf-tier-stat">${calState.driveShared.length} file${calState.driveShared.length === 1 ? '' : 's'}</span>
+            ${calState.driveShared.length > 0 ? `<a href="https://drive.google.com/drive/shared-with-me" target="_blank" style="margin-left:auto;font-size:12px;color:var(--primary);font-weight:600;text-decoration:none">View ${ICONS.arrowRight}</a>` : ''}
+          </div>
+          <div class="sf-tier-row">
+            <span class="sf-tier-label sf-tier-gold">Mentions</span>
+            <span class="sf-tier-stat">${calState.driveMentions.length} file${calState.driveMentions.length === 1 ? '' : 's'}</span>
+            ${calState.driveMentions.length > 0 ? `<a href="https://drive.google.com" target="_blank" style="margin-left:auto;font-size:12px;color:var(--primary);font-weight:600;text-decoration:none">View ${ICONS.arrowRight}</a>` : ''}
+          </div>
+          <div class="dash-card-sub" style="margin-top:6px">Last 30 days</div>
+        `}
+      </div>
+
+      <div class="dash-card">
+        <div class="dash-card-header">
+          <div class="dash-card-icon">${ICONS.calendar}</div>
           <div class="dash-card-title">Gmail</div>
         </div>
         ${!calIsConnected() ? `

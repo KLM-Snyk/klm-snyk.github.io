@@ -8,7 +8,7 @@ const CAL_TOKEN_KEY    = 'uyt_gcal_token';
 const CAL_CLIENT_KEY   = 'uyt_gcal_client_id';
 const CAL_EXPIRY_KEY   = 'uyt_gcal_expiry';
 const USER_PROFILE_KEY = 'uyt_user_profile';
-const CAL_SCOPE        = 'https://www.googleapis.com/auth/calendar.readonly https://www.googleapis.com/auth/userinfo.profile https://www.googleapis.com/auth/gmail.readonly';
+const CAL_SCOPE = 'https://www.googleapis.com/auth/calendar.readonly https://www.googleapis.com/auth/userinfo.profile https://www.googleapis.com/auth/gmail.readonly https://www.googleapis.com/auth/drive.readonly';
 const CAL_API_BASE     = 'https://www.googleapis.com/calendar/v3';
 
 // In-memory state
@@ -20,9 +20,11 @@ const calState = {
   fetchError: null,
   userProfile: null,
   unreadCount: null,
-  oncall: null,       // string — name of who is on-call today
-  ooo: [],            // array of names who are OOO today
-  upcoming: [],       // array of notable upcoming events (next 30 days)
+  oncall: null,
+  ooo: [],
+  upcoming: [],
+  driveShared: [],    // files shared with you in last 30 days
+  driveMentions: [],  // docs/sheets where you're mentioned
 };
 
 // ── Bootstrap ───────────────────────────────────────────────
@@ -45,6 +47,8 @@ function calInit() {
       calFetchOncall(),
       calFetchOOO(),
       calFetchUpcomingEvents(),
+      calFetchDriveShared(),
+      calFetchDriveMentions(),
     ]).then(() => {
       if (typeof renderDashboard === 'function') renderDashboard();
     });
@@ -138,7 +142,15 @@ function calConnect() {
 
       // Fetch user's name/profile from Google
       await calFetchUserProfile();
-      await Promise.all([calFetchUpcoming(), calFetchUnreadCount(), calFetchOncall(), calFetchOOO(), calFetchUpcomingEvents()]);
+      await Promise.all([
+        calFetchUpcoming(),
+        calFetchUnreadCount(),
+        calFetchOncall(),
+        calFetchOOO(),
+        calFetchUpcomingEvents(),
+        calFetchDriveShared(),
+        calFetchDriveMentions(),
+      ]);
 
       if (typeof renderSettingsPanel === 'function') renderSettingsPanel();
       if (typeof renderDashboard     === 'function') renderDashboard();
@@ -192,6 +204,8 @@ function calDisconnect() {
   calClearToken();
   calState.events = [];
   calState.unreadCount = null;
+  calState.driveShared = [];
+  calState.driveMentions = [];
   saveUserProfile(null);
   if (typeof renderSettingsPanel === 'function') renderSettingsPanel();
   if (typeof renderDashboard     === 'function') renderDashboard();
@@ -441,6 +455,79 @@ async function calFetchUpcomingEvents() {
   } catch (e) {
     console.warn('Upcoming events fetch error:', e);
     calState.upcoming = [];
+  }
+}
+
+async function calFetchDriveShared() {
+  if (!calState.token) return;
+  try {
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+    const query = `sharedWithMe and modifiedTime > '${thirtyDaysAgo.toISOString()}' and (mimeType = 'application/vnd.google-apps.spreadsheet' or mimeType = 'application/vnd.google-apps.document')`;
+    const params = new URLSearchParams({
+      q: query,
+      fields: 'files(id,name,mimeType,webViewLink,modifiedTime,sharingUser)',
+      orderBy: 'modifiedTime desc',
+      pageSize: 10,
+    });
+    const res = await fetch(`https://www.googleapis.com/drive/v3/files?${params}`, {
+      headers: { Authorization: `Bearer ${calState.token}` },
+    });
+    if (!res.ok) { calState.driveShared = []; return; }
+    const data = await res.json();
+    calState.driveShared = (data.files || []).map(f => ({
+      id: f.id,
+      name: f.name,
+      type: f.mimeType.includes('spreadsheet') ? 'sheet' : 'doc',
+      link: f.webViewLink,
+      modified: f.modifiedTime,
+      sharedBy: f.sharingUser?.displayName || '',
+    }));
+  } catch (e) {
+    console.warn('Drive shared fetch error:', e);
+    calState.driveShared = [];
+  }
+}
+
+async function calFetchDriveMentions() {
+  if (!calState.token) return;
+  try {
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+    // Search for files where user is mentioned in comments
+    const params = new URLSearchParams({
+      q: `(mimeType = 'application/vnd.google-apps.spreadsheet' or mimeType = 'application/vnd.google-apps.document') and modifiedTime > '${thirtyDaysAgo.toISOString()}'`,
+      fields: 'files(id,name,mimeType,webViewLink,modifiedTime)',
+      orderBy: 'modifiedTime desc',
+      pageSize: 10,
+      includeItemsFromAllDrives: true,
+      supportsAllDrives: true,
+    });
+    // Use the activity/comments approach — search for files with unresolved comments mentioning the user
+    const email = calState.userProfile?.email || '';
+    if (!email) { calState.driveMentions = []; return; }
+
+    const mentionParams = new URLSearchParams({
+      q: `fullText contains '${email}' and (mimeType = 'application/vnd.google-apps.spreadsheet' or mimeType = 'application/vnd.google-apps.document') and modifiedTime > '${thirtyDaysAgo.toISOString()}'`,
+      fields: 'files(id,name,mimeType,webViewLink,modifiedTime)',
+      orderBy: 'modifiedTime desc',
+      pageSize: 10,
+    });
+    const res = await fetch(`https://www.googleapis.com/drive/v3/files?${mentionParams}`, {
+      headers: { Authorization: `Bearer ${calState.token}` },
+    });
+    if (!res.ok) { calState.driveMentions = []; return; }
+    const data = await res.json();
+    calState.driveMentions = (data.files || []).map(f => ({
+      id: f.id,
+      name: f.name,
+      type: f.mimeType.includes('spreadsheet') ? 'sheet' : 'doc',
+      link: f.webViewLink,
+      modified: f.modifiedTime,
+    }));
+  } catch (e) {
+    console.warn('Drive mentions fetch error:', e);
+    calState.driveMentions = [];
   }
 }
 
