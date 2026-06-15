@@ -30,11 +30,15 @@ function calInit() {
 
   const token  = localStorage.getItem(CAL_TOKEN_KEY);
   const expiry = Number(localStorage.getItem(CAL_EXPIRY_KEY) || 0);
+  const now    = Date.now();
 
-  if (token && Date.now() < expiry) {
+  if (token && now < expiry) {
     calState.token = token;
     Promise.all([
-      calFetchUpcoming().catch(() => calClearToken()),
+      calFetchUpcoming().catch((e) => {
+        console.warn('[calInit] calFetchUpcoming error:', e);
+        // Only clear token on auth errors, not scope/network issues
+      }),
       calFetchUnreadCount(),
     ]).then(() => {
       if (typeof renderDashboard === 'function') renderDashboard();
@@ -226,7 +230,7 @@ async function calFetchUpcoming(daysAhead = 7) {
     if (res.status === 401) {
       calClearToken();
       calState.fetchError = 'Session expired — reconnect your calendar.';
-      return [];
+      throw new Error('401 Unauthorized');
     }
 
     if (!res.ok) {
