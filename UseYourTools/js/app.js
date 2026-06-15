@@ -689,13 +689,14 @@ function setDriveFilter(btn, filter) {
 
 function filterDrive() {
   const search = (document.getElementById('drive-search')?.value || '').toLowerCase();
+  const typeFilters     = ['sheet', 'doc'].filter(f => _driveFilters.has(f));
+  const categoryFilters = ['shared', 'mentioned', 'created'].filter(f => _driveFilters.has(f));
+
   document.querySelectorAll('.drive-item').forEach(item => {
-    const isAll = _driveFilters.has('all');
-    const matchType = isAll
-      || _driveFilters.has(item.dataset.type)
-      || _driveFilters.has(item.dataset.category);
-    const matchSearch = !search || item.dataset.name.includes(search);
-    item.style.display = matchType && matchSearch ? '' : 'none';
+    const matchType     = typeFilters.length === 0     || typeFilters.includes(item.dataset.type);
+    const matchCategory = categoryFilters.length === 0 || categoryFilters.includes(item.dataset.category);
+    const matchSearch   = !search || item.dataset.name.includes(search);
+    item.style.display = matchType && matchCategory && matchSearch ? '' : 'none';
   });
 }
 
