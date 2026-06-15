@@ -811,10 +811,13 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('about-close').addEventListener('click', closeAbout);
   document.getElementById('about-overlay').addEventListener('click', closeAbout);
 
-  // Planner nav
-  document.getElementById('planner-prev').addEventListener('click', () => plannerChangeDay(-1));
-  document.getElementById('planner-next').addEventListener('click', () => plannerChangeDay(1));
-  document.getElementById('planner-today-btn').addEventListener('click', plannerGoToday);
+  // Planner nav (only wire up if elements exist)
+  const plannerPrev = document.getElementById('planner-prev');
+  const plannerNext = document.getElementById('planner-next');
+  const plannerToday = document.getElementById('planner-today-btn');
+  if (plannerPrev)  plannerPrev.addEventListener('click', () => plannerChangeDay(-1));
+  if (plannerNext)  plannerNext.addEventListener('click', () => plannerChangeDay(1));
+  if (plannerToday) plannerToday.addEventListener('click', plannerGoToday);
 
   // Render dashboard immediately with whatever state we have,
   // then let calInit and slackInit re-render once data is loaded
