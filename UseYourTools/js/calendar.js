@@ -372,11 +372,23 @@ async function calFetchUpcomingEvents() {
         prefixes.some(p => (e.summary || '').toUpperCase().startsWith(p))
       );
 
-      // Group by date — if multiple holidays on same day, collapse them
+      const formatRange = (start, end) => {
+        const s = new Date(start);
+        // Google all-day end dates are exclusive (day after), subtract 1
+        const e = end ? new Date(new Date(end).setDate(new Date(end).getDate() - 1)) : null;
+        const sLabel = s.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+        if (!e || s.toDateString() === e.toDateString()) return sLabel;
+        const eLabel = s.getMonth() === e.getMonth()
+          ? e.getDate()
+          : e.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+        return `${sLabel}–${eLabel}`;
+      };
+
+      // Group by start date — collapse same-day holidays into one chip
       const byDate = {};
       filtered.forEach(e => {
-        const start = e.start?.date || e.start?.dateTime;
-        const end   = e.end?.date   || e.end?.dateTime;
+        const start  = e.start?.date || e.start?.dateTime;
+        const end    = e.end?.date   || e.end?.dateTime;
         const dateKey = start?.slice(0, 10);
         if (!dateKey) return;
         if (!byDate[dateKey]) byDate[dateKey] = [];
@@ -384,38 +396,27 @@ async function calFetchUpcomingEvents() {
       });
 
       Object.entries(byDate).forEach(([dateKey, items]) => {
-        const formatRange = (start, end) => {
-          const s = new Date(start);
-          // Google all-day end dates are exclusive (day after), subtract 1
-          const e = end ? new Date(new Date(end).setDate(new Date(end).getDate() - 1)) : null;
-          const sLabel = s.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-          if (!e || s.toDateString() === e.toDateString()) return sLabel;
-          // Show end date — include month if different
-          const eLabel = s.getMonth() === e.getMonth()
-            ? e.getDate()
-            : e.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-          return `${sLabel}–${eLabel}`;
-        };
-
         if (items.length === 1) {
           const { summary, start, end } = items[0];
-          const range = formatRange(start, end);
-          events.push({ title: summary, start: dateKey, dateLabel: range, type: 'recharge' });
+          events.push({
+            title: summary,
+            start: dateKey,
+            dateLabel: formatRange(start, end),
+            type: 'recharge',
+          });
         } else {
           const codes = items.map(i => {
             const match = i.summary.match(/^([A-Z]+)/);
             return match ? match[1] : i.summary;
           });
-          // Use the widest date range across all same-day holidays
           const latestEnd = items.reduce((max, i) => {
             const e = i.end || i.start;
             return e > max ? e : max;
-          }, items[0].start);
-          const range = formatRange(dateKey, latestEnd);
+          }, items[0].end || items[0].start);
           events.push({
             title: `Holiday (${[...new Set(codes)].join(', ')})`,
             start: dateKey,
-            dateLabel: range,
+            dateLabel: formatRange(dateKey, latestEnd),
             type: 'recharge',
           });
         }
