@@ -990,7 +990,7 @@ function renderCalMonthView() {
       ${dayEvents.slice(0, 3).map(e =>
         `<a class="month-event" href="${escHtml(e.link)}" target="_blank">${escHtml(e.title)}</a>`
       ).join('')}
-      ${dayEvents.length > 3 ? `<span class="month-more">+${dayEvents.length - 3} more</span>` : ''}
+      ${dayEvents.length > 3 ? `<span class="month-more">+ ${dayEvents.length - 3} more</span>` : ''}
     </div>`;
   }
 

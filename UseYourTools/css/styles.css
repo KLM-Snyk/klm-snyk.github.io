@@ -1839,7 +1839,7 @@ html, body {
 
 .month-header-row {
   display: grid;
-  grid-template-columns: repeat(7, 1fr);
+  grid-template-columns: repeat(7, minmax(0, 1fr));
   border-bottom: 2px solid var(--border);
 }
 
@@ -1855,8 +1855,9 @@ html, body {
 
 .month-body {
   display: grid;
-  grid-template-columns: repeat(7, 1fr);
+  grid-template-columns: repeat(7, minmax(0, 1fr));
   flex: 1;
+  overflow-y: auto;
 }
 
 .month-cell {
@@ -1864,6 +1865,8 @@ html, body {
   border-bottom: 1px solid var(--border);
   padding: 6px;
   min-height: 90px;
+  min-width: 0;
+  overflow: hidden;
   display: flex;
   flex-direction: column;
   gap: 2px;
@@ -1909,16 +1912,20 @@ html, body {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  min-width: 0;
+  max-width: 100%;
   transition: opacity var(--transition);
 }
 
 .month-event:hover { opacity: 0.85; }
 
 .month-more {
-  font-size: 11px;
-  color: var(--text-secondary);
+  font-size: 12px;
   font-weight: 600;
-  padding: 0 4px;
+  color: var(--primary);
+  padding: 1px 4px;
+  cursor: pointer;
+  white-space: nowrap;
 }
 
 /* ============================================================
