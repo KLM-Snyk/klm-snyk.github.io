@@ -594,6 +594,7 @@ function renderDashboard() {
         </div>
       </div>
     </div>
+  `;
 
   startClock();
 }
