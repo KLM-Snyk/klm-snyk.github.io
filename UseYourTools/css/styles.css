@@ -2040,3 +2040,10 @@ html, body {
 .month-more:hover {
   opacity: 0.8;
 }
+
+.month-hidden-events {
+  flex-direction: column;
+  gap: 2px;
+  width: 100%;
+  min-width: 0;
+}

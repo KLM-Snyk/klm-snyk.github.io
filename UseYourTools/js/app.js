@@ -989,12 +989,12 @@ function renderCalMonthView() {
     cells += `<div class="month-cell${isToday ? ' today' : ''}" id="${cellId}">
       <span class="month-cell-num${isToday ? ' today' : ''}">${day}</span>
       ${dayEvents.slice(0, 3).map(e =>
-        `<a class="month-event" href="${escHtml(e.link)}" target="_blank" title="${escHtml(e.title)}">${escHtml(e.title)}</a>`
+        `<a class="month-event" href="${escHtml(e.link)}" target="_blank" title="${escHtml(e.title)}" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block;max-width:100%">${escHtml(e.title)}</a>`
       ).join('')}
       ${overflow ? `
-        <div class="month-hidden-events" id="${cellId}-more" style="display:none">
+        <div class="month-hidden-events" id="${cellId}-more" style="display:none;flex-direction:column;gap:2px;min-width:0;width:100%">
           ${dayEvents.slice(3).map(e =>
-            `<a class="month-event" href="${escHtml(e.link)}" target="_blank" title="${escHtml(e.title)}">${escHtml(e.title)}</a>`
+            `<a class="month-event" href="${escHtml(e.link)}" target="_blank" title="${escHtml(e.title)}" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block;max-width:100%">${escHtml(e.title)}</a>`
           ).join('')}
         </div>
         <span class="month-more" onclick="toggleMonthMore('${cellId}')">+ ${dayEvents.length - 3} more</span>
@@ -1013,8 +1013,8 @@ function toggleMonthMore(cellId) {
   const btn = document.querySelector(`#${cellId} .month-more`);
   if (!moreEl || !btn) return;
   const isHidden = moreEl.style.display === 'none';
-  moreEl.style.display = isHidden ? 'contents' : 'none';
-  btn.textContent = isHidden ? 'Show less' : btn.textContent;
+  moreEl.style.display = isHidden ? 'flex' : 'none';
+  btn.textContent = isHidden ? 'Show less' : `+ ${moreEl.children.length} more`;
 }
 
 function calendarChangeDay(delta) {
