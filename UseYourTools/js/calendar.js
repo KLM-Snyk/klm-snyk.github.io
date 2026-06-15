@@ -372,10 +372,15 @@ async function calFetchUpcomingEvents() {
         prefixes.some(p => (e.summary || '').toUpperCase().startsWith(p))
       );
 
+      const parseDate = str => {
+        // Parse YYYY-MM-DD without timezone shift
+        const [y, m, d] = str.slice(0, 10).split('-').map(Number);
+        return new Date(y, m - 1, d);
+      };
+
       const formatRange = (start, end) => {
-        const s = new Date(start);
-        // Google stores end as the actual last day (not exclusive) for these events
-        const e = end ? new Date(end) : null;
+        const s = parseDate(start);
+        const e = end ? parseDate(end) : null;
         const sLabel = s.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
         if (!e || s.toDateString() === e.toDateString()) return sLabel;
         const eLabel = s.getMonth() === e.getMonth()
