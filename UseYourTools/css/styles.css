@@ -1475,3 +1475,51 @@ html, body {
   max-width: 360px;
   line-height: 1.6;
 }
+
+/* ============================================================
+   Cases / Salesforce card
+   ============================================================ */
+
+.sf-tier-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--border);
+  flex-wrap: wrap;
+}
+
+.sf-tier-row:last-of-type {
+  border-bottom: none;
+}
+
+.sf-tier-label {
+  font-size: 12px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 99px;
+  flex-shrink: 0;
+}
+
+.sf-tier-platinum {
+  background: #E8E8F0;
+  color: #4B4B8F;
+}
+
+.sf-tier-gold {
+  background: #FEF3C7;
+  color: #92400E;
+}
+
+.sf-tier-stat {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.sf-tier-escalated {
+  font-size: 12px;
+  font-weight: 600;
+  color: #DC2626;
+  margin-left: auto;
+}
