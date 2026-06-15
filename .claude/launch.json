@@ -1,0 +1,17 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "UseYourTools for Work",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": ["serve", "-p", "4200", "."],
+      "port": 4200
+    },
+    {
+      "name": "moztracker",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": ["serve", "-p", "4201", "/tmp/klm-snyk.github.io/moztracker"],
+      "port": 4201
+    }
+  ]
+}

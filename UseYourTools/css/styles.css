@@ -368,7 +368,7 @@ html, body {
 
 .dashboard-cards {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  grid-template-columns: repeat(4, 1fr);
   gap: 16px;
   margin-bottom: 24px;
 }
@@ -466,6 +466,7 @@ html, body {
   border: none;
   color: white;
   cursor: default;
+  grid-column: 1 / -1;
 }
 
 .quote-card:hover {
