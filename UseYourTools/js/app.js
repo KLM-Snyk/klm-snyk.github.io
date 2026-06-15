@@ -977,7 +977,6 @@ function renderCalMonthView() {
   const headers = dayNames.map(n => `<div class="month-day-name">${n}</div>`).join('');
 
   let cells = '';
-  // Padding before first day
   for (let i = 0; i < startPad; i++) {
     cells += '<div class="month-cell month-cell--empty"></div>';
   }
@@ -985,12 +984,21 @@ function renderCalMonthView() {
     const cellDate = new Date(year, month, day);
     const isToday = isoDateKey(cellDate) === isoDateKey(now);
     const dayEvents = eventsForDate(cellDate);
-    cells += `<div class="month-cell${isToday ? ' today' : ''}">
+    const cellId = `mc-${year}-${month}-${day}`;
+    const overflow = dayEvents.length > 3;
+    cells += `<div class="month-cell${isToday ? ' today' : ''}" id="${cellId}">
       <span class="month-cell-num${isToday ? ' today' : ''}">${day}</span>
       ${dayEvents.slice(0, 3).map(e =>
-        `<a class="month-event" href="${escHtml(e.link)}" target="_blank">${escHtml(e.title)}</a>`
+        `<a class="month-event" href="${escHtml(e.link)}" target="_blank" title="${escHtml(e.title)}">${escHtml(e.title)}</a>`
       ).join('')}
-      ${dayEvents.length > 3 ? `<span class="month-more">+ ${dayEvents.length - 3} more</span>` : ''}
+      ${overflow ? `
+        <div class="month-hidden-events" id="${cellId}-more" style="display:none">
+          ${dayEvents.slice(3).map(e =>
+            `<a class="month-event" href="${escHtml(e.link)}" target="_blank" title="${escHtml(e.title)}">${escHtml(e.title)}</a>`
+          ).join('')}
+        </div>
+        <span class="month-more" onclick="toggleMonthMore('${cellId}')">+ ${dayEvents.length - 3} more</span>
+      ` : ''}
     </div>`;
   }
 
@@ -998,6 +1006,15 @@ function renderCalMonthView() {
     <div class="month-header-row">${headers}</div>
     <div class="month-body">${cells}</div>
   </div>`;
+}
+
+function toggleMonthMore(cellId) {
+  const moreEl = document.getElementById(cellId + '-more');
+  const btn = document.querySelector(`#${cellId} .month-more`);
+  if (!moreEl || !btn) return;
+  const isHidden = moreEl.style.display === 'none';
+  moreEl.style.display = isHidden ? 'contents' : 'none';
+  btn.textContent = isHidden ? 'Show less' : btn.textContent;
 }
 
 function calendarChangeDay(delta) {

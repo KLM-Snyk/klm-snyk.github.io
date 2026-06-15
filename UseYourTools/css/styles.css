@@ -2008,3 +2008,35 @@ html, body {
 .dashboard-sidebar-events:hover {
   transform: none;
 }
+
+/* ============================================================
+   Month view — force single-line pills, no cell stretching
+   ============================================================ */
+
+.month-cell {
+  overflow: hidden !important;
+  min-width: 0 !important;
+}
+
+.month-event {
+  display: block !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  max-width: 100% !important;
+  box-sizing: border-box !important;
+}
+
+.month-more {
+  font-size: 12px !important;
+  font-weight: 600 !important;
+  color: var(--primary) !important;
+  cursor: pointer !important;
+  padding: 1px 2px !important;
+  white-space: nowrap !important;
+  text-decoration: underline;
+}
+
+.month-more:hover {
+  opacity: 0.8;
+}
