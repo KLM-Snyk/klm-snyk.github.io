@@ -578,29 +578,6 @@ function renderDashboard() {
         ${eventsCardContent}
       </div>
 
-      <div class="dash-card">
-        <div class="dash-card-header">
-          <div class="dash-card-icon">${ICONS.calendar}</div>
-          <div class="dash-card-title">Gmail</div>
-        </div>
-        ${!calIsConnected() ? `
-          <div class="dash-card-value">—</div>
-          <div class="dash-card-sub">Connect Google Calendar to also see your Gmail unread count</div>
-          <div class="dash-card-action" onclick="openSettings()" style="cursor:pointer">Connect ${ICONS.arrowRight}</div>
-        ` : calState.unreadCount === null ? `
-          <div class="dash-card-value">—</div>
-          <div class="dash-card-sub">Loading inbox…</div>
-        ` : calState.unreadCount === 0 ? `
-          <div class="dash-card-value" style="font-size:22px">0 📭</div>
-          <div class="dash-card-sub">Inbox zero. You beautiful, productive human.</div>
-          <div class="dash-card-action"><a href="https://mail.google.com" target="_blank" style="color:inherit;text-decoration:none">Enjoy it while it lasts ${ICONS.arrowRight}</a></div>
-        ` : `
-          <div class="dash-card-value" style="font-size:22px">${calState.unreadCount}</div>
-          <div class="dash-card-sub">unread email${calState.unreadCount === 1 ? '' : 's'} waiting for you</div>
-          <div class="dash-card-action"><a href="https://mail.google.com" target="_blank" style="color:inherit;text-decoration:none">Open Gmail ${ICONS.arrowRight}</a></div>
-        `}
-      </div>
-
       ${p.showZenQuotes ? `
       <div class="dash-card quote-card">
         <div class="dash-card-header">
