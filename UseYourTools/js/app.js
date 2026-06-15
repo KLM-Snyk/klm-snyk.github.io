@@ -637,12 +637,12 @@ function renderDrive() {
     <div class="drive-toolbar">
       <input class="drive-search" id="drive-search" type="text" placeholder="Search files…" oninput="filterDrive()">
       <div class="drive-filters">
-        <button class="drive-filter active" data-filter="all" onclick="setDriveFilter(this,'all')">All</button>
-        <button class="drive-filter" data-filter="sheet" onclick="setDriveFilter(this,'sheet')">📊 Sheets</button>
-        <button class="drive-filter" data-filter="doc" onclick="setDriveFilter(this,'doc')">📄 Docs</button>
-        <button class="drive-filter" data-filter="shared" onclick="setDriveFilter(this,'shared')">Shared with me</button>
-        <button class="drive-filter" data-filter="mentioned" onclick="setDriveFilter(this,'mentioned')">Mentions</button>
-        <button class="drive-filter" data-filter="created" onclick="setDriveFilter(this,'created')">Created by me</button>
+        <button class="drive-filter ${_driveFilters.size === 0 ? 'active' : ''}" data-filter="all" onclick="setDriveFilter(this,'all')">All</button>
+        <button class="drive-filter ${_driveFilters.has('sheet') ? 'active' : ''}" data-filter="sheet" onclick="setDriveFilter(this,'sheet')">📊 Sheets</button>
+        <button class="drive-filter ${_driveFilters.has('doc') ? 'active' : ''}" data-filter="doc" onclick="setDriveFilter(this,'doc')">📄 Docs</button>
+        <button class="drive-filter ${_driveFilters.has('shared') ? 'active' : ''}" data-filter="shared" onclick="setDriveFilter(this,'shared')">Shared with me</button>
+        <button class="drive-filter ${_driveFilters.has('mentioned') ? 'active' : ''}" data-filter="mentioned" onclick="setDriveFilter(this,'mentioned')">Mentions</button>
+        <button class="drive-filter ${_driveFilters.has('created') ? 'active' : ''}" data-filter="created" onclick="setDriveFilter(this,'created')">Created by me</button>
       </div>
     </div>
 
@@ -666,23 +666,21 @@ function renderDrive() {
   `;
 }
 
-let _driveFilters = new Set(['all']);
+let _driveFilters = new Set();
 
 function setDriveFilter(btn, filter) {
   if (filter === 'all') {
-    _driveFilters = new Set(['all']);
+    _driveFilters.clear();
   } else {
-    _driveFilters.delete('all');
     if (_driveFilters.has(filter)) {
       _driveFilters.delete(filter);
-      if (_driveFilters.size === 0) _driveFilters.add('all');
     } else {
       _driveFilters.add(filter);
     }
   }
   document.querySelectorAll('.drive-filter').forEach(b => {
     const f = b.dataset.filter;
-    b.classList.toggle('active', _driveFilters.has(f));
+    b.classList.toggle('active', f === 'all' ? _driveFilters.size === 0 : _driveFilters.has(f));
   });
   filterDrive();
 }
