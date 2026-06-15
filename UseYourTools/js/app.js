@@ -533,6 +533,14 @@ function renderDashboard() {
       <div class="dash-card">
         <div class="dash-card-header">
           <div class="dash-card-icon">${ICONS.calendar}</div>
+          <div class="dash-card-title">Upcoming Events</div>
+        </div>
+        ${eventsCardContent}
+      </div>
+
+      <div class="dash-card">
+        <div class="dash-card-header">
+          <div class="dash-card-icon">${ICONS.calendar}</div>
           <div class="dash-card-title">Gmail</div>
         </div>
         ${!calIsConnected() ? `
@@ -551,14 +559,6 @@ function renderDashboard() {
           <div class="dash-card-sub">unread email${calState.unreadCount === 1 ? '' : 's'} waiting for you</div>
           <div class="dash-card-action"><a href="https://mail.google.com" target="_blank" style="color:inherit;text-decoration:none">Open Gmail ${ICONS.arrowRight}</a></div>
         `}
-      </div>
-
-      <div class="dash-card">
-        <div class="dash-card-header">
-          <div class="dash-card-icon">${ICONS.calendar}</div>
-          <div class="dash-card-title">Upcoming Events</div>
-        </div>
-        ${eventsCardContent}
       </div>
 
       ${p.showZenQuotes ? `

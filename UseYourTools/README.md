@@ -8,12 +8,12 @@ A browser-based workday management tool — built for the web from the ground up
 
 ## What it does
 
-UseYourTools for Work gives you a single place to manage your workday:
+UseYourTools for Work gives you a single place to manage your workday across four screens:
 
-- **Dashboard** — personalized greeting, live clock, upcoming Google Calendar events, and a daily motivational quote
-- **Daily Planner** — hour-by-hour time blocks for your full workday, notes auto-saved as you type, navigate between days
-- **Cases** — your caseload from JIRA or Salesforce *(integration coming soon)*
-- **Settings** — 5 color themes, dark mode, configurable work hours, 12/24h clock, and integration toggles
+- **Dashboard** — personalized greeting, live clock, and four at-a-glance cards: Slack Threads, Cases, Google Drive, and Upcoming Events. Gmail and daily quote below.
+- **Calendar** — today's meetings overlaid on an hourly time block planner, with on-call banner, OOO strip, and a 30-day upcoming events header (holidays + recharge days)
+- **Drive** — searchable list of Google Docs and Sheets shared with you, where you are mentioned, or that you created in the last 30 days — with multi-select filters
+- **Cases** — links to your Salesforce case queue (live data integration planned)
 
 ---
 
@@ -23,9 +23,12 @@ UseYourTools for Work gives you a single place to manage your workday:
 |---|---|
 | Google Calendar | Working |
 | Gmail unread count | Working |
-| JIRA | Coming soon |
-| Salesforce | Coming soon |
-| Outlook | Coming soon |
+| Google Drive | Working |
+| Slack Threads | Pending admin approval |
+| On-call calendar | Working |
+| OOO calendar | Working |
+| Recharge / Holiday calendar | Working |
+| Salesforce Cases | Link only (live data planned) |
 
 ---
 
@@ -45,9 +48,9 @@ Make sure your local port matches exactly what is registered in Google Cloud Con
 
 ---
 
-## Google Calendar and Gmail setup
+## Google setup (Calendar, Gmail, and Drive)
 
-Both Google Calendar and Gmail are connected in a single OAuth flow.
+All three Google integrations connect in a single OAuth flow.
 
 ### 1. Create a Google Cloud project
 
@@ -55,9 +58,10 @@ Go to https://console.cloud.google.com and create a new project or use an existi
 
 ### 2. Enable the required APIs
 
-In your project, enable all three:
+In your project, enable all four:
 - Google Calendar API
 - Gmail API
+- Google Drive API
 - People API (for your name and profile)
 
 ### 3. Create an OAuth 2.0 Client ID
@@ -79,15 +83,16 @@ In your project, enable all three:
 1. Open the app and click Connect to Google (top right of dashboard)
 2. Paste your Client ID when prompted and click Connect
 3. Approve the Google OAuth consent screen
-4. Your name, calendar events, and Gmail unread count will load automatically
+4. Your name, calendar events, Gmail unread count, and Drive files will load automatically
 
 ### Troubleshooting
 
 - 401 invalid_client or no registered origin: Add your exact origin URL to Authorized JavaScript origins in Google Cloud Console
-- 403 insufficient authentication scopes: Disconnect and reconnect - your old token is missing the Gmail scope
-- Calendar or Gmail not loading after refresh: Token may have expired (1 hour limit) - reconnect to get a fresh token
+- 403 insufficient authentication scopes: Disconnect and reconnect - your old token is missing a scope
+- 403 on Drive: Make sure the Google Drive API is enabled in your Cloud project
+- Data not loading after refresh: Token may have expired (1 hour limit) - reconnect to get a fresh token
 
-Clicking Disconnect in Settings or Sign out on the dashboard fully clears your token, profile, and cached events.
+Clicking Disconnect in Settings or Sign out on the dashboard fully clears your token, profile, and cached data.
 
 ---
 
@@ -109,7 +114,10 @@ Ported directly from the iOS app:
 
 - Google Calendar integration - done
 - Gmail unread count on dashboard - done
-- JIRA and Salesforce case list with Kanban view - planned
+- Google Drive shared / mentioned / created files - done
+- On-call, OOO, and recharge day banners in Calendar - done
+- Slack Threads unread count - pending Slack admin approval
+- Salesforce Cases live data - planned
 - PDF export for daily schedule - planned
 - Event creation and editing - planned
 - Notifications and reminders - planned
