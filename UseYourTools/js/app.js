@@ -487,36 +487,14 @@ function renderDashboard() {
         `}
       </div>
 
-      <div class="dash-card" onclick="navigate('cases')">
+      <div class="dash-card" onclick="window.open('https://snyksec.lightning.force.com/lightning/o/Case/list','_blank')">
         <div class="dash-card-header">
           <div class="dash-card-icon">${ICONS.cases}</div>
           <div class="dash-card-title">Cases</div>
         </div>
-        ${sfState.loading ? `
-          <div class="dash-card-value" style="font-size:14px">Loading…</div>
-          <div class="dash-card-sub">Fetching from Salesforce</div>
-        ` : sfState.error ? `
-          <div class="dash-card-value" style="font-size:14px">⚠️</div>
-          <div class="dash-card-sub">${escHtml(sfState.error)}</div>
-          <div class="dash-card-action" onclick="event.stopPropagation();sfFetchCases()" style="cursor:pointer">Retry ${ICONS.arrowRight}</div>
-        ` : sfState.data ? `
-          <div class="sf-tier-row">
-            <span class="sf-tier-label sf-tier-platinum">Platinum</span>
-            <span class="sf-tier-stat">${sfState.data.platinum.open} open</span>
-            ${sfState.data.platinum.escalated > 0 ? `<span class="sf-tier-escalated">🔺 ${sfState.data.platinum.escalated} escalated</span>` : ''}
-          </div>
-          <div class="sf-tier-row">
-            <span class="sf-tier-label sf-tier-gold">Gold</span>
-            <span class="sf-tier-stat">${sfState.data.gold.open} open</span>
-            ${sfState.data.gold.escalated > 0 ? `<span class="sf-tier-escalated">🔺 ${sfState.data.gold.escalated} escalated</span>` : ''}
-          </div>
-          <div class="dash-card-sub" style="margin-top:8px">As of ${escHtml(sfState.data.asOf)}</div>
-          <div class="dash-card-action" onclick="event.stopPropagation();sfFetchCases()" style="cursor:pointer">Refresh ${ICONS.arrowRight}</div>
-        ` : `
-          <div class="dash-card-value">—</div>
-          <div class="dash-card-sub">Open cases by tier from Salesforce</div>
-          <div class="dash-card-action" onclick="event.stopPropagation();sfFetchCases()" style="cursor:pointer">Load cases ${ICONS.arrowRight}</div>
-        `}
+        <div class="dash-card-value">—</div>
+        <div class="dash-card-sub">Platinum &amp; Gold open cases</div>
+        <div class="dash-card-action">Open in Salesforce ${ICONS.arrowRight}</div>
       </div>
 
       <div class="dash-card">
@@ -847,5 +825,4 @@ document.addEventListener('DOMContentLoaded', () => {
   navigate('dashboard');
   calInit();
   slackInit();
-  sfInit();
 });
