@@ -1915,3 +1915,49 @@ html, body {
   font-weight: 600;
   padding: 0 4px;
 }
+
+/* ============================================================
+   Calendar screen layout — fills height, no padding wrapper
+   ============================================================ */
+
+.screen--calendar {
+  display: none;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+}
+
+.screen--calendar.active {
+  display: flex;
+}
+
+.calendar-content-area {
+  flex: 1;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  padding: 16px 24px 0;
+}
+
+.cal-view-controls {
+  flex-shrink: 0;
+}
+
+.week-grid,
+.month-grid {
+  flex: 1;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.week-body,
+.month-body {
+  flex: 1;
+  overflow-y: auto;
+}
+
+.planner-body {
+  flex: 1;
+  overflow-y: auto;
+}
