@@ -715,6 +715,12 @@ function filterDrive() {
   });
 }
 
+// Calendar view state — persists across renders
+const calView = {
+  mode: 'day',       // 'day' | 'week' | 'month'
+  date: new Date(),  // anchor date
+};
+
 /* ============================================================
    Calendar Screen
    ============================================================ */
@@ -722,25 +728,20 @@ function filterDrive() {
 function renderCalendar() {
   const el = document.getElementById('calendar-content');
   if (!el) return;
-  const p   = state.prefs;
-  const now = new Date();
-  const todayEvents = calTodayEvents();
 
-  // ── On-call banner ──
+  // ── Static banners (always shown) ──
   const oncallBanner = calState.oncall ? `
     <div class="cal-banner cal-banner--oncall">
       <span>🚨</span>
       <span>On-call today: <strong>${escHtml(calState.oncall)}</strong></span>
     </div>` : '';
 
-  // ── OOO strip ──
   const oooBanner = calState.ooo.length ? `
     <div class="cal-banner cal-banner--ooo">
       <span>🏖️</span>
       <span>Out today: <strong>${calState.ooo.map(escHtml).join(', ')}</strong></span>
     </div>` : '';
 
-  // ── Upcoming notable events (next 30 days) ──
   const upcomingBanner = calState.upcoming.length ? `
     <div class="cal-banner cal-banner--upcoming">
       <span>📌</span>
@@ -748,8 +749,7 @@ function renderCalendar() {
         <strong>Coming up in the next 30 days:</strong>
         <div class="upcoming-list">
           ${calState.upcoming.map(e => {
-            const d = new Date(e.start);
-            const label = e.dateLabel || d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+            const label = e.dateLabel || new Date(e.start).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
             const icon = e.type === 'recharge' ? '🔋' : '📌';
             return `<span class="upcoming-chip">${icon} ${label} — ${escHtml(e.title)}</span>`;
           }).join('')}
@@ -757,10 +757,12 @@ function renderCalendar() {
       </div>
     </div>` : '';
 
-  // ── Not connected state ──
+  const staticBanners = oncallBanner + oooBanner + upcomingBanner;
+
+  // ── Not connected ──
   if (!calIsConnected()) {
     el.innerHTML = `
-      ${oncallBanner}
+      ${staticBanners}
       <div class="cal-connect-prompt">
         <div class="cal-connect-icon">📆</div>
         <h3>Connect Google Calendar</h3>
@@ -770,95 +772,220 @@ function renderCalendar() {
     return;
   }
 
-  // ── Today's meetings ──
-  const planner = state.prefs;
-  const notes   = loadNotes();
-  const dateKey = isoDateKey(now);
+  // ── Nav label ──
+  const navLabel = calViewLabel();
 
-  let meetingsHtml = '';
-  if (todayEvents.length === 0) {
-    meetingsHtml = `<div class="cal-empty">No meetings today — enjoy the focus time 🎯</div>`;
-  } else {
-    meetingsHtml = todayEvents.map(e => `
-      <a class="cal-meeting-item" href="${escHtml(e.link)}" target="_blank">
-        <div class="cal-meeting-time">${calFormatEventTime(e)}</div>
-        <div class="cal-meeting-details">
-          <div class="cal-meeting-title">${escHtml(e.title)}</div>
-          ${e.location ? `<div class="cal-meeting-location">📍 ${escHtml(e.location)}</div>` : ''}
-        </div>
-      </a>
-    `).join('');
+  // ── View tabs + nav ──
+  const viewControls = `
+    <div class="cal-view-controls">
+      <div class="cal-view-tabs">
+        <button class="cal-view-tab ${calView.mode === 'day'   ? 'active' : ''}" onclick="setCalView('day')">Day</button>
+        <button class="cal-view-tab ${calView.mode === 'week'  ? 'active' : ''}" onclick="setCalView('week')">Week</button>
+        <button class="cal-view-tab ${calView.mode === 'month' ? 'active' : ''}" onclick="setCalView('month')">Month</button>
+      </div>
+      <div class="cal-nav-row">
+        <button class="planner-nav-btn" onclick="calendarNav(-1)">
+          <svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>
+        </button>
+        <span class="cal-nav-label">${navLabel}</span>
+        <button class="planner-nav-btn" onclick="calendarNav(1)">
+          <svg viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg>
+        </button>
+        <button class="planner-today-btn" onclick="calendarGoToday()">Today</button>
+      </div>
+    </div>`;
+
+  // ── Render current view ──
+  let viewHtml = '';
+  if (calView.mode === 'day')   viewHtml = renderCalDayView();
+  if (calView.mode === 'week')  viewHtml = renderCalWeekView();
+  if (calView.mode === 'month') viewHtml = renderCalMonthView();
+
+  el.innerHTML = staticBanners + viewControls + viewHtml;
+
+  // Scroll to current hour in day view
+  if (calView.mode === 'day') {
+    setTimeout(() => {
+      const cur = el.querySelector('.current-hour');
+      if (cur) cur.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }, 50);
+
+    // Wire up note saving
+    el.querySelectorAll('.time-block-notes').forEach(ta => {
+      ta.addEventListener('input', () => {
+        saveNote(ta.dataset.date, Number(ta.dataset.hour), ta.value);
+        ta.style.height = 'auto';
+        ta.style.height = ta.scrollHeight + 'px';
+      });
+      if (ta.value) {
+        ta.style.height = 'auto';
+        ta.style.height = ta.scrollHeight + 'px';
+      }
+    });
   }
+}
 
-  // ── Time blocks with meetings overlaid ──
-  let blocksHtml = '';
+function calViewLabel() {
+  const d = calView.date;
+  if (calView.mode === 'day') {
+    return d.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
+  }
+  if (calView.mode === 'week') {
+    const start = weekStart(d);
+    const end   = new Date(start); end.setDate(end.getDate() + 6);
+    const sLabel = start.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    const eLabel = end.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    return `${sLabel} – ${eLabel}`;
+  }
+  return d.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+}
+
+function weekStart(date) {
+  const d = new Date(date);
+  const day = d.getDay();
+  d.setDate(d.getDate() - day);
+  return d;
+}
+
+function setCalView(mode) {
+  calView.mode = mode;
+  renderCalendar();
+}
+
+function calendarNav(delta) {
+  const d = new Date(calView.date);
+  if (calView.mode === 'day')   d.setDate(d.getDate() + delta);
+  if (calView.mode === 'week')  d.setDate(d.getDate() + delta * 7);
+  if (calView.mode === 'month') d.setMonth(d.getMonth() + delta);
+  calView.date = d;
+  renderCalendar();
+}
+
+function calendarGoToday() {
+  calView.date = new Date();
+  renderCalendar();
+}
+
+function eventsForDate(date) {
+  const key = isoDateKey(date);
+  return calState.events.filter(e => (e.start || '').startsWith(key));
+}
+
+// ── Day View ──
+function renderCalDayView() {
+  const p = state.prefs;
+  const d = calView.date;
+  const now = new Date();
+  const isToday = isoDateKey(d) === isoDateKey(now);
+  const dateKey = isoDateKey(d);
+  const notes = loadNotes();
+  const dayEvents = eventsForDate(d);
+
+  let html = '<div class="planner-body">';
   for (let h = p.startHour; h < p.endHour; h++) {
     const savedNote = (notes[dateKey] && notes[dateKey][h]) || '';
-    const isCurrent = now.getHours() === h;
-    const hourMeetings = todayEvents.filter(e => new Date(e.start).getHours() === h);
-    const meetingPills = hourMeetings.map(e =>
+    const isCurrent = isToday && now.getHours() === h;
+    const hourEvents = dayEvents.filter(e => new Date(e.start).getHours() === h);
+    const pills = hourEvents.map(e =>
       `<a class="time-block-meeting-pill" href="${escHtml(e.link)}" target="_blank">${escHtml(e.title)}</a>`
     ).join('');
-
-    blocksHtml += `
+    html += `
       <div class="time-block${isCurrent ? ' current-hour' : ''}">
         <div class="time-label">${formatTime(h, 0, p.use12HourClock)}</div>
         <div class="time-block-content">
-          ${meetingPills}
+          ${pills}
           <textarea class="time-block-notes" rows="1" placeholder="Notes..."
             data-hour="${h}" data-date="${dateKey}">${escHtml(savedNote)}</textarea>
         </div>
       </div>`;
   }
+  html += '</div>';
+  return html;
+}
 
-  el.innerHTML = `
-    ${oncallBanner}
-    ${oooBanner}
-    ${upcomingBanner}
-
-    <div class="cal-day-header">
-      <div class="cal-day-nav">
-        <button class="planner-nav-btn" onclick="calendarChangeDay(-1)">
-          <svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>
-        </button>
-        <div class="planner-date">
-          <strong>${formatDateShort(now)}</strong>
-          <span class="day-name">${now.toLocaleDateString('en-US', { weekday: 'long' })}</span>
-        </div>
-        <button class="planner-nav-btn" onclick="calendarChangeDay(1)">
-          <svg viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg>
-        </button>
-      </div>
-    </div>
-
-    <div class="planner-body" id="calendar-blocks">
-      ${blocksHtml}
-    </div>
-  `;
-
-  // Scroll to current hour
-  setTimeout(() => {
-    const cur = el.querySelector('.current-hour');
-    if (cur) cur.scrollIntoView({ behavior: 'smooth', block: 'center' });
-  }, 50);
-
-  // Wire up note saving
-  el.querySelectorAll('.time-block-notes').forEach(ta => {
-    ta.addEventListener('input', () => {
-      saveNote(ta.dataset.date, Number(ta.dataset.hour), ta.value);
-      ta.style.height = 'auto';
-      ta.style.height = ta.scrollHeight + 'px';
-    });
-    if (ta.value) {
-      ta.style.height = 'auto';
-      ta.style.height = ta.scrollHeight + 'px';
-    }
+// ── Week View ──
+function renderCalWeekView() {
+  const p = state.prefs;
+  const start = weekStart(calView.date);
+  const days = Array.from({ length: 7 }, (_, i) => {
+    const d = new Date(start); d.setDate(d.getDate() + i); return d;
   });
+  const now = new Date();
+
+  const headers = days.map(d => {
+    const isToday = isoDateKey(d) === isoDateKey(now);
+    return `<div class="week-col-header${isToday ? ' today' : ''}">
+      <span class="week-day-name">${d.toLocaleDateString('en-US', { weekday: 'short' })}</span>
+      <span class="week-day-num${isToday ? ' today' : ''}">${d.getDate()}</span>
+    </div>`;
+  }).join('');
+
+  let rows = '';
+  for (let h = p.startHour; h < p.endHour; h++) {
+    const isCurrentHour = isoDateKey(now) && now.getHours() === h;
+    rows += `<div class="week-row">
+      <div class="week-time-label">${formatTime(h, 0, p.use12HourClock)}</div>`;
+    days.forEach(d => {
+      const isToday = isoDateKey(d) === isoDateKey(now);
+      const isCurrent = isToday && now.getHours() === h;
+      const dayEvents = eventsForDate(d).filter(e => new Date(e.start).getHours() === h);
+      rows += `<div class="week-cell${isCurrent ? ' current-hour' : ''}">
+        ${dayEvents.map(e =>
+          `<a class="week-event-pill" href="${escHtml(e.link)}" target="_blank">${escHtml(e.title)}</a>`
+        ).join('')}
+      </div>`;
+    });
+    rows += '</div>';
+  }
+
+  return `<div class="week-grid">
+    <div class="week-header-row">
+      <div class="week-time-label"></div>
+      ${headers}
+    </div>
+    <div class="week-body">${rows}</div>
+  </div>`;
+}
+
+// ── Month View ──
+function renderCalMonthView() {
+  const d = calView.date;
+  const now = new Date();
+  const year = d.getFullYear();
+  const month = d.getMonth();
+  const firstDay = new Date(year, month, 1);
+  const lastDay  = new Date(year, month + 1, 0);
+  const startPad = firstDay.getDay();
+
+  const dayNames = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+  const headers = dayNames.map(n => `<div class="month-day-name">${n}</div>`).join('');
+
+  let cells = '';
+  // Padding before first day
+  for (let i = 0; i < startPad; i++) {
+    cells += '<div class="month-cell month-cell--empty"></div>';
+  }
+  for (let day = 1; day <= lastDay.getDate(); day++) {
+    const cellDate = new Date(year, month, day);
+    const isToday = isoDateKey(cellDate) === isoDateKey(now);
+    const dayEvents = eventsForDate(cellDate);
+    cells += `<div class="month-cell${isToday ? ' today' : ''}">
+      <span class="month-cell-num${isToday ? ' today' : ''}">${day}</span>
+      ${dayEvents.slice(0, 3).map(e =>
+        `<a class="month-event" href="${escHtml(e.link)}" target="_blank">${escHtml(e.title)}</a>`
+      ).join('')}
+      ${dayEvents.length > 3 ? `<span class="month-more">+${dayEvents.length - 3} more</span>` : ''}
+    </div>`;
+  }
+
+  return `<div class="month-grid">
+    <div class="month-header-row">${headers}</div>
+    <div class="month-body">${cells}</div>
+  </div>`;
 }
 
 function calendarChangeDay(delta) {
-  // For now just re-render — future: navigate to different day
-  renderCalendar();
+  calendarNav(delta);
 }
 
 /* ============================================================
