@@ -25,18 +25,56 @@ const calState = {
 // ── Bootstrap ───────────────────────────────────────────────
 
 function calInit() {
-  calState.clientId = localStorage.getItem(CAL_CLIENT_KEY) || '';
+  calState.clientId    = localStorage.getItem(CAL_CLIENT_KEY) || '';
   calState.userProfile = loadUserProfile();
 
   const token  = localStorage.getItem(CAL_TOKEN_KEY);
   const expiry = Number(localStorage.getItem(CAL_EXPIRY_KEY) || 0);
+
   if (token && Date.now() < expiry) {
     calState.token = token;
     Promise.all([
       calFetchUpcoming().catch(() => calClearToken()),
       calFetchUnreadCount(),
-    ]);
+    ]).then(() => {
+      if (typeof renderDashboard === 'function') renderDashboard();
+    });
+  } else if (calState.clientId) {
+    calClearToken();
+    if (typeof google !== 'undefined' && google.accounts?.oauth2) {
+      _calSilentRefresh();
+    } else {
+      window.addEventListener('load', () => {
+        if (typeof google !== 'undefined' && google.accounts?.oauth2) {
+          _calSilentRefresh();
+        }
+      });
+    }
   }
+}
+
+function _calSilentRefresh() {
+  const tokenClient = google.accounts.oauth2.initTokenClient({
+    client_id: calState.clientId,
+    scope: CAL_SCOPE,
+    prompt: '',
+    callback: async (resp) => {
+      if (resp.error) {
+        console.warn('Silent token refresh failed:', resp.error);
+        if (typeof renderDashboard === 'function') renderDashboard();
+        return;
+      }
+      calState.token = resp.access_token;
+      const expiry = Date.now() + (resp.expires_in || 3600) * 1000;
+      localStorage.setItem(CAL_TOKEN_KEY, calState.token);
+      localStorage.setItem(CAL_EXPIRY_KEY, String(expiry));
+
+      await Promise.all([calFetchUpcoming(), calFetchUnreadCount()]);
+      if (typeof renderDashboard     === 'function') renderDashboard();
+      if (typeof renderSettingsPanel === 'function') renderSettingsPanel();
+    },
+  });
+  tokenClient.requestAccessToken({ prompt: '' });
 }
 
 function loadUserProfile() {
