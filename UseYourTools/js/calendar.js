@@ -23,8 +23,9 @@ const calState = {
   oncall: null,
   ooo: [],
   upcoming: [],
-  driveShared: [],    // files shared with you in last 30 days
-  driveMentions: [],  // docs/sheets where you're mentioned
+  driveShared: [],
+  driveMentions: [],
+  driveCreated: [],   // files created by the user in last 30 days
 };
 
 // ── Bootstrap ───────────────────────────────────────────────
@@ -49,6 +50,7 @@ function calInit() {
       calFetchUpcomingEvents(),
       calFetchDriveShared(),
       calFetchDriveMentions(),
+      calFetchDriveCreated(),
     ]).then(() => {
       if (typeof renderDashboard === 'function') renderDashboard();
     });
@@ -150,6 +152,7 @@ function calConnect() {
         calFetchUpcomingEvents(),
         calFetchDriveShared(),
         calFetchDriveMentions(),
+        calFetchDriveCreated(),
       ]);
 
       if (typeof renderSettingsPanel === 'function') renderSettingsPanel();
@@ -206,6 +209,7 @@ function calDisconnect() {
   calState.unreadCount = null;
   calState.driveShared = [];
   calState.driveMentions = [];
+  calState.driveCreated = [];
   saveUserProfile(null);
   if (typeof renderSettingsPanel === 'function') renderSettingsPanel();
   if (typeof renderDashboard     === 'function') renderDashboard();
@@ -528,6 +532,37 @@ async function calFetchDriveMentions() {
   } catch (e) {
     console.warn('Drive mentions fetch error:', e);
     calState.driveMentions = [];
+  }
+}
+
+async function calFetchDriveCreated() {
+  if (!calState.token) return;
+  try {
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+    const params = new URLSearchParams({
+      q: `'me' in owners and createdTime > '${thirtyDaysAgo.toISOString()}' and (mimeType = 'application/vnd.google-apps.spreadsheet' or mimeType = 'application/vnd.google-apps.document') and trashed = false`,
+      fields: 'files(id,name,mimeType,webViewLink,createdTime,modifiedTime)',
+      orderBy: 'createdTime desc',
+      pageSize: 10,
+    });
+    const res = await fetch(`https://www.googleapis.com/drive/v3/files?${params}`, {
+      headers: { Authorization: `Bearer ${calState.token}` },
+    });
+    if (!res.ok) { calState.driveCreated = []; return; }
+    const data = await res.json();
+    calState.driveCreated = (data.files || []).map(f => ({
+      id: f.id,
+      name: f.name,
+      type: f.mimeType.includes('spreadsheet') ? 'sheet' : 'doc',
+      link: f.webViewLink,
+      modified: f.modifiedTime,
+      created: f.createdTime,
+      sharedBy: '',
+    }));
+  } catch (e) {
+    console.warn('Drive created fetch error:', e);
+    calState.driveCreated = [];
   }
 }
 

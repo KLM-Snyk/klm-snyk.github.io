@@ -465,6 +465,14 @@ function renderDashboard() {
     <div class="dashboard-cards">
       <div class="dash-card">
         <div class="dash-card-header">
+          <div class="dash-card-icon">${ICONS.calendar}</div>
+          <div class="dash-card-title">Upcoming Events</div>
+        </div>
+        ${eventsCardContent}
+      </div>
+
+      <div class="dash-card">
+        <div class="dash-card-header">
           <div class="dash-card-icon">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 10c-.83 0-1.5-.67-1.5-1.5v-5c0-.83.67-1.5 1.5-1.5s1.5.67 1.5 1.5v5c0 .83-.67 1.5-1.5 1.5z"/><path d="M20.5 10H19V8.5c0-.83.67-1.5 1.5-1.5s1.5.67 1.5 1.5-.67 1.5-1.5 1.5z"/><path d="M9.5 14c.83 0 1.5.67 1.5 1.5v5c0 .83-.67 1.5-1.5 1.5S8 21.33 8 20.5v-5c0-.83.67-1.5 1.5-1.5z"/><path d="M3.5 14H5v1.5c0 .83-.67 1.5-1.5 1.5S2 16.33 2 15.5 2.67 14 3.5 14z"/><path d="M14 14.5c0-.83.67-1.5 1.5-1.5h5c.83 0 1.5.67 1.5 1.5s-.67 1.5-1.5 1.5h-5c-.83 0-1.5-.67-1.5-1.5z"/><path d="M15.5 19H14v1.5c0 .83.67 1.5 1.5 1.5s1.5-.67 1.5-1.5-.67-1.5-1.5-1.5z"/><path d="M10 9.5C10 8.67 9.33 8 8.5 8h-5C2.67 8 2 8.67 2 9.5S2.67 11 3.5 11h5c.83 0 1.5-.67 1.5-1.5z"/><path d="M8.5 5H10V3.5C10 2.67 9.33 2 8.5 2S7 2.67 7 3.5 7.67 5 8.5 5z"/></svg>
           </div>
@@ -521,6 +529,10 @@ function renderDashboard() {
             <span class="sf-tier-label sf-tier-gold">Mentions</span>
             <span class="sf-tier-stat">${mentionSheets} 📊 · ${mentionDocs} 📄</span>
           </div>
+          <div class="sf-tier-row">
+            <span class="sf-tier-label" style="background:#D1FAE5;color:#065F46">Created</span>
+            <span class="sf-tier-stat">${calState.driveCreated.filter(f=>f.type==='sheet').length} 📊 · ${calState.driveCreated.filter(f=>f.type==='doc').length} 📄</span>
+          </div>
           <div class="dash-card-sub" style="margin-top:6px">Last 30 days · click to browse</div>
           `;
         })()}
@@ -547,14 +559,6 @@ function renderDashboard() {
           <div class="dash-card-sub">unread email${calState.unreadCount === 1 ? '' : 's'} waiting for you</div>
           <div class="dash-card-action"><a href="https://mail.google.com" target="_blank" style="color:inherit;text-decoration:none">Open Gmail ${ICONS.arrowRight}</a></div>
         `}
-      </div>
-
-      <div class="dash-card">
-        <div class="dash-card-header">
-          <div class="dash-card-icon">${ICONS.calendar}</div>
-          <div class="dash-card-title">Upcoming Events</div>
-        </div>
-        ${eventsCardContent}
       </div>
 
       ${p.showZenQuotes ? `
@@ -613,6 +617,9 @@ function renderDrive() {
     ...calState.driveMentions
       .filter(f => !calState.driveShared.find(s => s.id === f.id))
       .map(f => ({ ...f, category: 'mentioned' })),
+    ...calState.driveCreated
+      .filter(f => !calState.driveShared.find(s => s.id === f.id) && !calState.driveMentions.find(m => m.id === f.id))
+      .map(f => ({ ...f, category: 'created' })),
   ].sort((a, b) => new Date(b.modified) - new Date(a.modified));
 
   const formatRelative = (iso) => {
@@ -635,6 +642,7 @@ function renderDrive() {
         <button class="drive-filter" data-filter="doc" onclick="setDriveFilter(this,'doc')">📄 Docs</button>
         <button class="drive-filter" data-filter="shared" onclick="setDriveFilter(this,'shared')">Shared with me</button>
         <button class="drive-filter" data-filter="mentioned" onclick="setDriveFilter(this,'mentioned')">Mentions</button>
+        <button class="drive-filter" data-filter="created" onclick="setDriveFilter(this,'created')">Created by me</button>
       </div>
     </div>
 
@@ -647,7 +655,7 @@ function renderDrive() {
           <div class="drive-item-details">
             <div class="drive-item-name">${escHtml(f.name)}</div>
             <div class="drive-item-meta">
-              <span class="drive-badge drive-badge--${f.category}">${f.category === 'shared' ? 'Shared' : 'Mentioned'}</span>
+              <span class="drive-badge drive-badge--${f.category}">${f.category === 'shared' ? 'Shared' : f.category === 'mentioned' ? 'Mentioned' : 'Created'}</span>
               ${f.sharedBy ? `<span>by ${escHtml(f.sharedBy)}</span>` : ''}
               <span>${formatRelative(f.modified)}</span>
             </div>

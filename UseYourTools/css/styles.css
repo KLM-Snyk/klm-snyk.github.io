@@ -1650,3 +1650,8 @@ html, body {
   background: #FEF3C7;
   color: #92400E;
 }
+
+.drive-badge--created {
+  background: #D1FAE5;
+  color: #065F46;
+}
