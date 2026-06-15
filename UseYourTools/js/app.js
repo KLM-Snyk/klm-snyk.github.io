@@ -479,116 +479,121 @@ function renderDashboard() {
       <div class="date-display">${formatDate(now)}</div>
     </div>
 
-    <div class="dashboard-cards">
-      <div class="dash-card">
-        <div class="dash-card-header">
-          <div class="dash-card-icon">${ICONS.calendar}</div>
-          <div class="dash-card-title">Gmail</div>
-        </div>
-        ${!calIsConnected() ? `
-          <div class="dash-card-value">—</div>
-          <div class="dash-card-sub">Connect Google Calendar to also see your Gmail unread count</div>
-          <div class="dash-card-action" onclick="openSettings()" style="cursor:pointer">Connect ${ICONS.arrowRight}</div>
-        ` : calState.unreadCount === null ? `
-          <div class="dash-card-value">—</div>
-          <div class="dash-card-sub">Loading inbox…</div>
-        ` : calState.unreadCount === 0 ? `
-          <div class="dash-card-value" style="font-size:22px">0 📭</div>
-          <div class="dash-card-sub">${getInboxZeroMessage()}</div>
-          <div class="dash-card-action"><a href="https://mail.google.com" target="_blank" style="color:inherit;text-decoration:none">Enjoy it while it lasts ${ICONS.arrowRight}</a></div>
-        ` : `
-          <div class="dash-card-value" style="font-size:22px">${calState.unreadCount}</div>
-          <div class="dash-card-sub">unread email${calState.unreadCount === 1 ? '' : 's'} waiting for you</div>
-          <div class="dash-card-action"><a href="https://mail.google.com" target="_blank" style="color:inherit;text-decoration:none">Open Gmail ${ICONS.arrowRight}</a></div>
-        `}
-      </div>
-
-      <div class="dash-card">
-        <div class="dash-card-header">
-          <div class="dash-card-icon">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 10c-.83 0-1.5-.67-1.5-1.5v-5c0-.83.67-1.5 1.5-1.5s1.5.67 1.5 1.5v5c0 .83-.67 1.5-1.5 1.5z"/><path d="M20.5 10H19V8.5c0-.83.67-1.5 1.5-1.5s1.5.67 1.5 1.5-.67 1.5-1.5 1.5z"/><path d="M9.5 14c.83 0 1.5.67 1.5 1.5v5c0 .83-.67 1.5-1.5 1.5S8 21.33 8 20.5v-5c0-.83.67-1.5 1.5-1.5z"/><path d="M3.5 14H5v1.5c0 .83-.67 1.5-1.5 1.5S2 16.33 2 15.5 2.67 14 3.5 14z"/><path d="M14 14.5c0-.83.67-1.5 1.5-1.5h5c.83 0 1.5.67 1.5 1.5s-.67 1.5-1.5 1.5h-5c-.83 0-1.5-.67-1.5-1.5z"/><path d="M15.5 19H14v1.5c0 .83.67 1.5 1.5 1.5s1.5-.67 1.5-1.5-.67-1.5-1.5-1.5z"/><path d="M10 9.5C10 8.67 9.33 8 8.5 8h-5C2.67 8 2 8.67 2 9.5S2.67 11 3.5 11h5c.83 0 1.5-.67 1.5-1.5z"/><path d="M8.5 5H10V3.5C10 2.67 9.33 2 8.5 2S7 2.67 7 3.5 7.67 5 8.5 5z"/></svg>
+    <div class="dashboard-layout">
+      <div class="dashboard-main">
+        <div class="dashboard-cards">
+          <div class="dash-card">
+            <div class="dash-card-header">
+              <div class="dash-card-icon">${ICONS.calendar}</div>
+              <div class="dash-card-title">Gmail</div>
+            </div>
+            ${!calIsConnected() ? `
+              <div class="dash-card-value">—</div>
+              <div class="dash-card-sub">Connect Google Calendar to also see your Gmail unread count</div>
+              <div class="dash-card-action" onclick="openSettings()" style="cursor:pointer">Connect ${ICONS.arrowRight}</div>
+            ` : calState.unreadCount === null ? `
+              <div class="dash-card-value">—</div>
+              <div class="dash-card-sub">Loading inbox…</div>
+            ` : calState.unreadCount === 0 ? `
+              <div class="dash-card-value" style="font-size:22px">0 📭</div>
+              <div class="dash-card-sub">${getInboxZeroMessage()}</div>
+              <div class="dash-card-action"><a href="https://mail.google.com" target="_blank" style="color:inherit;text-decoration:none">Enjoy it while it lasts ${ICONS.arrowRight}</a></div>
+            ` : `
+              <div class="dash-card-value" style="font-size:22px">${calState.unreadCount}</div>
+              <div class="dash-card-sub">unread email${calState.unreadCount === 1 ? '' : 's'} waiting for you</div>
+              <div class="dash-card-action"><a href="https://mail.google.com" target="_blank" style="color:inherit;text-decoration:none">Open Gmail ${ICONS.arrowRight}</a></div>
+            `}
           </div>
-          <div class="dash-card-title">Slack Threads</div>
-        </div>
-        ${!slackIsConnected() ? `
-          <div class="dash-card-value">—</div>
-          <div class="dash-card-sub">Connect Slack to see unread thread mentions</div>
-          <div class="dash-card-action" onclick="openSettings()" style="cursor:pointer">Connect ${ICONS.arrowRight}</div>
-        ` : slackState.threadCount === null ? `
-          <div class="dash-card-value">—</div>
-          <div class="dash-card-sub">Loading threads…</div>
-        ` : slackState.threadCount === 0 ? `
-          <div class="dash-card-value" style="font-size:22px">0 🧘</div>
-          <div class="dash-card-sub">No unread threads. Rare. Cherish this moment.</div>
-          <div class="dash-card-action"><a href="https://slack.com/app_redirect?channel=threads" target="_blank" style="color:inherit;text-decoration:none">Open Threads ${ICONS.arrowRight}</a></div>
-        ` : `
-          <div class="dash-card-value" style="font-size:22px">${slackState.threadCount}</div>
-          <div class="dash-card-sub">unread thread${slackState.threadCount === 1 ? '' : 's'} waiting for you</div>
-          <div class="dash-card-action"><a href="https://slack.com/app_redirect?channel=threads" target="_blank" style="color:inherit;text-decoration:none">Open Threads ${ICONS.arrowRight}</div>
-        `}
-      </div>
 
-      <div class="dash-card" onclick="window.open('https://snyksec.lightning.force.com/lightning/o/Case/list','_blank')">
-        <div class="dash-card-header">
-          <div class="dash-card-icon">${ICONS.cases}</div>
-          <div class="dash-card-title">Cases</div>
-        </div>
-        <div class="dash-card-value">—</div>
-        <div class="dash-card-sub">Platinum &amp; Gold open cases</div>
-        <div class="dash-card-action">Open in Salesforce ${ICONS.arrowRight}</div>
-      </div>
-
-      <div class="dash-card" onclick="navigate('drive')">
-        <div class="dash-card-header">
-          <div class="dash-card-icon">${ICONS.cases}</div>
-          <div class="dash-card-title">Google Drive</div>
-        </div>
-        ${!calIsConnected() ? `
-          <div class="dash-card-value">—</div>
-          <div class="dash-card-sub">Connect Google to see shared docs &amp; mentions</div>
-          <div class="dash-card-action" onclick="event.stopPropagation();openSettings()" style="cursor:pointer">Connect ${ICONS.arrowRight}</div>
-        ` : (() => {
-          const sharedSheets = calState.driveShared.filter(f => f.type === 'sheet').length;
-          const sharedDocs   = calState.driveShared.filter(f => f.type === 'doc').length;
-          const mentionSheets = calState.driveMentions.filter(f => f.type === 'sheet').length;
-          const mentionDocs   = calState.driveMentions.filter(f => f.type === 'doc').length;
-          return `
-          <div class="sf-tier-row">
-            <span class="sf-tier-label sf-tier-platinum">Shared</span>
-            <span class="sf-tier-stat">${sharedSheets} 📊 · ${sharedDocs} 📄</span>
+          <div class="dash-card">
+            <div class="dash-card-header">
+              <div class="dash-card-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 10c-.83 0-1.5-.67-1.5-1.5v-5c0-.83.67-1.5 1.5-1.5s1.5.67 1.5 1.5v5c0 .83-.67 1.5-1.5 1.5z"/><path d="M20.5 10H19V8.5c0-.83.67-1.5 1.5-1.5s1.5.67 1.5 1.5-.67 1.5-1.5 1.5z"/><path d="M9.5 14c.83 0 1.5.67 1.5 1.5v5c0 .83-.67 1.5-1.5 1.5S8 21.33 8 20.5v-5c0-.83.67-1.5 1.5-1.5z"/><path d="M3.5 14H5v1.5c0 .83-.67 1.5-1.5 1.5S2 16.33 2 15.5 2.67 14 3.5 14z"/><path d="M14 14.5c0-.83.67-1.5 1.5-1.5h5c.83 0 1.5.67 1.5 1.5s-.67 1.5-1.5 1.5h-5c-.83 0-1.5-.67-1.5-1.5z"/><path d="M15.5 19H14v1.5c0 .83.67 1.5 1.5 1.5s1.5-.67 1.5-1.5-.67-1.5-1.5-1.5z"/><path d="M10 9.5C10 8.67 9.33 8 8.5 8h-5C2.67 8 2 8.67 2 9.5S2.67 11 3.5 11h5c.83 0 1.5-.67 1.5-1.5z"/><path d="M8.5 5H10V3.5C10 2.67 9.33 2 8.5 2S7 2.67 7 3.5 7.67 5 8.5 5z"/></svg>
+              </div>
+              <div class="dash-card-title">Slack Threads</div>
+            </div>
+            ${!slackIsConnected() ? `
+              <div class="dash-card-value">—</div>
+              <div class="dash-card-sub">Connect Slack to see unread thread mentions</div>
+              <div class="dash-card-action" onclick="openSettings()" style="cursor:pointer">Connect ${ICONS.arrowRight}</div>
+            ` : slackState.threadCount === null ? `
+              <div class="dash-card-value">—</div>
+              <div class="dash-card-sub">Loading threads…</div>
+            ` : slackState.threadCount === 0 ? `
+              <div class="dash-card-value" style="font-size:22px">0 🧘</div>
+              <div class="dash-card-sub">No unread threads. Rare. Cherish this moment.</div>
+              <div class="dash-card-action"><a href="https://slack.com/app_redirect?channel=threads" target="_blank" style="color:inherit;text-decoration:none">Open Threads ${ICONS.arrowRight}</a></div>
+            ` : `
+              <div class="dash-card-value" style="font-size:22px">${slackState.threadCount}</div>
+              <div class="dash-card-sub">unread thread${slackState.threadCount === 1 ? '' : 's'} waiting for you</div>
+              <div class="dash-card-action"><a href="https://slack.com/app_redirect?channel=threads" target="_blank" style="color:inherit;text-decoration:none">Open Threads ${ICONS.arrowRight}</a></div>
+            `}
           </div>
-          <div class="sf-tier-row">
-            <span class="sf-tier-label sf-tier-gold">Mentions</span>
-            <span class="sf-tier-stat">${mentionSheets} 📊 · ${mentionDocs} 📄</span>
+
+          <div class="dash-card" onclick="window.open('https://snyksec.lightning.force.com/lightning/o/Case/list','_blank')">
+            <div class="dash-card-header">
+              <div class="dash-card-icon">${ICONS.cases}</div>
+              <div class="dash-card-title">Cases</div>
+            </div>
+            <div class="dash-card-value">—</div>
+            <div class="dash-card-sub">Platinum &amp; Gold open cases</div>
+            <div class="dash-card-action">Open in Salesforce ${ICONS.arrowRight}</div>
           </div>
-          <div class="sf-tier-row">
-            <span class="sf-tier-label" style="background:#D1FAE5;color:#065F46">Created</span>
-            <span class="sf-tier-stat">${calState.driveCreated.filter(f=>f.type==='sheet').length} 📊 · ${calState.driveCreated.filter(f=>f.type==='doc').length} 📄</span>
+
+          <div class="dash-card" onclick="navigate('drive')">
+            <div class="dash-card-header">
+              <div class="dash-card-icon">${ICONS.cases}</div>
+              <div class="dash-card-title">Google Drive</div>
+            </div>
+            ${!calIsConnected() ? `
+              <div class="dash-card-value">—</div>
+              <div class="dash-card-sub">Connect Google to see shared docs &amp; mentions</div>
+              <div class="dash-card-action" onclick="event.stopPropagation();openSettings()" style="cursor:pointer">Connect ${ICONS.arrowRight}</div>
+            ` : (() => {
+              const sharedSheets  = calState.driveShared.filter(f => f.type === 'sheet').length;
+              const sharedDocs    = calState.driveShared.filter(f => f.type === 'doc').length;
+              const mentionSheets = calState.driveMentions.filter(f => f.type === 'sheet').length;
+              const mentionDocs   = calState.driveMentions.filter(f => f.type === 'doc').length;
+              return `
+              <div class="sf-tier-row">
+                <span class="sf-tier-label sf-tier-platinum">Shared</span>
+                <span class="sf-tier-stat">${sharedSheets} 📊 · ${sharedDocs} 📄</span>
+              </div>
+              <div class="sf-tier-row">
+                <span class="sf-tier-label sf-tier-gold">Mentions</span>
+                <span class="sf-tier-stat">${mentionSheets} 📊 · ${mentionDocs} 📄</span>
+              </div>
+              <div class="sf-tier-row">
+                <span class="sf-tier-label" style="background:#D1FAE5;color:#065F46">Created</span>
+                <span class="sf-tier-stat">${calState.driveCreated.filter(f=>f.type==='sheet').length} 📊 · ${calState.driveCreated.filter(f=>f.type==='doc').length} 📄</span>
+              </div>
+              <div class="dash-card-sub" style="margin-top:6px">Last 30 days · click to browse</div>
+              `;
+            })()}
           </div>
-          <div class="dash-card-sub" style="margin-top:6px">Last 30 days · click to browse</div>
-          `;
-        })()}
+        </div>
+
+        ${p.showZenQuotes ? `
+        <div class="dash-card quote-card" style="margin-top:16px">
+          <div class="dash-card-header">
+            <div class="dash-card-icon">${ICONS.quote}</div>
+            <div class="dash-card-title" style="color:rgba(255,255,255,0.8)">Daily Quote</div>
+          </div>
+          <div class="dash-card-value">"${escHtml(quote.text)}"</div>
+          <div class="dash-card-sub">— ${escHtml(quote.author)}</div>
+        </div>` : ''}
       </div>
 
-      <div class="dash-card">
-        <div class="dash-card-header">
-          <div class="dash-card-icon">${ICONS.calendar}</div>
-          <div class="dash-card-title">Upcoming Events</div>
+      <div class="dashboard-sidebar">
+        <div class="dash-card dashboard-sidebar-events">
+          <div class="dash-card-header">
+            <div class="dash-card-icon">${ICONS.calendar}</div>
+            <div class="dash-card-title">Upcoming Events</div>
+          </div>
+          ${eventsCardContent}
         </div>
-        ${eventsCardContent}
       </div>
-
-      ${p.showZenQuotes ? `
-      <div class="dash-card quote-card">
-        <div class="dash-card-header">
-          <div class="dash-card-icon">${ICONS.quote}</div>
-          <div class="dash-card-title" style="color:rgba(255,255,255,0.8)">Daily Quote</div>
-        </div>
-        <div class="dash-card-value">"${escHtml(quote.text)}"</div>
-        <div class="dash-card-sub">— ${escHtml(quote.author)}</div>
-      </div>` : ''}
     </div>
-  `;
 
   startClock();
 }

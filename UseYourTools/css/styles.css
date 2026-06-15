@@ -1721,14 +1721,23 @@ html, body {
   flex: 1;
 }
 
-.week-header-row {
+.week-header-row,
+.week-row {
   display: grid;
-  grid-template-columns: 72px repeat(7, 1fr);
+  grid-template-columns: 72px repeat(7, minmax(0, 1fr));
+}
+
+.week-header-row {
   border-bottom: 2px solid var(--border);
   position: sticky;
   top: 0;
   background: var(--bg);
   z-index: 1;
+}
+
+.week-row {
+  border-bottom: 1px solid var(--border);
+  min-height: 48px;
 }
 
 .week-col-header {
@@ -1783,13 +1792,6 @@ html, body {
   overflow-y: auto;
 }
 
-.week-row {
-  display: grid;
-  grid-template-columns: 72px repeat(7, 1fr);
-  border-bottom: 1px solid var(--border);
-  min-height: 48px;
-}
-
 .week-cell {
   border-left: 1px solid var(--border);
   padding: 4px;
@@ -1797,6 +1799,8 @@ html, body {
   flex-direction: column;
   gap: 2px;
   min-height: 48px;
+  overflow: hidden;
+  min-width: 0;
 }
 
 .week-cell.current-hour {
@@ -1815,6 +1819,7 @@ html, body {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  max-width: 100%;
   transition: opacity var(--transition);
 }
 
@@ -1960,4 +1965,39 @@ html, body {
 .planner-body {
   flex: 1;
   overflow-y: auto;
+}
+
+/* ============================================================
+   Dashboard sidebar layout
+   ============================================================ */
+
+.dashboard-layout {
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+}
+
+.dashboard-main {
+  flex: 1;
+  min-width: 0;
+}
+
+.dashboard-main .dashboard-cards {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+}
+
+.dashboard-sidebar {
+  width: 280px;
+  flex-shrink: 0;
+}
+
+.dashboard-sidebar-events {
+  cursor: default;
+  height: auto;
+}
+
+.dashboard-sidebar-events:hover {
+  transform: none;
 }
