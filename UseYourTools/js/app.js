@@ -1013,7 +1013,7 @@ function toggleMonthMore(cellId) {
   const btn = document.querySelector(`#${cellId} .month-more`);
   if (!moreEl || !btn) return;
   const isHidden = moreEl.style.display === 'none';
-  moreEl.style.display = isHidden ? 'flex' : 'none';
+  moreEl.style.display = isHidden ? 'block' : 'none';
   btn.textContent = isHidden ? 'Show less' : `+ ${moreEl.children.length} more`;
 }
 

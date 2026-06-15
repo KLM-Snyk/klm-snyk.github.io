@@ -400,7 +400,10 @@ async function calFetchUpcomingEvents() {
         const s = parseDate(start);
         const e = end ? parseDate(end) : null;
         const sLabel = s.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+        // If no end, or same day, or end is just 1 day after start (all-day event convention), show single date
         if (!e || s.toDateString() === e.toDateString()) return sLabel;
+        const diffDays = Math.round((e - s) / 86400000);
+        if (diffDays <= 1) return sLabel;
         const eLabel = s.getMonth() === e.getMonth()
           ? e.getDate()
           : e.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });

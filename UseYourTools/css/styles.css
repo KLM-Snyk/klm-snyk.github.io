@@ -2047,3 +2047,25 @@ html, body {
   width: 100%;
   min-width: 0;
 }
+
+/* Force month cells to block layout so children respect cell width */
+.month-cell {
+  display: block !important;
+  overflow: hidden !important;
+  min-width: 0 !important;
+  box-sizing: border-box !important;
+}
+
+.month-event {
+  display: block !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  width: 100% !important;
+  box-sizing: border-box !important;
+  margin-bottom: 2px !important;
+}
+
+.month-cell-num {
+  display: flex !important;
+}
