@@ -55,12 +55,11 @@ async function calInit() {
       calFetchOOO(),
       calFetchUpcomingEvents(),
       calFetchDriveShared(),
-      calFetchDriveMentions(),
       calFetchDriveCreated(),
-    ]).then(() => {
-      calState.driveLoading = false;
-      if (typeof renderDashboard === 'function') renderDashboard();
-    });
+    ]);
+    await calFetchDriveMentions();
+    calState.driveLoading = false;
+    if (typeof renderDashboard === 'function') renderDashboard();
   } else if (calState.clientId) {
     calClearToken();
     if (typeof google !== 'undefined' && google.accounts?.oauth2) {
@@ -153,6 +152,7 @@ function calConnect() {
       await calFetchUserProfile();
       calState.driveLoading = true;
       if (typeof renderDashboard === 'function') renderDashboard();
+      // Fetch shared/created first, then mentions (which depends on them)
       await Promise.all([
         calFetchUpcoming(),
         calFetchUnreadCount(),
@@ -160,9 +160,9 @@ function calConnect() {
         calFetchOOO(),
         calFetchUpcomingEvents(),
         calFetchDriveShared(),
-        calFetchDriveMentions(),
         calFetchDriveCreated(),
       ]);
+      await calFetchDriveMentions();
       calState.driveLoading = false;
 
       if (typeof renderSettingsPanel === 'function') renderSettingsPanel();
@@ -560,30 +560,17 @@ async function calFetchDriveMentions() {
   try {
     const email = calState.userProfile?.email || '';
     if (!email) { calState.driveMentions = []; return; }
-
-    const thirtyDaysAgo = new Date();
-    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-
-    // Step 1: get recently modified docs/sheets
-    const params = new URLSearchParams({
-      q: `(mimeType = 'application/vnd.google-apps.spreadsheet' or mimeType = 'application/vnd.google-apps.document') and modifiedTime > '${thirtyDaysAgo.toISOString()}' and trashed = false`,
-      fields: 'files(id,name,mimeType,webViewLink,modifiedTime)',
-      orderBy: 'modifiedTime desc',
-      pageSize: 30,
-      includeItemsFromAllDrives: true,
-      supportsAllDrives: true,
-    });
-    const res = await fetch(`https://www.googleapis.com/drive/v3/files?${params}`, {
-      headers: { Authorization: `Bearer ${calState.token}` },
-    });
-    if (!res.ok) { calState.driveMentions = []; return; }
-    const data = await res.json();
-    const files = data.files || [];
-
-    // Step 2: for each file check comments for @mentions of this user
-    const mentionedFiles = [];
     const username = email.split('@')[0].toLowerCase();
-    await Promise.all(files.map(async f => {
+
+    // Check comments on files we already know about (shared + created)
+    // This avoids needing a separate file list fetch
+    const filesToCheck = [
+      ...calState.driveShared,
+      ...calState.driveCreated.filter(f => !calState.driveShared.find(s => s.id === f.id)),
+    ];
+
+    const mentionedFiles = [];
+    await Promise.all(filesToCheck.map(async f => {
       try {
         const cRes = await fetch(
           `https://www.googleapis.com/drive/v3/files/${f.id}/comments?fields=comments(content,resolved)&pageSize=100`,
@@ -596,15 +583,7 @@ async function calFetchDriveMentions() {
           !c.resolved &&
           (c.content?.includes(`@${email}`) || c.content?.toLowerCase().includes(username))
         );
-        if (mentioned) {
-          mentionedFiles.push({
-            id: f.id,
-            name: f.name,
-            type: f.mimeType.includes('spreadsheet') ? 'sheet' : 'doc',
-            link: f.webViewLink,
-            modified: f.modifiedTime,
-          });
-        }
+        if (mentioned) mentionedFiles.push(f);
       } catch (e) { /* skip */ }
     }));
 
