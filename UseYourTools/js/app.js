@@ -231,6 +231,20 @@ function renderSettingsPanel() {
       </div>
     </div>
 
+    <!-- Anthropic API Key -->
+    <div class="settings-section">
+      <div class="settings-section-title">Anthropic API Key</div>
+      <div class="cal-connect-box">
+        <p>Required for the AI-powered Slack Digest. Your key is stored locally and only sent to Anthropic's API.</p>
+        <div class="cal-input-row">
+          <input class="cal-client-input" id="anthropic-key-input" type="password"
+            placeholder="sk-ant-..." value="${escHtml(localStorage.getItem('uyt_anthropic_key') || '')}">
+          <button class="cal-connect-btn" onclick="saveAnthropicKey()">Save</button>
+        </div>
+        ${localStorage.getItem('uyt_anthropic_key') ? `<div style="font-size:12px;color:var(--primary);margin-top:6px;font-weight:600">✓ Key saved</div>` : ''}
+      </div>
+    </div>
+
     <!-- Slack -->
     <div class="settings-section">
       <div class="settings-section-title">Slack</div>
@@ -410,6 +424,95 @@ function closeAbout() {
   document.getElementById('about-overlay').classList.remove('open');
 }
 
+function saveAnthropicKey() {
+  const key = document.getElementById('anthropic-key-input')?.value.trim();
+  if (key) {
+    localStorage.setItem('uyt_anthropic_key', key);
+    renderSettingsPanel();
+  }
+}
+
+/* ============================================================
+   Slack Digest — AI-powered via Anthropic API + Slack MCP
+   ============================================================ */
+
+const slackDigestState = {
+  loading: false,
+  error: null,
+  html: null,
+  asOf: null,
+};
+
+async function fetchSlackDigest() {
+  const apiKey = localStorage.getItem('uyt_anthropic_key');
+  if (!apiKey) {
+    slackDigestState.error = 'Add your Anthropic API key in Settings first.';
+    renderDashboard();
+    return;
+  }
+
+  slackDigestState.loading = true;
+  slackDigestState.error = null;
+  renderDashboard();
+
+  const yesterday = new Date();
+  yesterday.setDate(yesterday.getDate() - 1);
+  const afterDate = yesterday.toISOString().slice(0, 10);
+
+  try {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01',
+        'anthropic-beta': 'mcp-client-2025-04-04',
+      },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-6',
+        max_tokens: 2000,
+        mcp_servers: [{ type: 'url', url: 'https://mcp.slack.com/mcp', name: 'slack' }],
+        system: `You are a Slack digest assistant for Kar Marsten (user ID: U0A95KFQL8H) at Snyk.
+Search Slack for the last 24 hours across ALL channel types (public, private, DMs, group DMs).
+Skip bot messages, automated alerts, and casual chatter.
+
+Return ONLY a valid HTML string (no markdown, no backticks, no explanation) in exactly this structure:
+
+<div class="digest-section"><div class="digest-heading">👥 Onboarding / People</div><ul class="digest-list">ITEMS OR <li class="digest-empty">Nothing to report</li></ul></div>
+<div class="digest-section"><div class="digest-heading">🔧 Work Items</div><ul class="digest-list">ITEMS OR <li class="digest-empty">Nothing to report</li></ul></div>
+<div class="digest-section"><div class="digest-heading">🚨 Incidents &amp; Escalations</div><ul class="digest-list">ITEMS OR <li class="digest-empty">Nothing to report</li></ul></div>
+
+Each item: <li><a href="PERMALINK" target="_blank">One sentence summary.</a></li>
+
+Categories:
+- Onboarding/People: new hires, role changes, team updates directed at Kar
+- Work Items: actionable tasks, customer/account updates, ticket assignments for Kar or their team
+- Incidents/Escalations: any incident or escalation activity`,
+        messages: [{
+          role: 'user',
+          content: `Search Slack for messages after:${afterDate} across all channel types. Build the HTML digest. Search for: escalation incident customer case ticket, then: action item task assigned review, then: new hire onboarding role change team update people. Return only the HTML.`
+        }]
+      })
+    });
+
+    if (!res.ok) throw new Error(`API ${res.status}`);
+    const data = await res.json();
+    const text = data.content.filter(b => b.type === 'text').map(b => b.text).join('');
+    // Extract just the HTML div blocks
+    const match = text.match(/<div class="digest-section[\s\S]*<\/div>\s*$/);
+    slackDigestState.html = match ? match[0] : text;
+    slackDigestState.asOf = new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+    slackDigestState.error = null;
+  } catch (e) {
+    console.error('Slack digest error:', e);
+    slackDigestState.error = 'Failed to load digest. Try again.';
+    slackDigestState.html = null;
+  } finally {
+    slackDigestState.loading = false;
+    renderDashboard();
+  }
+}
+
 /* ============================================================
    Dashboard
    ============================================================ */
@@ -498,28 +601,24 @@ function renderDashboard() {
             `}
           </div>
 
-          <div class="dash-card">
+          <div class="dash-card slack-digest-card">
             <div class="dash-card-header">
               <div class="dash-card-icon">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 10c-.83 0-1.5-.67-1.5-1.5v-5c0-.83.67-1.5 1.5-1.5s1.5.67 1.5 1.5v5c0 .83-.67 1.5-1.5 1.5z"/><path d="M20.5 10H19V8.5c0-.83.67-1.5 1.5-1.5s1.5.67 1.5 1.5-.67 1.5-1.5 1.5z"/><path d="M9.5 14c.83 0 1.5.67 1.5 1.5v5c0 .83-.67 1.5-1.5 1.5S8 21.33 8 20.5v-5c0-.83.67-1.5 1.5-1.5z"/><path d="M3.5 14H5v1.5c0 .83-.67 1.5-1.5 1.5S2 16.33 2 15.5 2.67 14 3.5 14z"/><path d="M14 14.5c0-.83.67-1.5 1.5-1.5h5c.83 0 1.5.67 1.5 1.5s-.67 1.5-1.5 1.5h-5c-.83 0-1.5-.67-1.5-1.5z"/><path d="M15.5 19H14v1.5c0 .83.67 1.5 1.5 1.5s1.5-.67 1.5-1.5-.67-1.5-1.5-1.5z"/><path d="M10 9.5C10 8.67 9.33 8 8.5 8h-5C2.67 8 2 8.67 2 9.5S2.67 11 3.5 11h5c.83 0 1.5-.67 1.5-1.5z"/><path d="M8.5 5H10V3.5C10 2.67 9.33 2 8.5 2S7 2.67 7 3.5 7.67 5 8.5 5z"/></svg>
               </div>
-              <div class="dash-card-title">Slack Threads</div>
+              <div class="dash-card-title">Slack Digest</div>
             </div>
-            ${!slackIsConnected() ? `
-              <div class="dash-card-value">—</div>
-              <div class="dash-card-sub">Connect Slack to see unread thread mentions</div>
-              <div class="dash-card-action" onclick="openSettings()" style="cursor:pointer">Connect ${ICONS.arrowRight}</div>
-            ` : slackState.threadCount === null ? `
-              <div class="dash-card-value">—</div>
-              <div class="dash-card-sub">Loading threads…</div>
-            ` : slackState.threadCount === 0 ? `
-              <div class="dash-card-value" style="font-size:22px">0 🧘</div>
-              <div class="dash-card-sub">No unread threads. Rare. Cherish this moment.</div>
-              <div class="dash-card-action"><a href="https://slack.com/app_redirect?channel=threads" target="_blank" style="color:inherit;text-decoration:none">Open Threads ${ICONS.arrowRight}</a></div>
+            ${slackDigestState.loading ? `
+              <div class="dash-card-sub" style="margin-top:8px">⏳ Searching Slack…</div>
+            ` : slackDigestState.error ? `
+              <div class="dash-card-sub" style="color:var(--error);margin-top:8px">${escHtml(slackDigestState.error)}</div>
+              <div class="dash-card-action" onclick="fetchSlackDigest()" style="cursor:pointer">Retry ${ICONS.arrowRight}</div>
+            ` : slackDigestState.html ? `
+              <div class="slack-digest-content">${slackDigestState.html}</div>
+              <div class="dash-card-action" onclick="fetchSlackDigest()" style="cursor:pointer;margin-top:8px">Refresh ${ICONS.arrowRight}</div>
             ` : `
-              <div class="dash-card-value" style="font-size:22px">${slackState.threadCount}</div>
-              <div class="dash-card-sub">unread thread${slackState.threadCount === 1 ? '' : 's'} waiting for you</div>
-              <div class="dash-card-action"><a href="https://slack.com/app_redirect?channel=threads" target="_blank" style="color:inherit;text-decoration:none">Open Threads ${ICONS.arrowRight}</a></div>
+              <div class="dash-card-sub">Last 24 hours across all channels</div>
+              <div class="dash-card-action" onclick="fetchSlackDigest()" style="cursor:pointer">Get Digest ${ICONS.arrowRight}</div>
             `}
           </div>
 
