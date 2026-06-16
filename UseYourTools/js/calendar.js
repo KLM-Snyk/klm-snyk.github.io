@@ -21,11 +21,13 @@ const calState = {
   userProfile: null,
   unreadCount: null,
   oncall: null,
+  oncallLast: null,  // who was on-call last weekend
+  oncallNext: null,  // who is on-call next weekend
   ooo: [],
   upcoming: [],
   driveShared: [],
   driveMentions: [],
-  driveCreated: [],   // files created by the user in last 30 days
+  driveCreated: [],
 };
 
 // ── Bootstrap ───────────────────────────────────────────────
@@ -207,6 +209,9 @@ function calDisconnect() {
   calClearToken();
   calState.events = [];
   calState.unreadCount = null;
+  calState.oncall = null;
+  calState.oncallLast = null;
+  calState.oncallNext = null;
   calState.driveShared = [];
   calState.driveMentions = [];
   calState.driveCreated = [];
@@ -292,14 +297,39 @@ async function calFetchUpcoming(daysAhead = 7) {
 async function calFetchOncall() {
   if (!calState.token) return;
   try {
+    // Helper to get last Saturday 00:00 and next Sunday 23:59
     const now = new Date();
-    const end = new Date(now); end.setHours(23, 59, 59);
+    const dayOfWeek = now.getDay(); // 0=Sun, 1=Mon ... 6=Sat
+
+    // Last weekend: previous Sat–Sun
+    const lastSat = new Date(now);
+    lastSat.setDate(now.getDate() - ((dayOfWeek + 1) % 7) - 7);
+    lastSat.setHours(0, 0, 0, 0);
+    const lastSun = new Date(lastSat);
+    lastSun.setDate(lastSat.getDate() + 1);
+    lastSun.setHours(23, 59, 59, 999);
+
+    // Next weekend: coming Sat–Sun
+    const daysUntilSat = (6 - dayOfWeek + 7) % 7 || 7;
+    const nextSat = new Date(now);
+    nextSat.setDate(now.getDate() + daysUntilSat);
+    nextSat.setHours(0, 0, 0, 0);
+    const nextSun = new Date(nextSat);
+    nextSun.setDate(nextSat.getDate() + 1);
+    nextSun.setHours(23, 59, 59, 999);
+
+    // Fetch a wide window covering last weekend → next weekend
+    const fetchStart = new Date(lastSat);
+    const fetchEnd   = new Date(nextSun);
+    // Also add 7 more days for next-week events in the grid
+    fetchEnd.setDate(fetchEnd.getDate() + 7);
+
     const params = new URLSearchParams({
-      timeMin: now.toISOString(),
-      timeMax: end.toISOString(),
+      timeMin: fetchStart.toISOString(),
+      timeMax: fetchEnd.toISOString(),
       singleEvents: 'true',
       orderBy: 'startTime',
-      maxResults: 5,
+      maxResults: 50,
     });
     const res = await fetch(
       `${CAL_API_BASE}/calendars/${ONCALL_CAL_ID}/events?${params}`,
@@ -307,8 +337,55 @@ async function calFetchOncall() {
     );
     if (!res.ok) { calState.oncall = null; return; }
     const data = await res.json();
-    const event = (data.items || [])[0];
-    calState.oncall = event ? (event.summary || 'On-call') : null;
+    const items = data.items || [];
+
+    const eventOnDate = (date) => {
+      // Compare in local time — events use dateTime (UTC midnight = prior day in local tz)
+      const dateStr = `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}-${String(date.getDate()).padStart(2,'0')}`;
+      return items.find(e => {
+        const start = e.start?.dateTime || e.start?.date || '';
+        const localDate = new Date(start);
+        const localStr = `${localDate.getFullYear()}-${String(localDate.getMonth()+1).padStart(2,'0')}-${String(localDate.getDate()).padStart(2,'0')}`;
+        return localStr === dateStr;
+      });
+    };
+
+    // Extract name from summary like "Joshua Woods is on-call for..."
+    const extractName = (summary) => {
+      const match = (summary || '').match(/^(.+?)\s+is on-call/i);
+      return match ? match[1] : summary;
+    };
+
+    // Today's on-call banner
+    const todayEvent = eventOnDate(now);
+    calState.oncall = todayEvent ? extractName(todayEvent.summary) : null;
+
+    // Last weekend — check both Saturday and Sunday, dedupe names
+    const lastWkEvents = [lastSat, lastSun].map(eventOnDate).filter(Boolean);
+    const lastNames = [...new Set(lastWkEvents.map(e => extractName(e.summary)))];
+    calState.oncallLast = lastNames.length ? lastNames.join(', ') : null;
+
+    // Next weekend — check both Saturday and Sunday, dedupe names
+    const nextWkEvents = [nextSat, nextSun].map(eventOnDate).filter(Boolean);
+    const nextNames = [...new Set(nextWkEvents.map(e => extractName(e.summary)))];
+    calState.oncallNext = nextNames.length ? nextNames.join(', ') : null;
+
+    // Inject on-call events into calState.events for week/day views
+    const weekStart = fetchStart;
+    const weekEnd   = new Date(now); weekEnd.setDate(now.getDate() + 7);
+    const oncallEvents = items.map(e => ({
+        id:     'oncall-' + e.id,
+        title:  '🚨 ' + extractName(e.summary),
+        start:  e.start?.dateTime || e.start?.date,
+        end:    e.end?.dateTime   || e.end?.date,
+        allDay: !e.start?.dateTime,
+        location: '',
+        link:   e.htmlLink || '',
+        color:  'oncall',
+      }));
+
+    calState.events = calState.events.filter(e => !e.id?.startsWith('oncall-'));
+    calState.events = calState.events.concat(oncallEvents);
   } catch (e) {
     console.warn('On-call fetch error:', e);
     calState.oncall = null;
