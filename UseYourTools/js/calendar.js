@@ -568,6 +568,7 @@ async function calFetchDriveMentions() {
       ...calState.driveShared,
       ...calState.driveCreated.filter(f => !calState.driveShared.find(s => s.id === f.id)),
     ];
+    console.log('[mentions] checking', filesToCheck.length, 'files for', email);
 
     const mentionedFiles = [];
     await Promise.all(filesToCheck.map(async f => {
@@ -581,7 +582,7 @@ async function calFetchDriveMentions() {
         const comments = cData.comments || [];
         const mentioned = comments.some(c =>
           !c.resolved &&
-          (c.content?.includes(`@${email}`) || c.content?.toLowerCase().includes(username))
+          c.content?.includes(`@${email}`)
         );
         if (mentioned) mentionedFiles.push(f);
       } catch (e) { /* skip */ }
