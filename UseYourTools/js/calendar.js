@@ -43,6 +43,10 @@ async function calInit() {
 
   if (token && now < expiry) {
     calState.token = token;
+    // Ensure userProfile is loaded from storage before fetching drive data
+    if (!calState.userProfile) {
+      await calFetchUserProfile();
+    }
     calState.driveLoading = true;
     if (typeof renderDashboard === 'function') renderDashboard();
 
@@ -549,6 +553,8 @@ async function calFetchDriveShared() {
       modified: f.modifiedTime,
       sharedBy: f.sharingUser?.displayName || '',
     }));
+    // Run mentions immediately after shared files are loaded
+    await calFetchDriveMentions();
   } catch (e) {
     console.warn('Drive shared fetch error:', e);
     calState.driveShared = [];
