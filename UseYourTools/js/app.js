@@ -998,10 +998,10 @@ function renderCalMonthView() {
     cells += `<div class="month-cell${isToday ? ' today' : ''}${isSelected ? ' selected' : ''}"
                    onclick="selectMonthDay('${cellKey}')">
       <span class="month-cell-num${isToday ? ' today' : ''}">${day}</span>
-      ${dayEvents.slice(0, 3).map(e =>
-        `<span class="month-event-dot" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block;max-width:100%;font-size:11px;padding:1px 4px;border-radius:3px;background:var(--primary);color:white;margin-bottom:1px">${escHtml(e.title)}</span>`
+      ${dayEvents.slice(0, 2).map(e =>
+        `<span class="month-event-pill">${escHtml(e.title)}</span>`
       ).join('')}
-      ${dayEvents.length > 3 ? `<span class="month-more">+${dayEvents.length - 3}</span>` : ''}
+      ${dayEvents.length > 2 ? `<span class="month-more">+${dayEvents.length - 2} more</span>` : ''}
     </div>`;
   }
 
