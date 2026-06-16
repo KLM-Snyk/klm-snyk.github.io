@@ -740,7 +740,15 @@ function renderCalendar() {
     <div class="cal-banner cal-banner--oncall">
       <span>🚨</span>
       <span>On-call today: <strong>${escHtml(calState.oncall)}</strong></span>
-    </div>` : '';
+    </div>` : `
+    <div class="cal-banner cal-banner--oncall">
+      <span>🚨</span>
+      <div style="display:flex;flex-wrap:wrap;gap:16px;align-items:center">
+        ${calState.oncallLast ? `<span>Last weekend: <strong>${escHtml(calState.oncallLast)}</strong></span>` : ''}
+        ${calState.oncallNext ? `<span>Next weekend: <strong>${escHtml(calState.oncallNext)}</strong></span>` : ''}
+        ${!calState.oncallLast && !calState.oncallNext ? '<span>No on-call scheduled this week</span>' : ''}
+      </div>
+    </div>`;
 
   const oooBanner = calState.ooo.length ? `
     <div class="cal-banner cal-banner--ooo">
@@ -992,9 +1000,9 @@ function renderCalMonthView() {
         `<a class="month-event" href="${escHtml(e.link)}" target="_blank" title="${escHtml(e.title)}" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block;max-width:100%">${escHtml(e.title)}</a>`
       ).join('')}
       ${overflow ? `
-        <div class="month-hidden-events" id="${cellId}-more" style="display:none;flex-direction:column;gap:2px;min-width:0;width:100%;max-height:160px;overflow-y:auto">
+        <div class="month-hidden-events" id="${cellId}-more" style="display:none">
           ${dayEvents.slice(2).map(e =>
-            `<a class="month-event" href="${escHtml(e.link)}" target="_blank" title="${escHtml(e.title)}" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block;max-width:100%">${escHtml(e.title)}</a>`
+            `<a class="month-event" href="${escHtml(e.link)}" target="_blank" title="${escHtml(e.title)}" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block;max-width:100%;margin-bottom:2px">${escHtml(e.title)}</a>`
           ).join('')}
         </div>
         <span class="month-more" onclick="toggleMonthMore('${cellId}')">+ ${dayEvents.length - 2} more</span>
@@ -1013,7 +1021,7 @@ function toggleMonthMore(cellId) {
   const btn = document.querySelector(`#${cellId} .month-more`);
   if (!moreEl || !btn) return;
   const isHidden = moreEl.style.display === 'none';
-  moreEl.style.display = isHidden ? 'block' : 'none';
+  moreEl.style.display = isHidden ? 'flex' : 'none';
   btn.textContent = isHidden ? 'Show less' : `+ ${moreEl.children.length} more`;
 }
 
