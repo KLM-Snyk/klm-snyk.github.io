@@ -233,15 +233,16 @@ function renderSettingsPanel() {
 
     <!-- Anthropic API Key -->
     <div class="settings-section">
-      <div class="settings-section-title">Anthropic API Key</div>
+      <div class="settings-section-title">Slack Digest Worker</div>
       <div class="cal-connect-box">
-        <p>Required for the AI-powered Slack Digest. Your key is stored locally and only sent to Anthropic's API.</p>
+        <p>Deploy the Cloudflare Worker and paste its URL here to enable the push-button Slack Digest.</p>
         <div class="cal-input-row">
-          <input class="cal-client-input" id="anthropic-key-input" type="password"
-            placeholder="sk-ant-..." value="${escHtml(localStorage.getItem('uyt_anthropic_key') || '')}">
-          <button class="cal-connect-btn" onclick="saveAnthropicKey()">Save</button>
+          <input class="cal-client-input" id="worker-url-input" type="text"
+            placeholder="https://your-worker.workers.dev"
+            value="${escHtml(localStorage.getItem('uyt_digest_worker_url') || '')}">
+          <button class="cal-connect-btn" onclick="saveWorkerUrl()">Save</button>
         </div>
-        ${localStorage.getItem('uyt_anthropic_key') ? `<div style="font-size:12px;color:var(--primary);margin-top:6px;font-weight:600">✓ Key saved</div>` : ''}
+        ${localStorage.getItem('uyt_digest_worker_url') ? `<div style="font-size:12px;color:var(--primary);margin-top:6px;font-weight:600">✓ Worker URL saved</div>` : ''}
       </div>
     </div>
 
@@ -426,10 +427,12 @@ function closeAbout() {
 
 function saveAnthropicKey() {
   const key = document.getElementById('anthropic-key-input')?.value.trim();
-  if (key) {
-    localStorage.setItem('uyt_anthropic_key', key);
-    renderSettingsPanel();
-  }
+  if (key) { localStorage.setItem('uyt_anthropic_key', key); renderSettingsPanel(); }
+}
+
+function saveWorkerUrl() {
+  const url = document.getElementById('worker-url-input')?.value.trim();
+  if (url) { localStorage.setItem('uyt_digest_worker_url', url); renderSettingsPanel(); }
 }
 
 /* ============================================================
@@ -444,9 +447,10 @@ const slackDigestState = {
 };
 
 async function fetchSlackDigest() {
-  const apiKey = localStorage.getItem('uyt_anthropic_key');
-  if (!apiKey) {
-    slackDigestState.error = 'Add your Anthropic API key in Settings first.';
+  const workerUrl = localStorage.getItem('uyt_digest_worker_url');
+  if (!workerUrl) {
+    slackDigestState.error = 'Add your Worker URL in Settings first.';
+    slackDigestState.loading = false;
     renderDashboard();
     return;
   }
@@ -455,20 +459,25 @@ async function fetchSlackDigest() {
   slackDigestState.error = null;
   renderDashboard();
 
-  const yesterday = new Date();
-  yesterday.setDate(yesterday.getDate() - 1);
-  const afterDate = yesterday.toISOString().slice(0, 10);
-
   try {
-    const res = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': apiKey,
-        'anthropic-version': '2023-06-01',
-        'anthropic-beta': 'mcp-client-2025-04-04',
-        'anthropic-dangerous-direct-browser-access': 'true',
-      },
+    const res = await fetch(workerUrl, { method: 'POST' });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error || `HTTP ${res.status}`);
+    }
+    const data = await res.json();
+    slackDigestState.html = data.html || '<div class="digest-empty">No results</div>';
+    slackDigestState.error = null;
+    slackDigestState.asOf = new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+  } catch (e) {
+    console.error('Slack digest error:', e);
+    slackDigestState.error = e.message || 'Failed to load digest.';
+    slackDigestState.html = null;
+  } finally {
+    slackDigestState.loading = false;
+    renderDashboard();
+  }
+}
       body: JSON.stringify({
         model: 'claude-sonnet-4-6',
         max_tokens: 2000,
@@ -616,13 +625,13 @@ function renderDashboard() {
             ${slackDigestState.loading ? `
               <div class="dash-card-sub" style="margin-top:8px">⏳ Searching Slack…</div>
             ` : slackDigestState.error ? `
-              <div class="dash-card-sub" style="color:var(--error);margin-top:8px">${escHtml(slackDigestState.error)}</div>
+              <div class="dash-card-sub" style="color:#DC2626;margin-top:8px;font-size:12px">${escHtml(slackDigestState.error)}</div>
               <div class="dash-card-action" onclick="fetchSlackDigest()" style="cursor:pointer">Retry ${ICONS.arrowRight}</div>
             ` : slackDigestState.html ? `
               <div class="slack-digest-content">${slackDigestState.html}</div>
               <div class="dash-card-action" onclick="fetchSlackDigest()" style="cursor:pointer;margin-top:8px">Refresh ${ICONS.arrowRight}</div>
             ` : `
-              <div class="dash-card-sub">Last 24 hours across all channels</div>
+              <div class="dash-card-sub">Last 24 hours · people, work items &amp; incidents</div>
               <div class="dash-card-action" onclick="fetchSlackDigest()" style="cursor:pointer">Get Digest ${ICONS.arrowRight}</div>
             `}
           </div>
