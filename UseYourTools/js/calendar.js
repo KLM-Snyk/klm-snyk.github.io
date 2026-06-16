@@ -21,18 +21,19 @@ const calState = {
   userProfile: null,
   unreadCount: null,
   oncall: null,
-  oncallLast: null,  // who was on-call last weekend
-  oncallNext: null,  // who is on-call next weekend
+  oncallLast: null,
+  oncallNext: null,
   ooo: [],
   upcoming: [],
   driveShared: [],
   driveMentions: [],
   driveCreated: [],
+  driveLoading: false,  // true while any drive fetch is in progress
 };
 
 // ── Bootstrap ───────────────────────────────────────────────
 
-function calInit() {
+async function calInit() {
   calState.clientId    = localStorage.getItem(CAL_CLIENT_KEY) || '';
   calState.userProfile = loadUserProfile();
 
@@ -42,7 +43,10 @@ function calInit() {
 
   if (token && now < expiry) {
     calState.token = token;
-    Promise.all([
+    calState.driveLoading = true;
+    if (typeof renderDashboard === 'function') renderDashboard();
+
+    await Promise.all([
       calFetchUpcoming().catch((e) => {
         console.warn('[calInit] calFetchUpcoming error:', e);
       }),
@@ -54,6 +58,7 @@ function calInit() {
       calFetchDriveMentions(),
       calFetchDriveCreated(),
     ]).then(() => {
+      calState.driveLoading = false;
       if (typeof renderDashboard === 'function') renderDashboard();
     });
   } else if (calState.clientId) {
@@ -146,6 +151,8 @@ function calConnect() {
 
       // Fetch user's name/profile from Google
       await calFetchUserProfile();
+      calState.driveLoading = true;
+      if (typeof renderDashboard === 'function') renderDashboard();
       await Promise.all([
         calFetchUpcoming(),
         calFetchUnreadCount(),
@@ -156,6 +163,7 @@ function calConnect() {
         calFetchDriveMentions(),
         calFetchDriveCreated(),
       ]);
+      calState.driveLoading = false;
 
       if (typeof renderSettingsPanel === 'function') renderSettingsPanel();
       if (typeof renderDashboard     === 'function') renderDashboard();

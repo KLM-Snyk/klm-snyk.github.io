@@ -542,6 +542,8 @@ function renderDashboard() {
               <div class="dash-card-value">—</div>
               <div class="dash-card-sub">Connect Google to see shared docs &amp; mentions</div>
               <div class="dash-card-action" onclick="event.stopPropagation();openSettings()" style="cursor:pointer">Connect ${ICONS.arrowRight}</div>
+            ` : calState.driveLoading ? `
+              <div class="dash-card-sub" style="margin-top:8px">⏳ Loading Drive files…</div>
             ` : (() => {
               const sharedSheets  = calState.driveShared.filter(f => f.type === 'sheet').length;
               const sharedDocs    = calState.driveShared.filter(f => f.type === 'doc').length;
@@ -625,6 +627,15 @@ function renderDrive() {
         <p>Connect your Google account to see docs and sheets shared with you or where you're mentioned.</p>
         <button class="connect-btn" onclick="calConnect()">Connect to Google</button>
       </div>`;
+    return;
+  }
+
+  if (calState.driveLoading) {
+    el.innerHTML = `<div class="cal-connect-prompt">
+      <div class="cal-connect-icon">⏳</div>
+      <h3>Loading Drive files…</h3>
+      <p>Checking shared files, mentions, and files you created. This may take a few seconds.</p>
+    </div>`;
     return;
   }
 
