@@ -8,7 +8,7 @@ const CAL_TOKEN_KEY    = 'uyt_gcal_token';
 const CAL_CLIENT_KEY   = 'uyt_gcal_client_id';
 const CAL_EXPIRY_KEY   = 'uyt_gcal_expiry';
 const USER_PROFILE_KEY = 'uyt_user_profile';
-const CAL_SCOPE = 'https://www.googleapis.com/auth/calendar.readonly https://www.googleapis.com/auth/userinfo.profile https://www.googleapis.com/auth/gmail.readonly https://www.googleapis.com/auth/drive.readonly';
+const CAL_SCOPE = 'https://www.googleapis.com/auth/calendar.readonly https://www.googleapis.com/auth/userinfo.profile https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/gmail.readonly https://www.googleapis.com/auth/drive.readonly';
 const CAL_API_BASE     = 'https://www.googleapis.com/calendar/v3';
 
 // In-memory state
