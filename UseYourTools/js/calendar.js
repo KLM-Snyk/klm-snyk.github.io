@@ -43,8 +43,8 @@ async function calInit() {
 
   if (token && now < expiry) {
     calState.token = token;
-    // Ensure userProfile is loaded from storage before fetching drive data
-    if (!calState.userProfile) {
+    // Ensure userProfile has a valid email before fetching drive data
+    if (!calState.userProfile?.email) {
       await calFetchUserProfile();
     }
     calState.driveLoading = true;
@@ -204,11 +204,14 @@ async function calFetchUserProfile() {
     });
     if (!res.ok) return;
     const data = await res.json();
-    saveUserProfile({
-      name:    data.name    || '',
-      email:   data.email   || '',
-      picture: data.picture || '',
-    });
+    // Only save if we got a valid email — don't overwrite good data with empty
+    if (data.email) {
+      saveUserProfile({
+        name:    data.name    || '',
+        email:   data.email   || '',
+        picture: data.picture || '',
+      });
+    }
   } catch (err) {
     console.warn('Could not fetch user profile:', err);
   }
