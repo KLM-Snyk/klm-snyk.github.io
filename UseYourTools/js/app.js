@@ -496,7 +496,11 @@ Categories:
       })
     });
 
-    if (!res.ok) throw new Error(`API ${res.status}`);
+    if (!res.ok) {
+      const errBody = await res.json().catch(() => ({}));
+      console.error('Slack digest API error:', errBody);
+      throw new Error(`API ${res.status}: ${errBody?.error?.message || JSON.stringify(errBody)}`);
+    }
     const data = await res.json();
     const text = data.content.filter(b => b.type === 'text').map(b => b.text).join('');
     // Extract just the HTML div blocks
