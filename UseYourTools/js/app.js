@@ -964,6 +964,8 @@ function renderCalWeekView() {
 }
 
 // ── Month View ──
+let _selectedMonthDay = null; // isoDateKey of selected day
+
 function renderCalMonthView() {
   const d = calView.date;
   const now = new Date();
@@ -972,6 +974,13 @@ function renderCalMonthView() {
   const firstDay = new Date(year, month, 1);
   const lastDay  = new Date(year, month + 1, 0);
   const startPad = firstDay.getDay();
+
+  // Default selected day to today if in current month, else 1st
+  if (!_selectedMonthDay ||
+      !_selectedMonthDay.startsWith(`${year}-${String(month+1).padStart(2,'0')}`)) {
+    const todayInMonth = isoDateKey(now).startsWith(`${year}-${String(month+1).padStart(2,'0')}`);
+    _selectedMonthDay = todayInMonth ? isoDateKey(now) : isoDateKey(firstDay);
+  }
 
   const dayNames = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
   const headers = dayNames.map(n => `<div class="month-day-name">${n}</div>`).join('');
@@ -982,40 +991,53 @@ function renderCalMonthView() {
   }
   for (let day = 1; day <= lastDay.getDate(); day++) {
     const cellDate = new Date(year, month, day);
-    const isToday = isoDateKey(cellDate) === isoDateKey(now);
-    const dayEvents = eventsForDate(cellDate);
-    const cellId = `mc-${year}-${month}-${day}`;
-    const overflow = dayEvents.length > 2;
-    cells += `<div class="month-cell${isToday ? ' today' : ''}" id="${cellId}">
+    const cellKey  = isoDateKey(cellDate);
+    const isToday    = cellKey === isoDateKey(now);
+    const isSelected = cellKey === _selectedMonthDay;
+    const dayEvents  = eventsForDate(cellDate);
+    cells += `<div class="month-cell${isToday ? ' today' : ''}${isSelected ? ' selected' : ''}"
+                   onclick="selectMonthDay('${cellKey}')">
       <span class="month-cell-num${isToday ? ' today' : ''}">${day}</span>
-      ${dayEvents.slice(0, 2).map(e =>
-        `<a class="month-event" href="${escHtml(e.link)}" target="_blank" title="${escHtml(e.title)}" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block;max-width:100%">${escHtml(e.title)}</a>`
+      ${dayEvents.slice(0, 3).map(e =>
+        `<span class="month-event-dot" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block;max-width:100%;font-size:11px;padding:1px 4px;border-radius:3px;background:var(--primary);color:white;margin-bottom:1px">${escHtml(e.title)}</span>`
       ).join('')}
-      ${overflow ? `
-        <div class="month-hidden-events" id="${cellId}-more" style="display:none">
-          ${dayEvents.slice(2).map(e =>
-            `<a class="month-event" href="${escHtml(e.link)}" target="_blank" title="${escHtml(e.title)}" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block;max-width:100%;margin-bottom:2px">${escHtml(e.title)}</a>`
-          ).join('')}
-        </div>
-        <span class="month-more" onclick="toggleMonthMore('${cellId}')">+ ${dayEvents.length - 2} more</span>
-      ` : ''}
+      ${dayEvents.length > 3 ? `<span class="month-more">+${dayEvents.length - 3}</span>` : ''}
     </div>`;
   }
 
-  return `<div class="month-grid">
-    <div class="month-header-row">${headers}</div>
-    <div class="month-body">${cells}</div>
+  // Day detail panel
+  const selDate = new Date(_selectedMonthDay + 'T00:00:00');
+  const selEvents = eventsForDate(selDate);
+  const selLabel = selDate.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
+
+  const detailHtml = `
+    <div class="month-detail-panel">
+      <div class="month-detail-header">${selLabel}</div>
+      ${selEvents.length === 0 ? `
+        <div class="month-detail-empty">No events</div>
+      ` : selEvents.map(e => `
+        <a class="month-detail-event" href="${escHtml(e.link)}" target="_blank">
+          <div class="month-detail-time">${calFormatEventTime(e)}</div>
+          <div class="month-detail-title">${escHtml(e.title)}</div>
+        </a>
+      `).join('')}
+    </div>`;
+
+  return `<div class="month-layout">
+    <div class="month-grid-wrap">
+      <div class="month-header-row">${headers}</div>
+      <div class="month-body">${cells}</div>
+    </div>
+    ${detailHtml}
   </div>`;
 }
 
-function toggleMonthMore(cellId) {
-  const moreEl = document.getElementById(cellId + '-more');
-  const btn = document.querySelector(`#${cellId} .month-more`);
-  if (!moreEl || !btn) return;
-  const isHidden = moreEl.style.display === 'none';
-  moreEl.style.display = isHidden ? 'flex' : 'none';
-  btn.textContent = isHidden ? 'Show less' : `+ ${moreEl.children.length} more`;
+function selectMonthDay(key) {
+  _selectedMonthDay = key;
+  renderCalendar();
 }
+
+function toggleMonthMore() {} // no-op, kept for safety
 
 function calendarChangeDay(delta) {
   calendarNav(delta);
