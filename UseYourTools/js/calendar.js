@@ -550,39 +550,57 @@ async function calFetchDriveShared() {
 async function calFetchDriveMentions() {
   if (!calState.token) return;
   try {
-    const thirtyDaysAgo = new Date();
-    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-    // Search for files where user is mentioned in comments
-    const params = new URLSearchParams({
-      q: `(mimeType = 'application/vnd.google-apps.spreadsheet' or mimeType = 'application/vnd.google-apps.document') and modifiedTime > '${thirtyDaysAgo.toISOString()}'`,
-      fields: 'files(id,name,mimeType,webViewLink,modifiedTime)',
-      orderBy: 'modifiedTime desc',
-      pageSize: 10,
-      includeItemsFromAllDrives: true,
-      supportsAllDrives: true,
-    });
-    // Use the activity/comments approach — search for files with unresolved comments mentioning the user
     const email = calState.userProfile?.email || '';
     if (!email) { calState.driveMentions = []; return; }
 
-    const mentionParams = new URLSearchParams({
-      q: `fullText contains '${email}' and (mimeType = 'application/vnd.google-apps.spreadsheet' or mimeType = 'application/vnd.google-apps.document') and modifiedTime > '${thirtyDaysAgo.toISOString()}'`,
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+    // Step 1: get recently modified docs/sheets
+    const params = new URLSearchParams({
+      q: `(mimeType = 'application/vnd.google-apps.spreadsheet' or mimeType = 'application/vnd.google-apps.document') and modifiedTime > '${thirtyDaysAgo.toISOString()}' and trashed = false`,
       fields: 'files(id,name,mimeType,webViewLink,modifiedTime)',
       orderBy: 'modifiedTime desc',
-      pageSize: 10,
+      pageSize: 30,
+      includeItemsFromAllDrives: true,
+      supportsAllDrives: true,
     });
-    const res = await fetch(`https://www.googleapis.com/drive/v3/files?${mentionParams}`, {
+    const res = await fetch(`https://www.googleapis.com/drive/v3/files?${params}`, {
       headers: { Authorization: `Bearer ${calState.token}` },
     });
     if (!res.ok) { calState.driveMentions = []; return; }
     const data = await res.json();
-    calState.driveMentions = (data.files || []).map(f => ({
-      id: f.id,
-      name: f.name,
-      type: f.mimeType.includes('spreadsheet') ? 'sheet' : 'doc',
-      link: f.webViewLink,
-      modified: f.modifiedTime,
+    const files = data.files || [];
+
+    // Step 2: for each file check comments for @mentions of this user
+    const mentionedFiles = [];
+    const username = email.split('@')[0].toLowerCase();
+    await Promise.all(files.map(async f => {
+      try {
+        const cRes = await fetch(
+          `https://www.googleapis.com/drive/v3/files/${f.id}/comments?fields=comments(content,resolved)&pageSize=100`,
+          { headers: { Authorization: `Bearer ${calState.token}` } }
+        );
+        if (!cRes.ok) return;
+        const cData = await cRes.json();
+        const comments = cData.comments || [];
+        const mentioned = comments.some(c =>
+          !c.resolved &&
+          (c.content?.includes(`@${email}`) || c.content?.toLowerCase().includes(username))
+        );
+        if (mentioned) {
+          mentionedFiles.push({
+            id: f.id,
+            name: f.name,
+            type: f.mimeType.includes('spreadsheet') ? 'sheet' : 'doc',
+            link: f.webViewLink,
+            modified: f.modifiedTime,
+          });
+        }
+      } catch (e) { /* skip */ }
     }));
+
+    calState.driveMentions = mentionedFiles;
   } catch (e) {
     console.warn('Drive mentions fetch error:', e);
     calState.driveMentions = [];
