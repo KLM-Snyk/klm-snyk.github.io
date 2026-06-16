@@ -1125,7 +1125,6 @@ function plannerChangeDay(delta) {
 
 function plannerGoToday() {
   state.plannerDate = new Date();
-  renderPlanner();
 }
 
 /* ============================================================
@@ -1144,7 +1143,7 @@ function escHtml(str) {
    Init
    ============================================================ */
 
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
   applyTheme(state.prefs);
 
   // Nav
@@ -1168,9 +1167,7 @@ document.addEventListener('DOMContentLoaded', () => {
   if (plannerNext)  plannerNext.addEventListener('click', () => plannerChangeDay(1));
   if (plannerToday) plannerToday.addEventListener('click', plannerGoToday);
 
-  // Render dashboard immediately with whatever state we have,
-  // then let calInit and slackInit re-render once data is loaded
   navigate('dashboard');
-  calInit();
+  await calInit();
   slackInit();
 });
