@@ -569,7 +569,7 @@ async function calFetchDriveCreated() {
   }
 }
 
-const ONCALL_CAL_ID  = 'c_33c0731c98854b7a958fe6bb5880a5f0abbfa15be32df7119e2af8704fe033f1%40group.calendar.google.com';
+const ONCALL_CAL_ID  = '8mhg7kvrksctmpiklii47jgpi8lchppe%40import.calendar.google.com';
 const OOO_CAL_ID     = 'support%40snyk.io';
 const RECHARGE_CAL_ID = 'c_93af26c794d2c1cdbdcd2b0f4fc8f7b948582d268d4260f729c6b234d4f5074f%40group.calendar.google.com';
 
