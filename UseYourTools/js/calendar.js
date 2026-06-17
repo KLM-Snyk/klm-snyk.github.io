@@ -290,16 +290,24 @@ async function calFetchUpcoming(daysAhead = 7) {
     }
 
     const data = await res.json();
-    calState.events = (data.items || []).map(item => ({
-      id:       item.id,
-      title:    item.summary || '(no title)',
-      start:    item.start?.dateTime || item.start?.date,
-      end:      item.end?.dateTime   || item.end?.date,
-      allDay:   !item.start?.dateTime,
-      location: item.location || '',
-      link:     item.htmlLink || '',
-      color:    item.colorId  || null,
-    }));
+    calState.events = (data.items || [])
+      .filter(e => {
+        if (e.status === 'cancelled') return false;
+        // Exclude events the user declined
+        const selfAttendee = (e.attendees || []).find(a => a.self);
+        if (selfAttendee && selfAttendee.responseStatus === 'declined') return false;
+        return true;
+      })
+      .map(item => ({
+        id:       item.id,
+        title:    item.summary || '(no title)',
+        start:    item.start?.dateTime || item.start?.date,
+        end:      item.end?.dateTime   || item.end?.date,
+        allDay:   !item.start?.dateTime,
+        location: item.location || '',
+        link:     item.htmlLink || '',
+        color:    item.colorId  || null,
+      }));
     calState.fetchError = null;
     return calState.events;
   } catch (err) {

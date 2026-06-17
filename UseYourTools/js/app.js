@@ -144,6 +144,15 @@ function navigate(screen) {
   if (screen === 'planner')   renderPlanner();
 }
 
+async function refreshApp() {
+  if (!calIsConnected()) return;
+  calState.driveLoading = true;
+  renderDashboard();
+  if (state.screen === 'calendar') renderCalendar();
+  if (state.screen === 'drive') renderDrive();
+  await calInit();
+}
+
 /* ============================================================
    Settings Panel
    ============================================================ */
