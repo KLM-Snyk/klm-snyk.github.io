@@ -308,7 +308,6 @@ async function calFetchUpcoming(daysAhead = 7) {
     calState.events = (data.items || [])
       .filter(e => {
         if (e.status === 'cancelled') return false;
-        // Exclude events the user declined
         const selfAttendee = (e.attendees || []).find(a => a.self);
         if (selfAttendee && selfAttendee.responseStatus === 'declined') return false;
         return true;
@@ -323,6 +322,15 @@ async function calFetchUpcoming(daysAhead = 7) {
         link:     item.htmlLink || '',
         color:    item.colorId  || null,
       }));
+
+    // Deduplicate by title+date in case of duplicate calendar subscriptions
+    const seenTD = new Set();
+    calState.events = calState.events.filter(e => {
+      const key = `${e.title}|${(e.start || '').slice(0, 10)}`;
+      if (seenTD.has(key)) return false;
+      seenTD.add(key);
+      return true;
+    });
     calState.fetchError = null;
     return calState.events;
   } catch (err) {
@@ -398,11 +406,16 @@ async function calFetchOncall() {
 
     calState.events = calState.events.filter(e => !e.id?.startsWith('oncall-'));
     calState.events = calState.events.concat(oncallEvents);
-    // Deduplicate by id
-    const seen = new Set();
+
+    // Deduplicate: by id first, then by title+date
+    const seenIds = new Set();
+    const seenTitleDate = new Set();
     calState.events = calState.events.filter(e => {
-      if (seen.has(e.id)) return false;
-      seen.add(e.id);
+      if (seenIds.has(e.id)) return false;
+      seenIds.add(e.id);
+      const key = `${e.title}|${(e.start || '').slice(0, 10)}`;
+      if (seenTitleDate.has(key)) return false;
+      seenTitleDate.add(key);
       return true;
     });
   } catch (e) {
