@@ -377,7 +377,6 @@
         city: 'Lillestrøm', country: 'Norway', flag: '🇳🇴',
         riskFactors: [
           { label: 'Scandinavia shows rarely cancelled', type: 'good' },
-          { label: '17 days away', type: 'neutral' },
           { label: 'Outdoor festival context', type: 'neutral' },
         ]
       },
@@ -387,7 +386,6 @@
         riskFactors: [
           { label: 'Iconic outdoor amphitheatre', type: 'good' },
           { label: 'Morrissey loves dramatic settings', type: 'good' },
-          { label: '21 days away', type: 'neutral' },
         ]
       },
       {
@@ -466,6 +464,13 @@
         const risk = calcRisk(show);
         risks.push(risk);
         const { month, day, year } = formatDate(show.date);
+        const daysUntil = Math.round((new Date(show.date + 'T12:00:00') - new Date()) / 86400000);
+        const daysLabel = daysUntil < 0
+          ? `${Math.abs(daysUntil)} days ago`
+          : daysUntil === 0 ? 'Today!'
+          : `${daysUntil} day${daysUntil === 1 ? '' : 's'} away`;
+        const daysType = daysUntil < 0 ? 'neutral' : daysUntil < 7 ? 'bad' : 'neutral';
+        const allFactors = [{ label: daysLabel, type: daysType }, ...show.riskFactors];
         const card = document.createElement('div');
         card.className = 'show-card';
         card.innerHTML = `
@@ -495,7 +500,7 @@
               <div class="risk-bar-fill ${riskFillClass(risk)}" style="width:${risk}%"></div>
             </div>
             <div class="risk-factors">
-              ${show.riskFactors.map(f => `<span class="risk-chip ${f.type}">${f.label}</span>`).join('')}
+              ${allFactors.map(f => `<span class="risk-chip ${f.type}">${f.label}</span>`).join('')}
             </div>
           </div>`;
         list.appendChild(card);
