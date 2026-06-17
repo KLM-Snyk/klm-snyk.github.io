@@ -398,6 +398,13 @@ async function calFetchOncall() {
 
     calState.events = calState.events.filter(e => !e.id?.startsWith('oncall-'));
     calState.events = calState.events.concat(oncallEvents);
+    // Deduplicate by id
+    const seen = new Set();
+    calState.events = calState.events.filter(e => {
+      if (seen.has(e.id)) return false;
+      seen.add(e.id);
+      return true;
+    });
   } catch (e) {
     console.warn('On-call fetch error:', e);
     calState.oncall = null;
@@ -680,11 +687,17 @@ function calFormatEventTime(event) {
 }
 
 function calFormatEventDate(event) {
-  const d = new Date(event.start);
+  // Use slice to avoid timezone shift for all-day events
+  const dateStr = (event.start || '').slice(0, 10);
   const today    = new Date();
   const tomorrow = new Date(); tomorrow.setDate(tomorrow.getDate() + 1);
+  const todayStr    = isoDateKey ? isoDateKey(today)    : today.toISOString().slice(0,10);
+  const tomorrowStr = isoDateKey ? isoDateKey(tomorrow) : tomorrow.toISOString().slice(0,10);
 
-  if (d.toDateString() === today.toDateString())    return 'Today';
-  if (d.toDateString() === tomorrow.toDateString()) return 'Tomorrow';
-  return d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+  if (dateStr === todayStr)    return 'Today';
+  if (dateStr === tomorrowStr) return 'Tomorrow';
+
+  const [y, m, d] = dateStr.split('-').map(Number);
+  const localDate = new Date(y, m - 1, d);
+  return localDate.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
 }
