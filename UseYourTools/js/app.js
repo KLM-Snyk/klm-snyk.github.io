@@ -150,7 +150,22 @@ async function refreshApp() {
   renderDashboard();
   if (state.screen === 'calendar') renderCalendar();
   if (state.screen === 'drive') renderDrive();
-  await calInit();
+
+  await Promise.all([
+    calFetchUpcoming().catch(e => console.warn(e)),
+    calFetchUnreadCount(),
+    calFetchOncall(),
+    calFetchOOO(),
+    calFetchUpcomingEvents(),
+    calFetchDriveShared(),
+    calFetchDriveCreated(),
+  ]);
+  await calFetchDriveMentions();
+  calState.driveLoading = false;
+
+  renderDashboard();
+  if (state.screen === 'calendar') renderCalendar();
+  if (state.screen === 'drive') renderDrive();
 }
 
 /* ============================================================

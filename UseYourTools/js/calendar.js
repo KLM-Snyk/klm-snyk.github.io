@@ -94,7 +94,22 @@ function _calSilentRefresh() {
       localStorage.setItem(CAL_TOKEN_KEY, calState.token);
       localStorage.setItem(CAL_EXPIRY_KEY, String(expiry));
 
-      await Promise.all([calFetchUpcoming(), calFetchUnreadCount()]);
+      if (!calState.userProfile?.email) await calFetchUserProfile();
+      calState.driveLoading = true;
+      if (typeof renderDashboard === 'function') renderDashboard();
+
+      await Promise.all([
+        calFetchUpcoming(),
+        calFetchUnreadCount(),
+        calFetchOncall(),
+        calFetchOOO(),
+        calFetchUpcomingEvents(),
+        calFetchDriveShared(),
+        calFetchDriveCreated(),
+      ]);
+      await calFetchDriveMentions();
+      calState.driveLoading = false;
+
       if (typeof renderDashboard     === 'function') renderDashboard();
       if (typeof renderSettingsPanel === 'function') renderSettingsPanel();
     },
