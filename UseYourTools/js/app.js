@@ -487,55 +487,6 @@ async function fetchSlackDigest() {
     renderDashboard();
   }
 }
-      body: JSON.stringify({
-        model: 'claude-sonnet-4-6',
-        max_tokens: 2000,
-        mcp_servers: [{ type: 'url', url: 'https://mcp.slack.com/mcp', name: 'slack' }],
-        system: `You are a Slack digest assistant for Kar Marsten (user ID: U0A95KFQL8H) at Snyk.
-Search Slack for the last 24 hours across ALL channel types (public, private, DMs, group DMs).
-Skip bot messages, automated alerts, and casual chatter.
-
-Return ONLY a valid HTML string (no markdown, no backticks, no explanation) in exactly this structure:
-
-<div class="digest-section"><div class="digest-heading">👥 Onboarding / People</div><ul class="digest-list">ITEMS OR <li class="digest-empty">Nothing to report</li></ul></div>
-<div class="digest-section"><div class="digest-heading">🔧 Work Items</div><ul class="digest-list">ITEMS OR <li class="digest-empty">Nothing to report</li></ul></div>
-<div class="digest-section"><div class="digest-heading">🚨 Incidents &amp; Escalations</div><ul class="digest-list">ITEMS OR <li class="digest-empty">Nothing to report</li></ul></div>
-
-Each item: <li><a href="PERMALINK" target="_blank">One sentence summary.</a></li>
-
-Categories:
-- Onboarding/People: new hires, role changes, team updates directed at Kar
-- Work Items: actionable tasks, customer/account updates, ticket assignments for Kar or their team
-- Incidents/Escalations: any incident or escalation activity`,
-        messages: [{
-          role: 'user',
-          content: `Search Slack for messages after:${afterDate} across all channel types. Build the HTML digest. Search for: escalation incident customer case ticket, then: action item task assigned review, then: new hire onboarding role change team update people. Return only the HTML.`
-        }]
-      })
-    });
-
-    if (!res.ok) {
-      const errBody = await res.json().catch(() => ({}));
-      console.error('Slack digest API error:', errBody);
-      throw new Error(`API ${res.status}: ${errBody?.error?.message || JSON.stringify(errBody)}`);
-    }
-    const data = await res.json();
-    const text = data.content.filter(b => b.type === 'text').map(b => b.text).join('');
-    // Extract just the HTML div blocks
-    const match = text.match(/<div class="digest-section[\s\S]*<\/div>\s*$/);
-    slackDigestState.html = match ? match[0] : text;
-    slackDigestState.asOf = new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
-    slackDigestState.error = null;
-  } catch (e) {
-    console.error('Slack digest error:', e);
-    slackDigestState.error = 'Failed to load digest. Try again.';
-    slackDigestState.html = null;
-  } finally {
-    slackDigestState.loading = false;
-    renderDashboard();
-  }
-}
-
 /* ============================================================
    Dashboard
    ============================================================ */
