@@ -812,15 +812,15 @@ function renderDashboard() {
               return `
               <div class="sf-tier-row">
                 <span class="sf-tier-label sf-tier-platinum">Shared</span>
-                <span class="sf-tier-stat">${sharedSheets} 📊 · ${sharedDocs} 📄 · ${sharedSlides} 📑</span>
+                <span class="sf-tier-stat">${sharedSheets} 📊 · ${sharedDocs} 📄 · ${sharedSlides} <svg viewBox="0 0 48 48" width="14" height="14" xmlns="http://www.w3.org/2000/svg"><path d="M37 45H11c-1.1 0-2-.9-2-2V5c0-1.1.9-2 2-2h19l9 9v31c0 1.1-.9 2-2 2z" fill="#FFBA00"/><path d="M40 12h-7c-.6 0-1-.4-1-1V4l8 8z" fill="#FF9F00"/><path d="M31 23H17v12h14V23zm-2 10H19v-8h10v8z" fill="#fff"/></svg></span>
               </div>
               <div class="sf-tier-row">
                 <span class="sf-tier-label sf-tier-gold">Mentions</span>
-                <span class="sf-tier-stat">${mentionSheets} 📊 · ${mentionDocs} 📄 · ${mentionSlides} 📑</span>
+                <span class="sf-tier-stat">${mentionSheets} 📊 · ${mentionDocs} 📄 · ${mentionSlides} <svg viewBox="0 0 48 48" width="14" height="14" xmlns="http://www.w3.org/2000/svg"><path d="M37 45H11c-1.1 0-2-.9-2-2V5c0-1.1.9-2 2-2h19l9 9v31c0 1.1-.9 2-2 2z" fill="#FFBA00"/><path d="M40 12h-7c-.6 0-1-.4-1-1V4l8 8z" fill="#FF9F00"/><path d="M31 23H17v12h14V23zm-2 10H19v-8h10v8z" fill="#fff"/></svg></span>
               </div>
               <div class="sf-tier-row">
                 <span class="sf-tier-label" style="background:#D1FAE5;color:#065F46">Created</span>
-                <span class="sf-tier-stat">${calState.driveCreated.filter(f=>f.type==='sheet').length} 📊 · ${calState.driveCreated.filter(f=>f.type==='doc').length} 📄 · ${calState.driveCreated.filter(f=>f.type==='slides').length} 📑</span>
+                <span class="sf-tier-stat">${calState.driveCreated.filter(f=>f.type==='sheet').length} 📊 · ${calState.driveCreated.filter(f=>f.type==='doc').length} 📄 · ${calState.driveCreated.filter(f=>f.type==='slides').length} <svg viewBox="0 0 48 48" width="14" height="14" xmlns="http://www.w3.org/2000/svg"><path d="M37 45H11c-1.1 0-2-.9-2-2V5c0-1.1.9-2 2-2h19l9 9v31c0 1.1-.9 2-2 2z" fill="#FFBA00"/><path d="M40 12h-7c-.6 0-1-.4-1-1V4l8 8z" fill="#FF9F00"/><path d="M31 23H17v12h14V23zm-2 10H19v-8h10v8z" fill="#fff"/></svg></span>
               </div>
               <div class="dash-card-sub" style="margin-top:6px">Last 30 days · click to browse</div>
               `;
@@ -926,6 +926,7 @@ function renderDrive() {
       <div class="drive-filters">
         <button class="drive-filter ${_driveFilters.size === 0 ? 'active' : ''}" data-filter="all" onclick="setDriveFilter(this,'all')">All</button>
         <button class="drive-filter ${_driveFilters.has('sheet') ? 'active' : ''}" data-filter="sheet" onclick="setDriveFilter(this,'sheet')">📊 Sheets</button>
+        <button class="drive-filter ${_driveFilters.has('slides') ? 'active' : ''}" data-filter="slides" onclick="setDriveFilter(this,'slides')"><svg viewBox="0 0 48 48" width="13" height="13" xmlns="http://www.w3.org/2000/svg"><path d="M37 45H11c-1.1 0-2-.9-2-2V5c0-1.1.9-2 2-2h19l9 9v31c0 1.1-.9 2-2 2z" fill="#FFBA00"/><path d="M40 12h-7c-.6 0-1-.4-1-1V4l8 8z" fill="#FF9F00"/><path d="M31 23H17v12h14V23zm-2 10H19v-8h10v8z" fill="#fff"/></svg> Slides</button>
         <button class="drive-filter ${_driveFilters.has('doc') ? 'active' : ''}" data-filter="doc" onclick="setDriveFilter(this,'doc')">📄 Docs</button>
         <button class="drive-filter ${_driveFilters.has('shared') ? 'active' : ''}" data-filter="shared" onclick="setDriveFilter(this,'shared')">Shared with me</button>
         <button class="drive-filter ${_driveFilters.has('mentioned') ? 'active' : ''}" data-filter="mentioned" onclick="setDriveFilter(this,'mentioned')">Mentions</button>
