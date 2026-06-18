@@ -561,7 +561,7 @@ async function fetchSlackDigest() {
 
   try {
     const channels = getSlackChannels();
-    const res = await fetch(workerUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ channels }) });
+    const res = await fetch(workerUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ channels, userName: calState.userProfile?.name || state.prefs.userName || 'the user', userEmail: calState.userProfile?.email || '' }) });
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
       throw new Error(err.error || `HTTP ${res.status}`);
