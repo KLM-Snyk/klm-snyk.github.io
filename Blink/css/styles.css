@@ -2384,3 +2384,54 @@ html, body {
 
 .setup-hint a { color: var(--primary); }
 .setup-hint code { background: var(--surface); padding: 1px 5px; border-radius: 3px; font-size: 11px; }
+
+/* ============================================================
+   Handover Block Kit rendering
+   ============================================================ */
+
+.handover-blocks {
+  width: 100%;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.handover-block-header {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text);
+  margin-bottom: 12px;
+}
+
+.handover-block-fields {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.handover-block-field {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 10px 12px;
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--text);
+}
+
+.handover-block-section {
+  margin-bottom: 8px;
+  color: var(--text);
+}
+
+.handover-block-context {
+  font-size: 11px;
+  color: var(--text-secondary);
+  margin-bottom: 6px;
+}
+
+.handover-divider {
+  border: none;
+  border-top: 1px solid var(--border);
+  margin: 10px 0;
+}

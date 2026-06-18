@@ -204,6 +204,44 @@ function removeSlackChannel(index) {
 }
 
 
+
+// Render Slack Block Kit blocks as HTML
+function renderSlackBlocks(blocks) {
+  if (!blocks || !blocks.length) return null;
+  let html = '';
+  for (const block of blocks) {
+    if (block.type === 'header') {
+      const text = block.text?.text || '';
+      html += `<div class="handover-block-header">${renderSlackMrkdwn(text)}</div>`;
+    } else if (block.type === 'section') {
+      if (block.fields) {
+        html += '<div class="handover-block-fields">';
+        for (const f of block.fields) {
+          html += `<div class="handover-block-field">${renderSlackMrkdwn(f.text || '')}</div>`;
+        }
+        html += '</div>';
+      } else if (block.text) {
+        html += `<div class="handover-block-section">${renderSlackMrkdwn(block.text.text || '')}</div>`;
+      }
+    } else if (block.type === 'context') {
+      const texts = (block.elements || []).filter(e => e.type === 'mrkdwn' || e.type === 'plain_text').map(e => renderSlackMrkdwn(e.text || '')).join(' · ');
+      if (texts) html += `<div class="handover-block-context">${texts}</div>`;
+    } else if (block.type === 'divider') {
+      html += '<hr class="handover-divider">';
+    }
+  }
+  return html || null;
+}
+
+function renderSlackMrkdwn(text) {
+  return text
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/\*([^*\n]+)\*/g, '<strong>$1</strong>')
+    .replace(/_([^_\n]+)_/g, '<em>$1</em>')
+    .replace(/:[a-z_0-9]+:/g, '')
+    .replace(/\n/g, '<br>');
+}
+
 function renderSlackText(text) {
   return text
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -234,7 +272,12 @@ function renderSlack() {
         🌏 Region Handover
         <span style="font-size:11px;font-weight:400;color:var(--text-secondary)">${escHtml(slackDigestState.handover.time)}</span>
       </div>
-      <div style="font-size:13px;line-height:1.5">${renderSlackText(slackDigestState.handover.text.slice(0, 400))}${slackDigestState.handover.text.length > 400 ? '…' : ''}</div>
+      <div class="handover-blocks">${
+        (() => {
+          const rendered = renderSlackBlocks(slackDigestState.handover.blocks);
+          return rendered || renderSlackText(slackDigestState.handover.text.slice(0, 400));
+        })()
+      }</div>
       <a href="${escHtml(slackDigestState.handover.permalink)}" target="_blank" style="font-size:12px;color:var(--primary);font-weight:600">View in Slack →</a>
     </div>
     ` : ''}
