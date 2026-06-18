@@ -1,6 +1,6 @@
 # Blink
 
-A browser-based workday management tool — built for the web from the ground up, inspired by the [Blink iOS app](https://github.com/KarMarsten/Blink).
+A browser-based workday management tool — built for the web from the ground up, inspired by the [UseYourTools iOS app](https://github.com/KarMarsten/UseYourTools).
 
 **Live site:** https://klm-snyk.github.io/Blink/
 
