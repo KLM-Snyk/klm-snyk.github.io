@@ -1,14 +1,14 @@
-# UseYourTools for Work
+# Blink
 
-A browser-based workday management tool — built for the web from the ground up, inspired by the [UseYourTools iOS app](https://github.com/KarMarsten/UseYourTools).
+A browser-based workday management tool — built for the web from the ground up, inspired by the [Blink iOS app](https://github.com/KarMarsten/Blink).
 
-**Live site:** https://klm-snyk.github.io/UseYourTools/
+**Live site:** https://klm-snyk.github.io/Blink/
 
 ---
 
 ## What it does
 
-UseYourTools for Work gives you a single place to manage your workday across four screens:
+Blink gives you a single place to manage your workday across four screens:
 
 - **Dashboard** — personalized greeting, live clock, and four at-a-glance cards: Slack Threads, Cases, Google Drive, and Upcoming Events. Gmail and daily quote below.
 - **Calendar** — today's meetings overlaid on an hourly time block planner, with on-call banner, OOO strip, and a 30-day upcoming events header (holidays + recharge days)
@@ -42,7 +42,7 @@ UseYourTools for Work gives you a single place to manage your workday across fou
 
 ## Running locally
 
-Run npx serve . then open http://localhost:3000/UseYourTools
+Run npx serve . then open http://localhost:3000/Blink
 
 Make sure your local port matches exactly what is registered in Google Cloud Console. If your server starts on a different port, add that origin too.
 

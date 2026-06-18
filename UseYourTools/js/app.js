@@ -1,4 +1,4 @@
-// UseYourTools for Work — Main App
+// Blink — Main App
 
 /* ============================================================
    Zen Quotes
@@ -317,6 +317,27 @@ function renderSettingsPanel() {
     </div>
 
 
+    <!-- Tools URLs -->
+    <div class="settings-section">
+      <div class="settings-section-title">Your Tools</div>
+      <div class="cal-connect-box">
+        <div class="settings-label" style="margin-bottom:6px">Salesforce Cases URL</div>
+        <div class="cal-input-row" style="margin-bottom:12px">
+          <input class="cal-client-input" id="sf-url-input" type="text"
+            placeholder="https://yourorg.lightning.force.com/lightning/o/Case/list"
+            value="${escHtml(localStorage.getItem('uyt_salesforce_url') || '')}">
+          <button class="cal-connect-btn" onclick="saveToolUrl('uyt_salesforce_url','sf-url-input')">Save</button>
+        </div>
+        <div class="settings-label" style="margin-bottom:6px">Workday Tasks URL</div>
+        <div class="cal-input-row">
+          <input class="cal-client-input" id="wd-url-input" type="text"
+            placeholder="https://wd103.myworkday.com/yourorg/d/task/..."
+            value="${escHtml(localStorage.getItem('uyt_workday_url') || '')}">
+          <button class="cal-connect-btn" onclick="saveToolUrl('uyt_workday_url','wd-url-input')">Save</button>
+        </div>
+      </div>
+    </div>
+
     <!-- Slack Channels -->
     <div class="settings-section">
       <div class="settings-section-title">Slack Channels</div>
@@ -530,6 +551,11 @@ function saveAnthropicKey() {
   if (key) { localStorage.setItem('uyt_anthropic_key', key); renderSettingsPanel(); }
 }
 
+function saveToolUrl(key, inputId) {
+  const url = document.getElementById(inputId)?.value.trim();
+  if (url) { localStorage.setItem(key, url); renderSettingsPanel(); }
+}
+
 function saveWorkerUrl() {
   const url = document.getElementById('worker-url-input')?.value.trim();
   if (url) { localStorage.setItem('uyt_digest_worker_url', url); renderSettingsPanel(); }
@@ -688,7 +714,7 @@ function renderDashboard() {
             `}
           </div>
 
-          <div class="dash-card" onclick="window.open('https://wd103.myworkday.com/snyk/d/task/2998$44084.htmld?refresh=true&ref=%2Fsnyk%2Finst%2F4547%245813%2Frel-task%2F2998%2414648.htmld','_blank')">
+          <div class="dash-card" onclick="window.open(localStorage.getItem('uyt_workday_url') || 'https://wd103.myworkday.com','_blank')">
             <div class="dash-card-header">
               <div class="dash-card-icon">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v2"/><line x1="12" y1="12" x2="12" y2="16"/><line x1="10" y1="14" x2="14" y2="14"/></svg>
@@ -700,7 +726,7 @@ function renderDashboard() {
             <div class="dash-card-action">Open in Workday ${ICONS.arrowRight}</div>
           </div>
 
-          <div class="dash-card" onclick="window.open('https://snyksec.lightning.force.com/lightning/o/Case/list','_blank')">
+          <div class="dash-card" onclick="window.open(localStorage.getItem('uyt_salesforce_url') || 'https://salesforce.com','_blank')">
             <div class="dash-card-header">
               <div class="dash-card-icon">${ICONS.cases}</div>
               <div class="dash-card-title">Cases</div>
@@ -1320,6 +1346,279 @@ function escHtml(str) {
    Init
    ============================================================ */
 
+/* ============================================================
+   Setup Wizard
+   ============================================================ */
+
+const SETUP_KEY = 'uyt_setup_complete';
+
+const setupSteps = [
+  'welcome',
+  'google',
+  'slack',
+  'tools',
+  'preferences',
+  'done',
+];
+
+let setupStep = 0;
+
+function isSetupComplete() {
+  return !!localStorage.getItem(SETUP_KEY);
+}
+
+function startSetup() {
+  setupStep = 0;
+  document.getElementById('setup-wizard').style.display = 'flex';
+  document.querySelector('.app').style.display = 'none';
+  renderSetupStep();
+}
+
+function completeSetup() {
+  localStorage.setItem(SETUP_KEY, '1');
+  document.getElementById('setup-wizard').style.display = 'none';
+  document.querySelector('.app').style.display = 'flex';
+  navigate('dashboard');
+}
+
+function setupNext() {
+  if (setupStep < setupSteps.length - 1) {
+    setupStep++;
+    renderSetupStep();
+  } else {
+    completeSetup();
+  }
+}
+
+function setupBack() {
+  if (setupStep > 0) {
+    setupStep--;
+    renderSetupStep();
+  }
+}
+
+function renderSetupStep() {
+  const total = setupSteps.length;
+  const step  = setupSteps[setupStep];
+
+  // Progress bar
+  const pct = Math.round((setupStep / (total - 1)) * 100);
+  document.getElementById('setup-progress').innerHTML = `
+    <div class="setup-progress-bar">
+      <div class="setup-progress-fill" style="width:${pct}%"></div>
+    </div>
+    <div class="setup-step-label">Step ${setupStep + 1} of ${total}</div>
+  `;
+
+  const content = document.getElementById('setup-content');
+
+  if (step === 'welcome') {
+    content.innerHTML = `
+      <div class="setup-icon">🛠️</div>
+      <h1 class="setup-title">Welcome to Blink</h1>
+      <p class="setup-desc">Your workday in the blink of an eye — calendar, Slack, Drive, and your tools in one place. Let's get you set up in about 2 minutes.</p>
+      <div class="setup-feature-list">
+        <div class="setup-feature">📆 Google Calendar, Gmail &amp; Drive</div>
+        <div class="setup-feature">💬 Slack digest for your key channels</div>
+        <div class="setup-feature">🗂️ Salesforce Cases &amp; Workday Tasks</div>
+        <div class="setup-feature">🎨 Themes, dark mode &amp; preferences</div>
+      </div>
+      <div class="setup-actions">
+        <button class="setup-btn-primary" onclick="setupNext()">Let's go →</button>
+      </div>
+    `;
+  }
+
+  else if (step === 'google') {
+    const connected = calIsConnected();
+    content.innerHTML = `
+      <div class="setup-icon">🔗</div>
+      <h1 class="setup-title">Connect Google</h1>
+      <p class="setup-desc">Connect your Google account to power your calendar, Gmail inbox count, and Drive files. You'll need a Google OAuth Client ID from Google Cloud Console.</p>
+      ${connected ? `
+        <div class="setup-connected-badge">✓ Connected as ${escHtml(calState.userProfile?.name || 'Google User')}</div>
+      ` : `
+        <div class="cal-input-row" style="margin-bottom:12px">
+          <input class="cal-client-input" id="setup-gcal-id" type="text"
+            placeholder="Google OAuth Client ID (…apps.googleusercontent.com)"
+            value="${escHtml(calState.clientId || '')}">
+        </div>
+        <button class="setup-btn-secondary" onclick="setupConnectGoogle()">Connect to Google</button>
+        <p class="setup-hint">Don't have a Client ID? <a href="https://console.cloud.google.com/apis/credentials" target="_blank">Create one here</a> — set authorized origin to <code>https://klm-snyk.github.io</code></p>
+      `}
+      <div class="setup-actions">
+        <button class="setup-btn-ghost" onclick="setupNext()">Skip for now</button>
+        ${connected ? `<button class="setup-btn-primary" onclick="setupNext()">Next →</button>` : ''}
+      </div>
+    `;
+  }
+
+  else if (step === 'slack') {
+    const hasWorker = !!localStorage.getItem('uyt_digest_worker_url');
+    content.innerHTML = `
+      <div class="setup-icon">💬</div>
+      <h1 class="setup-title">Slack Digest</h1>
+      <p class="setup-desc">Get a daily digest of your key Slack channels — incidents, work items, and people updates — with one button press.</p>
+
+      <div class="setup-field-label">Cloudflare Worker URL</div>
+      <div class="cal-input-row" style="margin-bottom:8px">
+        <input class="cal-client-input" id="setup-worker-url" type="text"
+          placeholder="https://your-worker.workers.dev"
+          value="${escHtml(localStorage.getItem('uyt_digest_worker_url') || '')}">
+        <button class="cal-connect-btn" onclick="setupSaveWorker()">Save</button>
+      </div>
+      ${hasWorker ? `<div class="setup-connected-badge">✓ Worker URL saved</div>` : ''}
+
+      <div class="setup-field-label" style="margin-top:16px">Default channels (pre-loaded, edit in Settings)</div>
+      <div style="font-size:13px;color:var(--text-secondary);line-height:1.8">
+        ${getSlackChannels().map(c => `#${escHtml(c.name)}`).join(' · ')}
+      </div>
+
+      <div class="setup-actions">
+        <button class="setup-btn-ghost" onclick="setupBack()">← Back</button>
+        <button class="setup-btn-ghost" onclick="setupNext()">Skip for now</button>
+        <button class="setup-btn-primary" onclick="setupNext()">Next →</button>
+      </div>
+    `;
+  }
+
+  else if (step === 'tools') {
+    const sfUrl  = localStorage.getItem('uyt_salesforce_url') || '';
+    const wdUrl  = localStorage.getItem('uyt_workday_url')    || '';
+    content.innerHTML = `
+      <div class="setup-icon">🔧</div>
+      <h1 class="setup-title">Your Tools</h1>
+      <p class="setup-desc">Add your Salesforce and Workday URLs so the dashboard links go directly to the right place for your organization.</p>
+
+      <div class="setup-field-label">Salesforce Cases URL</div>
+      <div class="cal-input-row" style="margin-bottom:16px">
+        <input class="cal-client-input" id="setup-sf-url" type="text"
+          placeholder="https://yourorg.lightning.force.com/lightning/o/Case/list"
+          value="${escHtml(sfUrl)}">
+        <button class="cal-connect-btn" onclick="setupSaveSalesforce()">Save</button>
+      </div>
+
+      <div class="setup-field-label">Workday Tasks URL</div>
+      <div class="cal-input-row" style="margin-bottom:8px">
+        <input class="cal-client-input" id="setup-wd-url" type="text"
+          placeholder="https://wd103.myworkday.com/yourorg/d/task/..."
+          value="${escHtml(wdUrl)}">
+        <button class="cal-connect-btn" onclick="setupSaveWorkday()">Save</button>
+      </div>
+
+      <div class="setup-actions">
+        <button class="setup-btn-ghost" onclick="setupBack()">← Back</button>
+        <button class="setup-btn-ghost" onclick="setupNext()">Skip for now</button>
+        <button class="setup-btn-primary" onclick="setupNext()">Next →</button>
+      </div>
+    `;
+  }
+
+  else if (step === 'preferences') {
+    const p = state.prefs;
+    const themes = [
+      { id: 'modern', color: '#6366F1', label: 'Modern' },
+      { id: 'earth',  color: '#8C6A4A', label: 'Earth'  },
+      { id: 'nature', color: '#5A8A6A', label: 'Nature' },
+      { id: 'sunny',  color: '#D4A574', label: 'Sunny'  },
+      { id: 'purple', color: '#9B6FA8', label: 'Violet' },
+    ];
+    content.innerHTML = `
+      <div class="setup-icon">🎨</div>
+      <h1 class="setup-title">Preferences</h1>
+      <p class="setup-desc">Quick customization — you can always change these later in Settings.</p>
+
+      <div class="setup-field-label">Your name</div>
+      <input class="cal-client-input" id="setup-name" type="text"
+        placeholder="e.g. Alex" value="${escHtml(p.userName)}"
+        style="margin-bottom:20px;width:100%">
+
+      <div class="setup-field-label">Color theme</div>
+      <div class="theme-swatches" style="margin-bottom:20px">
+        ${themes.map(t => `
+          <div class="theme-option" onclick="setupSelectTheme('${t.id}')">
+            <div class="theme-swatch ${p.colorScheme === t.id ? 'selected' : ''}" style="background:${t.color}"></div>
+            <span class="theme-swatch-label">${t.label}</span>
+          </div>
+        `).join('')}
+      </div>
+
+      <div class="setup-field-label">Clock format</div>
+      <div style="display:flex;gap:12px;margin-bottom:20px">
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:14px">
+          <input type="radio" name="clock" value="12" ${p.use12HourClock ? 'checked' : ''}
+            onchange="state.prefs.use12HourClock=true;savePrefs(state.prefs)"> 12-hour
+        </label>
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:14px">
+          <input type="radio" name="clock" value="24" ${!p.use12HourClock ? 'checked' : ''}
+            onchange="state.prefs.use12HourClock=false;savePrefs(state.prefs)"> 24-hour
+        </label>
+      </div>
+
+      <div class="setup-actions">
+        <button class="setup-btn-ghost" onclick="setupBack()">← Back</button>
+        <button class="setup-btn-primary" onclick="setupSavePrefs()">Next →</button>
+      </div>
+    `;
+  }
+
+  else if (step === 'done') {
+    content.innerHTML = `
+      <div class="setup-icon">🎉</div>
+      <h1 class="setup-title">You're all set!</h1>
+      <p class="setup-desc">Blink is ready. You can always update settings by clicking the gear icon in the top right of any screen.</p>
+      <div class="setup-feature-list">
+        ${calIsConnected() ? '<div class="setup-feature">✅ Google connected</div>' : '<div class="setup-feature" style="opacity:0.5">○ Google — connect in Settings</div>'}
+        ${localStorage.getItem('uyt_digest_worker_url') ? '<div class="setup-feature">✅ Slack Digest configured</div>' : '<div class="setup-feature" style="opacity:0.5">○ Slack — configure in Settings</div>'}
+        ${localStorage.getItem('uyt_salesforce_url') ? '<div class="setup-feature">✅ Salesforce linked</div>' : '<div class="setup-feature" style="opacity:0.5">○ Salesforce — add URL in Settings</div>'}
+        ${localStorage.getItem('uyt_workday_url') ? '<div class="setup-feature">✅ Workday linked</div>' : '<div class="setup-feature" style="opacity:0.5">○ Workday — add URL in Settings</div>'}
+      </div>
+      <div class="setup-actions">
+        <button class="setup-btn-ghost" onclick="setupBack()">← Back</button>
+        <button class="setup-btn-primary" onclick="completeSetup()">Open Dashboard →</button>
+      </div>
+    `;
+  }
+}
+
+// Setup helper functions
+function setupConnectGoogle() {
+  const id = document.getElementById('setup-gcal-id')?.value.trim();
+  if (id) {
+    calState.clientId = id;
+    localStorage.setItem('uyt_cal_client_id', id);
+  }
+  calConnect();
+}
+
+function setupSaveWorker() {
+  const url = document.getElementById('setup-worker-url')?.value.trim();
+  if (url) { localStorage.setItem('uyt_digest_worker_url', url); renderSetupStep(); }
+}
+
+function setupSaveSalesforce() {
+  const url = document.getElementById('setup-sf-url')?.value.trim();
+  if (url) { localStorage.setItem('uyt_salesforce_url', url); }
+}
+
+function setupSaveWorkday() {
+  const url = document.getElementById('setup-wd-url')?.value.trim();
+  if (url) { localStorage.setItem('uyt_workday_url', url); }
+}
+
+function setupSavePrefs() {
+  const name = document.getElementById('setup-name')?.value.trim();
+  if (name) { state.prefs.userName = name; savePrefs(state.prefs); }
+  setupNext();
+}
+
+function setupSelectTheme(id) {
+  state.prefs.colorScheme = id;
+  savePrefs(state.prefs);
+  applyTheme(state.prefs);
+  renderSetupStep();
+}
+
 document.addEventListener('DOMContentLoaded', async () => {
   applyTheme(state.prefs);
 
@@ -1345,6 +1644,10 @@ document.addEventListener('DOMContentLoaded', async () => {
   if (plannerToday) plannerToday.addEventListener('click', plannerGoToday);
 
   navigate('dashboard');
-  await calInit();
-  slackInit();
+  if (!isSetupComplete()) {
+    startSetup();
+  } else {
+    await calInit();
+    slackInit();
+  }
 });
