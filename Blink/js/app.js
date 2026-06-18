@@ -217,6 +217,17 @@ function renderSlack() {
       <div><div class="slack-screen-sub">Last 24 hours · ${channels.length} channel${channels.length===1?'':'s'}</div></div>
       <button class="connect-btn" onclick="fetchSlackDigestFull()" style="padding:8px 16px;font-size:13px">${slackDigestState.loading ? '⏳ Loading…' : '↺ Refresh Digest'}</button>
     </div>
+
+    ${slackDigestState.handover ? `
+    <div class="cal-banner cal-banner--ooo" style="margin-bottom:16px;flex-direction:column;align-items:flex-start;gap:6px">
+      <div style="display:flex;align-items:center;gap:8px;font-weight:700;font-size:13px">
+        🌏 Region Handover
+        <span style="font-size:11px;font-weight:400;color:var(--text-secondary)">${escHtml(slackDigestState.handover.time)}</span>
+      </div>
+      <div style="font-size:13px;line-height:1.5">${escHtml(slackDigestState.handover.text.slice(0, 300))}${slackDigestState.handover.text.length > 300 ? '…' : ''}</div>
+      <a href="${escHtml(slackDigestState.handover.permalink)}" target="_blank" style="font-size:12px;color:var(--primary);font-weight:600">View in Slack →</a>
+    </div>
+    ` : ''}
     ${slackDigestState.loading ? `<div class="cal-connect-prompt" style="margin-top:32px"><div class="cal-connect-icon">⏳</div><h3>Searching Slack…</h3><p>This usually takes 10–20 seconds.</p></div>`
     : slackDigestState.error ? `<div class="cal-connect-prompt" style="margin-top:32px"><div class="cal-connect-icon">⚠️</div><h3>Error loading digest</h3><p>${escHtml(slackDigestState.error)}</p><button class="connect-btn" onclick="fetchSlackDigestFull()">Try again</button></div>`
     : slackDigestState.html ? `<div class="slack-digest-full">${slackDigestState.html}</div><div class="slack-digest-timestamp">Last updated ${escHtml(slackDigestState.asOf||'')}</div>`
@@ -580,6 +591,7 @@ const slackDigestState = {
   html: null,
   asOf: null,
   counts: { people: 0, work: 0, incidents: 0 },
+  handover: null,
 };
 
 async function fetchSlackDigest() {
@@ -604,6 +616,7 @@ async function fetchSlackDigest() {
     }
     const data = await res.json();
     const digestHtml = data.html || '';
+    slackDigestState.handover = data.handover || null;
     slackDigestState.html = digestHtml || '<div class="digest-empty">No results</div>';
     slackDigestState.error = null;
     slackDigestState.asOf = new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
