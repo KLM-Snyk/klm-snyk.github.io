@@ -2188,3 +2188,26 @@ html, body {
   flex-shrink: 0;
   margin-bottom: 1px;
 }
+
+/* ============================================================
+   Slack channel settings rows
+   ============================================================ */
+.slack-channel-row { display:flex; align-items:center; gap:10px; padding:6px 0; border-bottom:1px solid var(--border); }
+.slack-channel-row:last-child { border-bottom:none; }
+.slack-channel-name { font-size:13px; font-weight:600; color:var(--text); flex:1; }
+.slack-channel-id { font-size:11px; color:var(--text-secondary); background:var(--surface); padding:1px 6px; border-radius:4px; font-family:monospace; }
+.slack-channel-remove { background:none; border:none; color:var(--text-secondary); cursor:pointer; font-size:14px; padding:2px 4px; border-radius:4px; transition:color var(--transition); }
+.slack-channel-remove:hover { color:#DC2626; }
+
+/* Slack digest full screen */
+.slack-screen-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:24px; padding-bottom:16px; border-bottom:1px solid var(--border); }
+.slack-screen-sub { font-size:13px; color:var(--text-secondary); margin-top:4px; }
+.slack-digest-full { max-width:800px; }
+.slack-digest-full .digest-section { margin-bottom:24px; }
+.slack-digest-full .digest-heading { font-size:13px; font-weight:700; color:var(--primary); text-transform:uppercase; letter-spacing:0.5px; margin-bottom:10px; padding-bottom:6px; border-bottom:2px solid var(--border); }
+.slack-digest-full .digest-list { list-style:none; padding:0; margin:0; display:flex; flex-direction:column; gap:8px; }
+.slack-digest-full .digest-list li { padding:8px 12px; background:var(--surface); border-radius:var(--radius-sm); border:1px solid var(--border); font-size:13px; color:var(--text); line-height:1.5; }
+.slack-digest-full .digest-list a { color:var(--primary); font-weight:500; }
+.slack-digest-full .digest-list a:hover { text-decoration:underline; }
+.slack-digest-full .digest-empty { color:var(--text-secondary); font-style:italic; background:none; border:none; padding:4px 0; }
+.slack-digest-timestamp { font-size:12px; color:var(--text-secondary); margin-top:24px; }

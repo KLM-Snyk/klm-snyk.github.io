@@ -140,6 +140,7 @@ function navigate(screen) {
 
   if (screen === 'dashboard') renderDashboard();
   if (screen === 'calendar')  renderCalendar();
+  if (screen === 'slack')     renderSlack();
   if (screen === 'drive')     renderDrive();
   if (screen === 'planner')   renderPlanner();
 }
@@ -166,6 +167,66 @@ async function refreshApp() {
   renderDashboard();
   if (state.screen === 'calendar') renderCalendar();
   if (state.screen === 'drive') renderDrive();
+}
+
+
+// Default channels
+const SLACK_DEFAULT_CHANNELS = [
+  { id: 'C0885BMRNBA', name: 'support-leads' },
+  { id: 'C0AFSPT6YK1', name: 'the-four-horsemen-of-support' },
+  { id: 'C07JV4M7BAT', name: 'cx-support-sla' },
+  { id: 'C08K5GUMVHS', name: 'cs-support-chatter' },
+];
+
+function getSlackChannels() {
+  try { const s = localStorage.getItem('uyt_slack_channels'); return s ? JSON.parse(s) : SLACK_DEFAULT_CHANNELS; }
+  catch { return SLACK_DEFAULT_CHANNELS; }
+}
+
+function saveSlackChannels(channels) {
+  localStorage.setItem('uyt_slack_channels', JSON.stringify(channels));
+}
+
+function addSlackChannel() {
+  const id = document.getElementById('slack-ch-id')?.value.trim();
+  const name = document.getElementById('slack-ch-name')?.value.trim();
+  if (!id || !name) return;
+  const channels = getSlackChannels();
+  if (!channels.find(c => c.id === id)) { channels.push({ id, name }); saveSlackChannels(channels); }
+  renderSettingsPanel();
+}
+
+function removeSlackChannel(index) {
+  const channels = getSlackChannels();
+  channels.splice(index, 1);
+  saveSlackChannels(channels);
+  renderSettingsPanel();
+}
+
+function renderSlack() {
+  const el = document.getElementById('slack-content');
+  if (!el) return;
+  const workerUrl = localStorage.getItem('uyt_digest_worker_url');
+  const channels = getSlackChannels();
+  if (!workerUrl) {
+    el.innerHTML = `<div class="cal-connect-prompt"><div class="cal-connect-icon">💬</div><h3>Set up Slack Digest</h3><p>Add your Cloudflare Worker URL in Settings to enable the push-button Slack digest.</p><button class="connect-btn" onclick="openSettings()">Open Settings</button></div>`;
+    return;
+  }
+  el.innerHTML = `
+    <div class="slack-screen-header">
+      <div><div class="slack-screen-sub">Last 24 hours · ${channels.length} channel${channels.length===1?'':'s'}</div></div>
+      <button class="connect-btn" onclick="fetchSlackDigestFull()" style="padding:8px 16px;font-size:13px">${slackDigestState.loading ? '⏳ Loading…' : '↺ Refresh Digest'}</button>
+    </div>
+    ${slackDigestState.loading ? `<div class="cal-connect-prompt" style="margin-top:32px"><div class="cal-connect-icon">⏳</div><h3>Searching Slack…</h3><p>This usually takes 10–20 seconds.</p></div>`
+    : slackDigestState.error ? `<div class="cal-connect-prompt" style="margin-top:32px"><div class="cal-connect-icon">⚠️</div><h3>Error loading digest</h3><p>${escHtml(slackDigestState.error)}</p><button class="connect-btn" onclick="fetchSlackDigestFull()">Try again</button></div>`
+    : slackDigestState.html ? `<div class="slack-digest-full">${slackDigestState.html}</div><div class="slack-digest-timestamp">Last updated ${escHtml(slackDigestState.asOf||'')}</div>`
+    : `<div class="cal-connect-prompt" style="margin-top:32px"><div class="cal-connect-icon">💬</div><h3>Ready to digest</h3><p>Click Refresh Digest to search the last 24 hours across your channels.</p><button class="connect-btn" onclick="fetchSlackDigestFull()">Get Digest</button></div>`}
+  `;
+}
+
+async function fetchSlackDigestFull() {
+  await fetchSlackDigest();
+  renderSlack();
 }
 
 /* ============================================================
@@ -255,7 +316,22 @@ function renderSettingsPanel() {
       </div>
     </div>
 
-    <!-- Anthropic API Key -->
+
+    <!-- Slack Channels -->
+    <div class="settings-section">
+      <div class="settings-section-title">Slack Channels</div>
+      <div class="cal-connect-box">
+        <p>Channels included in your digest. Add by channel ID (right-click channel in Slack → Copy link → last part of URL).</p>
+        <div>${getSlackChannels().map((c, i) => `<div class="slack-channel-row"><span class="slack-channel-name">#${escHtml(c.name)}</span><code class="slack-channel-id">${escHtml(c.id)}</code><button class="slack-channel-remove" onclick="removeSlackChannel(${i})">✕</button></div>`).join('')}</div>
+        <div class="cal-input-row" style="margin-top:10px;flex-wrap:wrap;gap:6px">
+          <input class="cal-client-input" id="slack-ch-id" placeholder="Channel ID (C0885...)" style="flex:1;min-width:120px">
+          <input class="cal-client-input" id="slack-ch-name" placeholder="Name (support-leads)" style="flex:1;min-width:120px">
+          <button class="cal-connect-btn" onclick="addSlackChannel()">Add</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Slack Digest Worker -->
     <div class="settings-section">
       <div class="settings-section-title">Slack Digest Worker</div>
       <div class="cal-connect-box">
@@ -484,7 +560,8 @@ async function fetchSlackDigest() {
   renderDashboard();
 
   try {
-    const res = await fetch(workerUrl, { method: 'POST' });
+    const channels = getSlackChannels();
+    const res = await fetch(workerUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ channels }) });
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
       throw new Error(err.error || `HTTP ${res.status}`);
@@ -590,7 +667,7 @@ function renderDashboard() {
             `}
           </div>
 
-          <div class="dash-card slack-digest-card">
+          <div class="dash-card" onclick="navigate('slack')" style="cursor:pointer">
             <div class="dash-card-header">
               <div class="dash-card-icon">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 10c-.83 0-1.5-.67-1.5-1.5v-5c0-.83.67-1.5 1.5-1.5s1.5.67 1.5 1.5v5c0 .83-.67 1.5-1.5 1.5z"/><path d="M20.5 10H19V8.5c0-.83.67-1.5 1.5-1.5s1.5.67 1.5 1.5-.67 1.5-1.5 1.5z"/><path d="M9.5 14c.83 0 1.5.67 1.5 1.5v5c0 .83-.67 1.5-1.5 1.5S8 21.33 8 20.5v-5c0-.83.67-1.5 1.5-1.5z"/><path d="M3.5 14H5v1.5c0 .83-.67 1.5-1.5 1.5S2 16.33 2 15.5 2.67 14 3.5 14z"/><path d="M14 14.5c0-.83.67-1.5 1.5-1.5h5c.83 0 1.5.67 1.5 1.5s-.67 1.5-1.5 1.5h-5c-.83 0-1.5-.67-1.5-1.5z"/><path d="M15.5 19H14v1.5c0 .83.67 1.5 1.5 1.5s1.5-.67 1.5-1.5-.67-1.5-1.5-1.5z"/><path d="M10 9.5C10 8.67 9.33 8 8.5 8h-5C2.67 8 2 8.67 2 9.5S2.67 11 3.5 11h5c.83 0 1.5-.67 1.5-1.5z"/><path d="M8.5 5H10V3.5C10 2.67 9.33 2 8.5 2S7 2.67 7 3.5 7.67 5 8.5 5z"/></svg>
@@ -598,7 +675,7 @@ function renderDashboard() {
               <div class="dash-card-title">Slack Digest</div>
             </div>
             ${slackDigestState.loading ? `
-              <div class="dash-card-sub" style="margin-top:8px">⏳ Searching Slack…</div>
+              <div class="dash-card-sub" style="margin-top:8px">⏳ Loading digest…</div>
             ` : slackDigestState.error ? `
               <div class="dash-card-sub" style="color:#DC2626;margin-top:8px;font-size:12px">${escHtml(slackDigestState.error)}</div>
               <div class="dash-card-action" onclick="fetchSlackDigest()" style="cursor:pointer">Retry ${ICONS.arrowRight}</div>
@@ -606,8 +683,8 @@ function renderDashboard() {
               <div class="slack-digest-content">${slackDigestState.html}</div>
               <div class="dash-card-action" onclick="fetchSlackDigest()" style="cursor:pointer;margin-top:8px">Refresh ${ICONS.arrowRight}</div>
             ` : `
-              <div class="dash-card-sub">Last 24 hours · people, work items &amp; incidents</div>
-              <div class="dash-card-action" onclick="fetchSlackDigest()" style="cursor:pointer">Get Digest ${ICONS.arrowRight}</div>
+              <div class="dash-card-sub">${getSlackChannels().map(c => '#' + c.name).join(' · ')}</div>
+              <div class="dash-card-action">View digest ${ICONS.arrowRight}</div>
             `}
           </div>
 
