@@ -211,8 +211,19 @@ function renderSlackBlocks(blocks) {
   let html = '';
   for (const block of blocks) {
     if (block.type === 'header') {
-      const text = block.text?.text || '';
-      html += `<div class="handover-block-header">${renderSlackMrkdwn(text)}</div>`;
+      html += `<div class="handover-block-header">${renderSlackMrkdwn(block.text?.text || '')}</div>`;
+    } else if (block.type === 'carousel') {
+      html += '<div class="handover-block-fields">';
+      for (const card of (block.elements || [])) {
+        if (card.type === 'card') {
+          html += `<div class="handover-block-field">
+            <div style="font-weight:700;font-size:13px;margin-bottom:2px">${renderSlackMrkdwn(card.title?.text || '')}</div>
+            <div style="font-size:11px;color:var(--text-secondary);margin-bottom:6px">${renderSlackMrkdwn(card.subtitle?.text || '')}</div>
+            <div style="font-size:12px;line-height:1.6">${renderSlackMrkdwn(card.body?.text || '')}</div>
+          </div>`;
+        }
+      }
+      html += '</div>';
     } else if (block.type === 'section') {
       if (block.fields) {
         html += '<div class="handover-block-fields">';
