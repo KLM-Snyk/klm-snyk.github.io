@@ -579,7 +579,7 @@ async function calFetchDriveShared() {
   try {
     const thirtyDaysAgo = new Date();
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-    const query = `sharedWithMe and modifiedTime > '${thirtyDaysAgo.toISOString()}' and (mimeType = 'application/vnd.google-apps.spreadsheet' or mimeType = 'application/vnd.google-apps.document')`;
+    const query = `sharedWithMe and modifiedTime > '${thirtyDaysAgo.toISOString()}' and (mimeType = 'application/vnd.google-apps.spreadsheet' or mimeType = 'application/vnd.google-apps.document' or mimeType = 'application/vnd.google-apps.presentation')`;
     const params = new URLSearchParams({
       q: query,
       fields: 'files(id,name,mimeType,webViewLink,modifiedTime,sharingUser)',
@@ -594,7 +594,7 @@ async function calFetchDriveShared() {
     calState.driveShared = (data.files || []).map(f => ({
       id: f.id,
       name: f.name,
-      type: f.mimeType.includes('spreadsheet') ? 'sheet' : 'doc',
+      type: f.mimeType.includes('spreadsheet') ? 'sheet' : f.mimeType.includes('presentation') ? 'slides' : 'doc',
       link: f.webViewLink,
       modified: f.modifiedTime,
       sharedBy: f.sharingUser?.displayName || '',
@@ -653,7 +653,7 @@ async function calFetchDriveCreated() {
     const thirtyDaysAgo = new Date();
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
     const params = new URLSearchParams({
-      q: `'me' in owners and createdTime > '${thirtyDaysAgo.toISOString()}' and (mimeType = 'application/vnd.google-apps.spreadsheet' or mimeType = 'application/vnd.google-apps.document') and trashed = false`,
+      q: `'me' in owners and createdTime > '${thirtyDaysAgo.toISOString()}' and (mimeType = 'application/vnd.google-apps.spreadsheet' or mimeType = 'application/vnd.google-apps.document' or mimeType = 'application/vnd.google-apps.presentation') and trashed = false`,
       fields: 'files(id,name,mimeType,webViewLink,createdTime,modifiedTime)',
       orderBy: 'createdTime desc',
       pageSize: 10,
@@ -666,7 +666,7 @@ async function calFetchDriveCreated() {
     calState.driveCreated = (data.files || []).map(f => ({
       id: f.id,
       name: f.name,
-      type: f.mimeType.includes('spreadsheet') ? 'sheet' : 'doc',
+      type: f.mimeType.includes('spreadsheet') ? 'sheet' : f.mimeType.includes('presentation') ? 'slides' : 'doc',
       link: f.webViewLink,
       modified: f.modifiedTime,
       created: f.createdTime,

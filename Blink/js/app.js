@@ -805,20 +805,22 @@ function renderDashboard() {
             ` : (() => {
               const sharedSheets  = calState.driveShared.filter(f => f.type === 'sheet').length;
               const sharedDocs    = calState.driveShared.filter(f => f.type === 'doc').length;
+              const sharedSlides  = calState.driveShared.filter(f => f.type === 'slides').length;
               const mentionSheets = calState.driveMentions.filter(f => f.type === 'sheet').length;
               const mentionDocs   = calState.driveMentions.filter(f => f.type === 'doc').length;
+              const mentionSlides = calState.driveMentions.filter(f => f.type === 'slides').length;
               return `
               <div class="sf-tier-row">
                 <span class="sf-tier-label sf-tier-platinum">Shared</span>
-                <span class="sf-tier-stat">${sharedSheets} 📊 · ${sharedDocs} 📄</span>
+                <span class="sf-tier-stat">${sharedSheets} 📊 · ${sharedDocs} 📄 · ${sharedSlides} 📑</span>
               </div>
               <div class="sf-tier-row">
                 <span class="sf-tier-label sf-tier-gold">Mentions</span>
-                <span class="sf-tier-stat">${mentionSheets} 📊 · ${mentionDocs} 📄</span>
+                <span class="sf-tier-stat">${mentionSheets} 📊 · ${mentionDocs} 📄 · ${mentionSlides} 📑</span>
               </div>
               <div class="sf-tier-row">
                 <span class="sf-tier-label" style="background:#D1FAE5;color:#065F46">Created</span>
-                <span class="sf-tier-stat">${calState.driveCreated.filter(f=>f.type==='sheet').length} 📊 · ${calState.driveCreated.filter(f=>f.type==='doc').length} 📄</span>
+                <span class="sf-tier-stat">${calState.driveCreated.filter(f=>f.type==='sheet').length} 📊 · ${calState.driveCreated.filter(f=>f.type==='doc').length} 📄 · ${calState.driveCreated.filter(f=>f.type==='slides').length} 📑</span>
               </div>
               <div class="dash-card-sub" style="margin-top:6px">Last 30 days · click to browse</div>
               `;
