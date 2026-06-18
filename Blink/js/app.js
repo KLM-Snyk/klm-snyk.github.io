@@ -620,22 +620,18 @@ async function fetchSlackDigest() {
     slackDigestState.html = digestHtml || '<div class="digest-empty">No results</div>';
     slackDigestState.error = null;
     slackDigestState.asOf = new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
-    // Count items in each section by counting <li> tags that aren't digest-empty
-    const countItems = (html, heading) => {
-      const parser = new DOMParser();
-      const doc = parser.parseFromString(html, 'text/html');
-      const sections = doc.querySelectorAll('.digest-section');
-      for (const section of sections) {
-        if (section.querySelector('.digest-heading')?.textContent.includes(heading)) {
-          return section.querySelectorAll('li:not(.digest-empty)').length;
-        }
-      }
-      return 0;
+    // Count <li> items per section using regex
+    const countSection = (html, heading) => {
+      const hi = html.indexOf(heading);
+      if (hi === -1) return 0;
+      const end = html.indexOf('</div>', html.indexOf('</ul>', hi));
+      const sec = html.slice(hi, end);
+      return (sec.match(/<li(?![^>]*digest-empty)/g) || []).length;
     };
     slackDigestState.counts = {
-      people:    countItems(digestHtml, 'Onboarding'),
-      work:      countItems(digestHtml, 'Work'),
-      incidents: countItems(digestHtml, 'Incidents'),
+      people:    countSection(digestHtml, 'Onboarding'),
+      work:      countSection(digestHtml, 'Work Items'),
+      incidents: countSection(digestHtml, 'Incidents'),
     };
   } catch (e) {
     console.error('Slack digest error:', e);
