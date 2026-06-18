@@ -264,8 +264,9 @@ function renderSettingsPanel() {
       <div class="settings-row">
         <div class="settings-label">Your name</div>
         <input class="settings-input" style="width:140px" id="pref-name" type="text"
-          placeholder="e.g. Alex" value="${escHtml(p.userName)}">
+          placeholder="e.g. Alex" value="${escHtml(calState.userProfile?.name || p.userName)}">
       </div>
+      ${calState.userProfile?.name ? `<div style="font-size:11px;color:var(--text-secondary);margin-top:4px">From your Google account</div>` : ''}
     </div>
 
 
