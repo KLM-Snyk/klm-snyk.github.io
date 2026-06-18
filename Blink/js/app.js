@@ -140,7 +140,7 @@ function navigate(screen) {
 
   if (screen === 'dashboard') renderDashboard();
   if (screen === 'calendar')  renderCalendar();
-  if (screen === 'slack')     renderSlack();
+  if (screen === 'slack')     renderSlackAndAutoFetch();
   if (screen === 'drive')     renderDrive();
   if (screen === 'planner')   renderPlanner();
 }
@@ -227,6 +227,14 @@ function renderSlack() {
 async function fetchSlackDigestFull() {
   await fetchSlackDigest();
   renderSlack();
+}
+
+function renderSlackAndAutoFetch() {
+  renderSlack();
+  // Auto-fetch if no digest loaded yet and worker is configured
+  if (!slackDigestState.html && !slackDigestState.loading && localStorage.getItem('uyt_digest_worker_url')) {
+    fetchSlackDigestFull();
+  }
 }
 
 /* ============================================================
@@ -570,6 +578,7 @@ const slackDigestState = {
   error: null,
   html: null,
   asOf: null,
+  counts: { people: 0, work: 0, incidents: 0 },
 };
 
 async function fetchSlackDigest() {
@@ -593,9 +602,27 @@ async function fetchSlackDigest() {
       throw new Error(err.error || `HTTP ${res.status}`);
     }
     const data = await res.json();
-    slackDigestState.html = data.html || '<div class="digest-empty">No results</div>';
+    const digestHtml = data.html || '';
+    slackDigestState.html = digestHtml || '<div class="digest-empty">No results</div>';
     slackDigestState.error = null;
     slackDigestState.asOf = new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+    // Count items in each section by counting <li> tags that aren't digest-empty
+    const countItems = (html, heading) => {
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(html, 'text/html');
+      const sections = doc.querySelectorAll('.digest-section');
+      for (const section of sections) {
+        if (section.querySelector('.digest-heading')?.textContent.includes(heading)) {
+          return section.querySelectorAll('li:not(.digest-empty)').length;
+        }
+      }
+      return 0;
+    };
+    slackDigestState.counts = {
+      people:    countItems(digestHtml, 'Onboarding'),
+      work:      countItems(digestHtml, 'Work'),
+      incidents: countItems(digestHtml, 'Incidents'),
+    };
   } catch (e) {
     console.error('Slack digest error:', e);
     slackDigestState.error = e.message || 'Failed to load digest.';
@@ -702,15 +729,23 @@ function renderDashboard() {
             </div>
             ${slackDigestState.loading ? `
               <div class="dash-card-sub" style="margin-top:8px">⏳ Loading digest…</div>
-            ` : slackDigestState.error ? `
-              <div class="dash-card-sub" style="color:#DC2626;margin-top:8px;font-size:12px">${escHtml(slackDigestState.error)}</div>
-              <div class="dash-card-action" onclick="fetchSlackDigest()" style="cursor:pointer">Retry ${ICONS.arrowRight}</div>
             ` : slackDigestState.html ? `
-              <div class="slack-digest-content">${slackDigestState.html}</div>
-              <div class="dash-card-action" onclick="fetchSlackDigest()" style="cursor:pointer;margin-top:8px">Refresh ${ICONS.arrowRight}</div>
+              <div class="sf-tier-row" style="margin-top:8px">
+                <span class="sf-tier-label" style="background:#DBEAFE;color:#1E40AF">👥 People</span>
+                <span class="sf-tier-stat">${slackDigestState.counts?.people || 0} item${(slackDigestState.counts?.people || 0) === 1 ? '' : 's'}</span>
+              </div>
+              <div class="sf-tier-row">
+                <span class="sf-tier-label" style="background:#D1FAE5;color:#065F46">🔧 Work</span>
+                <span class="sf-tier-stat">${slackDigestState.counts?.work || 0} item${(slackDigestState.counts?.work || 0) === 1 ? '' : 's'}</span>
+              </div>
+              <div class="sf-tier-row">
+                <span class="sf-tier-label" style="background:#FEE2E2;color:#991B1B">🚨 Incidents</span>
+                <span class="sf-tier-stat">${slackDigestState.counts?.incidents || 0} item${(slackDigestState.counts?.incidents || 0) === 1 ? '' : 's'}</span>
+              </div>
+              <div class="dash-card-action" style="margin-top:8px">View digest ${ICONS.arrowRight}</div>
             ` : `
-              <div class="dash-card-sub">${getSlackChannels().map(c => '#' + c.name).join(' · ')}</div>
-              <div class="dash-card-action">View digest ${ICONS.arrowRight}</div>
+              <div class="dash-card-sub" style="font-size:12px;line-height:1.8">${getSlackChannels().map(c => '#' + c.name).join(' · ')}</div>
+              <div class="dash-card-action" style="margin-top:8px">Get digest ${ICONS.arrowRight}</div>
             `}
           </div>
 
