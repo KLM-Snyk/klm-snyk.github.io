@@ -731,15 +731,15 @@ function renderDashboard() {
               <div class="dash-card-sub" style="margin-top:8px">⏳ Loading digest…</div>
             ` : slackDigestState.html ? `
               <div class="sf-tier-row" style="margin-top:8px">
-                <span class="sf-tier-label" style="background:#DBEAFE;color:#1E40AF">👥 People</span>
+                <span class="sf-tier-label" style="background:#DBEAFE;color:#1E40AF;font-size:10px">👥 Onboarding</span>
                 <span class="sf-tier-stat">${slackDigestState.counts?.people || 0} item${(slackDigestState.counts?.people || 0) === 1 ? '' : 's'}</span>
               </div>
               <div class="sf-tier-row">
-                <span class="sf-tier-label" style="background:#D1FAE5;color:#065F46">🔧 Work</span>
+                <span class="sf-tier-label" style="background:#D1FAE5;color:#065F46;font-size:10px">🔧 Work Items</span>
                 <span class="sf-tier-stat">${slackDigestState.counts?.work || 0} item${(slackDigestState.counts?.work || 0) === 1 ? '' : 's'}</span>
               </div>
               <div class="sf-tier-row">
-                <span class="sf-tier-label" style="background:#FEE2E2;color:#991B1B">🚨 Incidents</span>
+                <span class="sf-tier-label" style="background:#FEE2E2;color:#991B1B;font-size:10px">🚨 Escalations</span>
                 <span class="sf-tier-stat">${slackDigestState.counts?.incidents || 0} item${(slackDigestState.counts?.incidents || 0) === 1 ? '' : 's'}</span>
               </div>
               <div class="dash-card-action" style="margin-top:8px">View digest ${ICONS.arrowRight}</div>
