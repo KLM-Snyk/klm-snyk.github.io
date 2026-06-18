@@ -203,6 +203,16 @@ function removeSlackChannel(index) {
   renderSettingsPanel();
 }
 
+
+function renderSlackText(text) {
+  return text
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/\*([^*]+)\*/g, '<strong>$1</strong>')
+    .replace(/:[a-z_]+:/g, '')  // remove emoji codes
+    .replace(/·/g, '·')
+    .replace(/\n/g, '<br>');
+}
+
 function renderSlack() {
   const el = document.getElementById('slack-content');
   if (!el) return;
@@ -224,7 +234,7 @@ function renderSlack() {
         🌏 Region Handover
         <span style="font-size:11px;font-weight:400;color:var(--text-secondary)">${escHtml(slackDigestState.handover.time)}</span>
       </div>
-      <div style="font-size:13px;line-height:1.5">${escHtml(slackDigestState.handover.text.slice(0, 300))}${slackDigestState.handover.text.length > 300 ? '…' : ''}</div>
+      <div style="font-size:13px;line-height:1.5">${renderSlackText(slackDigestState.handover.text.slice(0, 400))}${slackDigestState.handover.text.length > 400 ? '…' : ''}</div>
       <a href="${escHtml(slackDigestState.handover.permalink)}" target="_blank" style="font-size:12px;color:var(--primary);font-weight:600">View in Slack →</a>
     </div>
     ` : ''}
@@ -1694,5 +1704,14 @@ document.addEventListener('DOMContentLoaded', async () => {
   } else {
     await calInit();
     slackInit();
+    // Auto-fetch digest in background if worker configured and no digest yet
+    if (localStorage.getItem('uyt_digest_worker_url') && !slackDigestState.html) {
+      slackDigestState.loading = true;
+      renderDashboard();
+      fetchSlackDigest().then(() => {
+        renderDashboard();
+        if (state.screen === 'slack') renderSlack();
+      });
+    }
   }
 });
