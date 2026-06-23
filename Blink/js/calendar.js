@@ -113,6 +113,7 @@ function _calSilentRefresh() {
 
       if (typeof renderDashboard     === 'function') renderDashboard();
       if (typeof renderSettingsPanel === 'function') renderSettingsPanel();
+      if (typeof renderSetupStep      === 'function' && document.getElementById('setup-wizard')?.style.display !== 'none') renderSetupStep();
     },
   });
   tokenClient.requestAccessToken({ prompt: '' });

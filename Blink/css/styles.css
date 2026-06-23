@@ -2467,3 +2467,25 @@ html, body {
   flex-shrink: 0;
   margin-top: 1px;
 }
+
+/* Force light styling on handover field cards regardless of theme */
+.handover-block-field {
+  background: rgba(255,255,255,0.15) !important;
+  border: 1px solid rgba(255,255,255,0.25) !important;
+  border-radius: var(--radius-sm);
+  padding: 10px 12px;
+  font-size: 12px;
+  line-height: 1.6;
+  color: inherit !important;
+}
+
+.cal-banner--ooo .handover-block-field {
+  background: rgba(255,255,255,0.2) !important;
+  border-color: rgba(255,255,255,0.3) !important;
+}
+
+.cal-banner--ooo .handover-block-section,
+.cal-banner--ooo .handover-block-context {
+  color: inherit !important;
+  opacity: 0.9;
+}
