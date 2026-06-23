@@ -1563,7 +1563,7 @@ function renderSetupStep() {
       '<p class="setup-desc">Blink needs access to your Google account to show your calendar, Gmail, and Drive files.</p>' +
       (connected
         ? '<div class="setup-connected-badge">✓ Connected as ' + name + '</div><p style="font-size:13px;color:var(--text-secondary);margin-top:8px">You\'re all set! Click Next to continue.</p>'
-        : '<button class="setup-btn-secondary" onclick="calConnect()" style="margin-top:8px">Sign in with Google</button>' +
+        : '<button class="setup-btn-secondary" onclick="setupConnectGoogle()" style="margin-top:8px">Sign in with Google</button>' +
           '<p style="font-size:12px;color:var(--text-secondary);margin-top:12px">Blink only reads your data — it never sends emails or modifies your calendar.</p>'
       ) +
       '<div class="setup-actions">' +
@@ -1671,11 +1671,10 @@ function renderSetupStep() {
 
 // Setup helper functions
 function setupConnectGoogle() {
-  const id = document.getElementById('setup-gcal-id')?.value.trim();
-  if (id) {
-    calState.clientId = id;
-    localStorage.setItem('uyt_cal_client_id', id);
-  }
+  // Ensure client ID is set before connecting
+  const clientId = '590264295133-lqo15vq4qt9b8ups64sftbiqlasp0ssk.apps.googleusercontent.com';
+  calState.clientId = clientId;
+  localStorage.setItem('uyt_cal_client_id', clientId);
   calConnect();
 }
 
