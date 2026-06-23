@@ -448,24 +448,8 @@ function renderSettingsPanel() {
           <input class="cal-client-input" id="slack-ch-name" placeholder="Name (support-leads)" style="flex:1;min-width:120px">
           <button class="cal-connect-btn" onclick="addSlackChannel()">Add</button>
         </div>
-      </div>
-    </div>
-
-    <!-- Slack Digest Worker -->
-    <div class="settings-section">
-      <div class="settings-section-title">Slack Digest Worker</div>
-      <div class="cal-connect-box">
-        <p>Deploy the Cloudflare Worker and paste its URL here to enable the push-button Slack Digest.</p>
-        <div class="cal-input-row">
-          <input class="cal-client-input" id="worker-url-input" type="text"
-            placeholder="https://your-worker.workers.dev"
-            value="${escHtml('https://uyt-slack-digest.kar-marsten.workers.dev' || '')}">
-          <button class="cal-connect-btn" onclick="saveWorkerUrl()">Save</button>
-        </div>
-        ${'https://uyt-slack-digest.kar-marsten.workers.dev' ? `<div style="font-size:12px;color:var(--primary);margin-top:6px;font-weight:600">✓ Worker URL saved</div>` : ''}
-      </div>
-    </div>
-
+      
+    
     <!-- Slack -->
     <div class="settings-section">
       <div class="settings-section-title">Slack</div>
