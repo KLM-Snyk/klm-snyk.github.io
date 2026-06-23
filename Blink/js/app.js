@@ -422,6 +422,21 @@ function renderSettingsPanel() {
       </div>
     </div>
 
+    <!-- Slack Token -->
+    <div class="settings-section">
+      <div class="settings-section-title">Slack</div>
+      <div class="cal-connect-box">
+        <p>Your Slack User OAuth Token (xoxp-...) — stored locally, used to read your channels for the digest.</p>
+        <div class="cal-input-row">
+          <input class="cal-client-input" id="slack-token-settings" type="password"
+            placeholder="xoxp-..."
+            value="${escHtml(localStorage.getItem('uyt_slack_token') || '')}">
+          <button class="cal-connect-btn" onclick="saveSlackToken()">Save</button>
+        </div>
+        ${localStorage.getItem('uyt_slack_token') ? `<div style="font-size:12px;color:var(--primary);margin-top:6px;font-weight:600">✓ Token saved</div>` : ''}
+      </div>
+    </div>
+
     <!-- Slack Channels -->
     <div class="settings-section">
       <div class="settings-section-title">Slack Channels</div>
@@ -640,6 +655,16 @@ function saveToolUrl(key, inputId) {
   if (url) { localStorage.setItem(key, url); renderSettingsPanel(); }
 }
 
+function setupSaveSlackToken() {
+  const token = document.getElementById('setup-slack-token')?.value.trim();
+  if (token) { localStorage.setItem('uyt_slack_token', token); renderSetupStep(); }
+}
+
+function saveSlackToken() {
+  const token = document.getElementById('slack-token-settings')?.value.trim();
+  if (token) { localStorage.setItem('uyt_slack_token', token); renderSettingsPanel(); }
+}
+
 function saveWorkerUrl() {
   const url = document.getElementById('worker-url-input')?.value.trim();
   if (url) { localStorage.setItem('uyt_digest_worker_url', url); renderSettingsPanel(); }
@@ -673,7 +698,7 @@ async function fetchSlackDigest() {
 
   try {
     const channels = getSlackChannels();
-    const res = await fetch(workerUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ channels, userName: calState.userProfile?.name || state.prefs.userName || 'the user', userEmail: calState.userProfile?.email || '' }) });
+    const res = await fetch(workerUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ channels, userName: calState.userProfile?.name || state.prefs.userName || 'the user', userEmail: calState.userProfile?.email || '', slackToken: localStorage.getItem('uyt_slack_token') || '' }) });
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
       throw new Error(err.error || `HTTP ${res.status}`);
@@ -1570,24 +1595,32 @@ function renderSetupStep() {
     `;
   }
 
-   else if (step === 'slack') {
+    else if (step === 'slack') {
+    const hasToken = !!localStorage.getItem('uyt_slack_token');
     content.innerHTML = `
       <div class="setup-icon">💬</div>
       <h1 class="setup-title">Slack Digest</h1>
-      <p class="setup-desc">Blink automatically searches your key Slack channels and gives you a daily digest of people updates, work items, and escalations. No setup needed.</p>
-      <div class="setup-feature-list">
-        <div class="setup-feature">✅ Already configured — no setup needed</div>
-        <div class="setup-feature">💬 ${getSlackChannels().map(c => '#' + c.name).join(' · ')}</div>
-        <div class="setup-feature">⚙️ Customize channels anytime in Settings</div>
+      <p class="setup-desc">Blink needs your Slack user token to read your channels and build your daily digest. Your token is stored locally on your device only.</p>
+
+      <div class="setup-field-label">Slack User OAuth Token</div>
+      <div class="cal-input-row" style="margin-bottom:8px">
+        <input class="cal-client-input" id="setup-slack-token" type="password"
+          placeholder="xoxp-..."
+          value="${escHtml(localStorage.getItem('uyt_slack_token') || '')}">
+        <button class="cal-connect-btn" onclick="setupSaveSlackToken()">Save</button>
       </div>
+      ${hasToken ? '<div class="setup-connected-badge">✓ Token saved</div>' : ''}
+      <p class="setup-hint">Get your token from <a href="https://api.slack.com/apps" target="_blank">api.slack.com/apps</a> → your app → OAuth & Permissions → User OAuth Token (xoxp-...)</p>
+
       <div class="setup-actions">
         <button class="setup-btn-ghost" onclick="setupBack()">← Back</button>
+        <button class="setup-btn-ghost" onclick="setupNext()">Skip for now</button>
         <button class="setup-btn-primary" onclick="setupNext()">Next →</button>
       </div>
     \`;
   }
 
-  else if (step === 'tools') {
+    else if (step === 'tools') {
     const sfUrl  = localStorage.getItem('uyt_salesforce_url') || '';
     const wdUrl  = localStorage.getItem('uyt_workday_url')    || '';
     content.innerHTML = `
