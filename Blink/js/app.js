@@ -1505,6 +1505,8 @@ function completeSetup() {
   document.getElementById('setup-wizard').style.display = 'none';
   document.querySelector('.app').style.display = 'flex';
   navigate('dashboard');
+  calInit();
+  slackInit();
 }
 
 function setupNext() {
@@ -1577,10 +1579,9 @@ function renderSetupStep() {
       '<h1 class="setup-title">Step 2: Connect Slack</h1>' +
       '<p class="setup-desc">Blink reads your Slack channels to build a daily digest. Here\'s how to get your token:</p>' +
       '<div class="setup-steps-list">' +
-        '<div class="setup-step-item"><div class="setup-step-num">1</div><div>Go to <a href="https://api.slack.com/apps" target="_blank" style="color:var(--primary);font-weight:600">api.slack.com/apps</a> and click the <strong>UseYourTools</strong> app</div></div>' +
-        '<div class="setup-step-item"><div class="setup-step-num">2</div><div>Click <strong>OAuth &amp; Permissions</strong> in the left sidebar</div></div>' +
-        '<div class="setup-step-item"><div class="setup-step-num">3</div><div>Scroll down to <strong>User OAuth Token</strong> — it starts with <code style="background:var(--surface);padding:2px 6px;border-radius:4px">xoxp-</code></div></div>' +
-        '<div class="setup-step-item"><div class="setup-step-num">4</div><div>Copy it and paste it below</div></div>' +
+        '<div class="setup-step-item"><div class="setup-step-num">1</div><div>Ask your Blink admin for your <strong>Slack User Token</strong> — they'll send you a string that starts with <code style="background:var(--surface);padding:2px 6px;border-radius:4px">xoxp-</code></div></div>' +
+        '<div class="setup-step-item"><div class="setup-step-num">2</div><div>Paste it in the field below and click <strong>Save</strong></div></div>' +
+        '<div class="setup-step-item"><div class="setup-step-num">3</div><div>That's it — Blink will automatically build your daily digest</div></div>' +
       '</div>' +
       '<div class="cal-input-row" style="margin-top:16px">' +
         '<input class="cal-client-input" id="setup-slack-token" type="password" placeholder="xoxp-..." value="' + savedToken + '">' +
@@ -1730,21 +1731,20 @@ document.addEventListener('DOMContentLoaded', async () => {
   if (plannerNext)  plannerNext.addEventListener('click', () => plannerChangeDay(1));
   if (plannerToday) plannerToday.addEventListener('click', plannerGoToday);
 
-  navigate('dashboard');
   if (!isSetupComplete()) {
     startSetup();
   } else {
-    await calInit();
-    slackInit();
-    // Auto-fetch digest in background if worker configured and no digest yet
-    if ('https://uyt-slack-digest.kar-marsten.workers.dev' && !slackDigestState.html) {
-      slackDigestState.loading = true;
-      renderDashboard();
-      fetchSlackDigest().then(() => {
+    document.querySelector('.app').style.display = 'flex';
+    navigate('dashboard');
+    try {
+      await calInit();
+      slackInit();
+      if (!slackDigestState.html) {
+        slackDigestState.loading = true;
         renderDashboard();
-        renderSlack();
-      });
-    }
+        fetchSlackDigest().then(() => { renderDashboard(); renderSlack(); });
+      }
+    } catch(e) { console.error('Init error:', e); }
   }
 });
 
