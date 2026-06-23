@@ -1668,6 +1668,7 @@ function renderSetupStep() {
         '<button class="setup-btn-primary" onclick="completeSetup()">Open Blink →</button>' +
       '</div>';
   }
+}
 
 // Setup helper functions
 function setupConnectGoogle() {
@@ -1746,5 +1747,3 @@ document.addEventListener('DOMContentLoaded', async () => {
     } catch(e) { console.error('Init error:', e); }
   }
 });
-
-}
