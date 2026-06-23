@@ -1579,9 +1579,9 @@ function renderSetupStep() {
       '<h1 class="setup-title">Step 2: Connect Slack</h1>' +
       '<p class="setup-desc">Blink reads your Slack channels to build a daily digest. Here\'s how to get your token:</p>' +
       '<div class="setup-steps-list">' +
-        '<div class="setup-step-item"><div class="setup-step-num">1</div><div>Ask your Blink admin for your <strong>Slack User Token</strong> — they'll send you a string that starts with <code style="background:var(--surface);padding:2px 6px;border-radius:4px">xoxp-</code></div></div>' +
+        '<div class="setup-step-item"><div class="setup-step-num">1</div><div>Ask your Blink admin for your <strong>Slack User Token</strong> — they will send you a string that starts with <code style="background:var(--surface);padding:2px 6px;border-radius:4px">xoxp-</code></div></div>' +
         '<div class="setup-step-item"><div class="setup-step-num">2</div><div>Paste it in the field below and click <strong>Save</strong></div></div>' +
-        '<div class="setup-step-item"><div class="setup-step-num">3</div><div>That's it — Blink will automatically build your daily digest</div></div>' +
+        '<div class="setup-step-item"><div class="setup-step-num">3</div><div>That is it — Blink will automatically build your daily digest</div></div>' +
       '</div>' +
       '<div class="cal-input-row" style="margin-top:16px">' +
         '<input class="cal-client-input" id="setup-slack-token" type="password" placeholder="xoxp-..." value="' + savedToken + '">' +
