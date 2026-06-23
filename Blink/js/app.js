@@ -1617,7 +1617,7 @@ function renderSetupStep() {
         <button class="setup-btn-ghost" onclick="setupNext()">Skip for now</button>
         <button class="setup-btn-primary" onclick="setupNext()">Next →</button>
       </div>
-    \`;
+    `;
   }
 
     else if (step === 'tools') {
