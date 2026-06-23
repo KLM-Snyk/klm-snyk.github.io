@@ -34,7 +34,8 @@ const calState = {
 // ── Bootstrap ───────────────────────────────────────────────
 
 async function calInit() {
-  calState.clientId    = localStorage.getItem(CAL_CLIENT_KEY) || '';
+  calState.clientId    = localStorage.getItem(CAL_CLIENT_KEY) || '590264295133-lqo15vq4qt9b8ups64sftbiqlasp0ssk.apps.googleusercontent.com';
+  if (!localStorage.getItem(CAL_CLIENT_KEY)) localStorage.setItem(CAL_CLIENT_KEY, calState.clientId);
   calState.userProfile = loadUserProfile();
 
   const token  = localStorage.getItem(CAL_TOKEN_KEY);

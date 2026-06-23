@@ -1540,79 +1540,95 @@ function renderSetupStep() {
 
   if (step === 'welcome') {
     content.innerHTML = `
-      <div class="setup-icon">🛠️</div>
-      <h1 class="setup-title">Welcome to Blink</h1>
-      <p class="setup-desc">Your workday in the blink of an eye — calendar, Slack, Drive, and your tools in one place. Let's get you set up in about 2 minutes.</p>
+      <div class="setup-icon">⚡</div>
+      <h1 class="setup-title">Welcome to Blink!</h1>
+      <p class="setup-desc">Blink puts your whole workday in one place — calendar, Slack, emails, and files. Setup takes about 2 minutes.</p>
       <div class="setup-feature-list">
-        <div class="setup-feature">📆 Google Calendar, Gmail &amp; Drive</div>
-        <div class="setup-feature">💬 Slack digest for your key channels</div>
-        <div class="setup-feature">🗂️ Salesforce Cases &amp; Workday Tasks</div>
-        <div class="setup-feature">🎨 Themes, dark mode &amp; preferences</div>
+        <div class="setup-feature">📆 Your calendar and upcoming meetings</div>
+        <div class="setup-feature">💬 A daily Slack digest of what matters</div>
+        <div class="setup-feature">📬 Gmail unread count</div>
+        <div class="setup-feature">📁 Google Drive files shared with you</div>
       </div>
       <div class="setup-actions">
-        <button class="setup-btn-primary" onclick="setupNext()">Let's go →</button>
+        <button class="setup-btn-primary" onclick="setupNext()">Let's get started →</button>
       </div>
-    `;
+    \`;
   }
 
   else if (step === 'google') {
     const connected = calIsConnected();
     content.innerHTML = `
       <div class="setup-icon">🔗</div>
-      <h1 class="setup-title">Connect Google</h1>
-      <p class="setup-desc">Connect your Google account to power your calendar, Gmail inbox count, and Drive files. You'll need a Google OAuth Client ID from Google Cloud Console.</p>
-      ${connected ? `
-        <div class="setup-connected-badge">✓ Connected as ${escHtml(calState.userProfile?.name || 'Google User')}</div>
-      ` : `
-        <div class="cal-input-row" style="margin-bottom:12px">
-          <input class="cal-client-input" id="setup-gcal-id" type="text"
-            placeholder="Google OAuth Client ID (…apps.googleusercontent.com)"
-            value="${escHtml(calState.clientId || '')}">
-        </div>
-        <button class="setup-btn-secondary" onclick="setupConnectGoogle()">Connect to Google</button>
-        <p class="setup-hint">Don't have a Client ID? <a href="https://console.cloud.google.com/apis/credentials" target="_blank">Create one here</a> — set authorized origin to <code>https://klm-snyk.github.io</code></p>
-      `}
+      <h1 class="setup-title">Step 1: Connect Google</h1>
+      <p class="setup-desc">Blink needs access to your Google account to show your calendar, Gmail, and Drive files.</p>
+      ${connected ? \`
+        <div class="setup-connected-badge">✓ Connected as \${escHtml(calState.userProfile?.name || 'Google User')}</div>
+        <p style="font-size:13px;color:var(--text-secondary);margin-top:8px">You're all set! Click Next to continue.</p>
+      \` : \`
+        <button class="setup-btn-secondary" onclick="calConnect()" style="margin-top:8px">
+          <svg width="18" height="18" viewBox="0 0 24 24" style="vertical-align:middle;margin-right:8px"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>
+          Sign in with Google
+        </button>
+        <p style="font-size:12px;color:var(--text-secondary);margin-top:12px">Blink only reads your data — it never sends emails, modifies your calendar, or shares anything.</p>
+      \`}
       <div class="setup-actions">
         <button class="setup-btn-ghost" onclick="setupNext()">Skip for now</button>
-        ${connected ? `<button class="setup-btn-primary" onclick="setupNext()">Next →</button>` : ''}
+        ${connected ? \`<button class="setup-btn-primary" onclick="setupNext()">Next →</button>\` : ''}
       </div>
-    `;
+    \`;
   }
 
-    else if (step === 'slack') {
+  else if (step === 'slack') {
     const hasToken = !!localStorage.getItem('uyt_slack_token');
     content.innerHTML = `
       <div class="setup-icon">💬</div>
-      <h1 class="setup-title">Slack Digest</h1>
-      <p class="setup-desc">Blink needs your Slack user token to read your channels and build your daily digest. Your token is stored locally on your device only.</p>
+      <h1 class="setup-title">Step 2: Connect Slack</h1>
+      <p class="setup-desc">Blink reads your Slack channels to build a daily digest. Here's how to get your token:</p>
 
-      <div class="setup-field-label">Slack User OAuth Token</div>
-      <div class="cal-input-row" style="margin-bottom:8px">
+      <div class="setup-steps-list">
+        <div class="setup-step-item">
+          <div class="setup-step-num">1</div>
+          <div>Go to <a href="https://api.slack.com/apps" target="_blank" style="color:var(--primary);font-weight:600">api.slack.com/apps</a> and click the <strong>UseYourTools</strong> app</div>
+        </div>
+        <div class="setup-step-item">
+          <div class="setup-step-num">2</div>
+          <div>Click <strong>OAuth & Permissions</strong> in the left sidebar</div>
+        </div>
+        <div class="setup-step-item">
+          <div class="setup-step-num">3</div>
+          <div>Scroll down to <strong>User OAuth Token</strong> — it starts with <code style="background:var(--surface);padding:2px 6px;border-radius:4px">xoxp-</code></div>
+        </div>
+        <div class="setup-step-item">
+          <div class="setup-step-num">4</div>
+          <div>Copy it and paste it below</div>
+        </div>
+      </div>
+
+      <div class="cal-input-row" style="margin-top:16px">
         <input class="cal-client-input" id="setup-slack-token" type="password"
           placeholder="xoxp-..."
           value="${escHtml(localStorage.getItem('uyt_slack_token') || '')}">
         <button class="cal-connect-btn" onclick="setupSaveSlackToken()">Save</button>
       </div>
-      ${hasToken ? '<div class="setup-connected-badge">✓ Token saved</div>' : ''}
-      <p class="setup-hint">Get your token from <a href="https://api.slack.com/apps" target="_blank">api.slack.com/apps</a> → your app → OAuth & Permissions → User OAuth Token (xoxp-...)</p>
+      ${hasToken ? '<div class="setup-connected-badge" style="margin-top:8px">✓ Slack token saved</div>' : ''}
 
       <div class="setup-actions">
         <button class="setup-btn-ghost" onclick="setupBack()">← Back</button>
         <button class="setup-btn-ghost" onclick="setupNext()">Skip for now</button>
         <button class="setup-btn-primary" onclick="setupNext()">Next →</button>
       </div>
-    `;
+    \`;
   }
 
-    else if (step === 'tools') {
+  else if (step === 'tools') {
     const sfUrl  = localStorage.getItem('uyt_salesforce_url') || '';
     const wdUrl  = localStorage.getItem('uyt_workday_url')    || '';
     content.innerHTML = `
       <div class="setup-icon">🔧</div>
-      <h1 class="setup-title">Your Tools</h1>
-      <p class="setup-desc">Add your Salesforce and Workday URLs so the dashboard links go directly to the right place for your organization.</p>
+      <h1 class="setup-title">Step 3: Your Tools</h1>
+      <p class="setup-desc">Add links to Salesforce and Workday so the dashboard buttons take you straight there.</p>
 
-      <div class="setup-field-label">Salesforce Cases URL</div>
+      <div class="setup-field-label">Salesforce Cases URL <span style="font-weight:400;color:var(--text-secondary)">(optional)</span></div>
       <div class="cal-input-row" style="margin-bottom:16px">
         <input class="cal-client-input" id="setup-sf-url" type="text"
           placeholder="https://yourorg.lightning.force.com/lightning/o/Case/list"
@@ -1620,20 +1636,21 @@ function renderSetupStep() {
         <button class="cal-connect-btn" onclick="setupSaveSalesforce()">Save</button>
       </div>
 
-      <div class="setup-field-label">Workday Tasks URL</div>
+      <div class="setup-field-label">Workday Tasks URL <span style="font-weight:400;color:var(--text-secondary)">(optional)</span></div>
       <div class="cal-input-row" style="margin-bottom:8px">
         <input class="cal-client-input" id="setup-wd-url" type="text"
           placeholder="https://wd103.myworkday.com/yourorg/d/task/..."
           value="${escHtml(wdUrl)}">
         <button class="cal-connect-btn" onclick="setupSaveWorkday()">Save</button>
       </div>
+      <p style="font-size:12px;color:var(--text-secondary);margin-top:8px">Not sure what to put here? Ask your manager or skip — you can add these later in Settings.</p>
 
       <div class="setup-actions">
         <button class="setup-btn-ghost" onclick="setupBack()">← Back</button>
         <button class="setup-btn-ghost" onclick="setupNext()">Skip for now</button>
         <button class="setup-btn-primary" onclick="setupNext()">Next →</button>
       </div>
-    `;
+    \`;
   }
 
   else if (step === 'preferences') {
@@ -1647,61 +1664,51 @@ function renderSetupStep() {
     ];
     content.innerHTML = `
       <div class="setup-icon">🎨</div>
-      <h1 class="setup-title">Preferences</h1>
-      <p class="setup-desc">Quick customization — you can always change these later in Settings.</p>
+      <h1 class="setup-title">Step 4: Make it yours</h1>
+      <p class="setup-desc">Almost done! Just a couple of quick preferences.</p>
 
-      <div class="setup-field-label">Your name</div>
+      <div class="setup-field-label">What's your name?</div>
       <input class="cal-client-input" id="setup-name" type="text"
-        placeholder="e.g. Alex" value="${escHtml(p.userName)}"
-        style="margin-bottom:20px;width:100%">
+        placeholder="e.g. Alex" value="${escHtml(calState.userProfile?.name || p.userName)}"
+        style="margin-bottom:20px;width:100%;box-sizing:border-box">
 
-      <div class="setup-field-label">Color theme</div>
-      <div class="theme-swatches" style="margin-bottom:20px">
-        ${themes.map(t => `
-          <div class="theme-option" onclick="setupSelectTheme('${t.id}')">
-            <div class="theme-swatch ${p.colorScheme === t.id ? 'selected' : ''}" style="background:${t.color}"></div>
-            <span class="theme-swatch-label">${t.label}</span>
+      <div class="setup-field-label">Pick a color theme</div>
+      <div class="theme-swatches" style="margin-bottom:8px">
+        ${themes.map(t => \`
+          <div class="theme-option" onclick="setupSelectTheme('\${t.id}')">
+            <div class="theme-swatch \${p.colorScheme === t.id ? 'selected' : ''}" style="background:\${t.color}"></div>
+            <span class="theme-swatch-label">\${t.label}</span>
           </div>
-        `).join('')}
-      </div>
-
-      <div class="setup-field-label">Clock format</div>
-      <div style="display:flex;gap:12px;margin-bottom:20px">
-        <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:14px">
-          <input type="radio" name="clock" value="12" ${p.use12HourClock ? 'checked' : ''}
-            onchange="state.prefs.use12HourClock=true;savePrefs(state.prefs)"> 12-hour
-        </label>
-        <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:14px">
-          <input type="radio" name="clock" value="24" ${!p.use12HourClock ? 'checked' : ''}
-            onchange="state.prefs.use12HourClock=false;savePrefs(state.prefs)"> 24-hour
-        </label>
+        \`).join('')}
       </div>
 
       <div class="setup-actions">
         <button class="setup-btn-ghost" onclick="setupBack()">← Back</button>
         <button class="setup-btn-primary" onclick="setupSavePrefs()">Next →</button>
       </div>
-    `;
+    \`;
   }
 
   else if (step === 'done') {
+    const connected = calIsConnected();
+    const hasSlack = !!localStorage.getItem('uyt_slack_token');
     content.innerHTML = `
       <div class="setup-icon">🎉</div>
-      <h1 class="setup-title">You're all set!</h1>
-      <p class="setup-desc">Blink is ready. You can always update settings by clicking the gear icon in the top right of any screen.</p>
+      <h1 class="setup-title">You're ready!</h1>
+      <p class="setup-desc">Blink is set up and ready to go. Here's what's connected:</p>
       <div class="setup-feature-list">
-        ${calIsConnected() ? '<div class="setup-feature">✅ Google connected</div>' : '<div class="setup-feature" style="opacity:0.5">○ Google — connect in Settings</div>'}
-        ${'https://uyt-slack-digest.kar-marsten.workers.dev' ? '<div class="setup-feature">✅ Slack Digest configured</div>' : '<div class="setup-feature" style="opacity:0.5">○ Slack — configure in Settings</div>'}
+        ${connected ? '<div class="setup-feature">✅ Google — calendar, Gmail &amp; Drive connected</div>' : '<div class="setup-feature" style="opacity:0.5">○ Google — connect anytime from Settings</div>'}
+        ${hasSlack ? '<div class="setup-feature">✅ Slack — digest ready</div>' : '<div class="setup-feature" style="opacity:0.5">○ Slack — add your token anytime from Settings</div>'}
         ${localStorage.getItem('uyt_salesforce_url') ? '<div class="setup-feature">✅ Salesforce linked</div>' : '<div class="setup-feature" style="opacity:0.5">○ Salesforce — add URL in Settings</div>'}
         ${localStorage.getItem('uyt_workday_url') ? '<div class="setup-feature">✅ Workday linked</div>' : '<div class="setup-feature" style="opacity:0.5">○ Workday — add URL in Settings</div>'}
       </div>
+      <p style="font-size:13px;color:var(--text-secondary);margin-top:8px">You can change any of this later — just click the ⚙️ gear icon in the top right.</p>
       <div class="setup-actions">
         <button class="setup-btn-ghost" onclick="setupBack()">← Back</button>
-        <button class="setup-btn-primary" onclick="completeSetup()">Open Dashboard →</button>
+        <button class="setup-btn-primary" onclick="completeSetup()">Open Blink →</button>
       </div>
-    `;
+    \`;
   }
-}
 
 // Setup helper functions
 function setupConnectGoogle() {
