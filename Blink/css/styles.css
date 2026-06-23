@@ -2568,3 +2568,53 @@ html, body {
   border-color: var(--primary);
   color: white;
 }
+
+/* When tardis background active — remove dark panels, keep glass effect on cards */
+[data-tardis="tardis"] .dash-card,
+[data-tardis="interior"] .dash-card {
+  background: rgba(255,255,255,0.07) !important;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border-color: rgba(255,255,255,0.12) !important;
+}
+
+[data-tardis="tardis"] .screen-header,
+[data-tardis="interior"] .screen-header {
+  background: transparent !important;
+  backdrop-filter: none !important;
+  border-bottom-color: rgba(255,255,255,0.1);
+}
+
+[data-tardis="tardis"] .screen-body,
+[data-tardis="interior"] .screen-body,
+[data-tardis="tardis"] .calendar-content-area,
+[data-tardis="interior"] .calendar-content-area,
+[data-tardis="tardis"] .screen,
+[data-tardis="interior"] .screen {
+  background: transparent !important;
+}
+
+[data-tardis="tardis"] .content,
+[data-tardis="interior"] .content {
+  background: transparent !important;
+}
+
+[data-tardis="tardis"] .upcoming-event-item,
+[data-tardis="interior"] .upcoming-event-item,
+[data-tardis="tardis"] .handover-banner,
+[data-tardis="interior"] .handover-banner,
+[data-tardis="tardis"] .slack-digest-full .digest-list li,
+[data-tardis="interior"] .slack-digest-full .digest-list li,
+[data-tardis="tardis"] .drive-file-item,
+[data-tardis="interior"] .drive-file-item {
+  background: rgba(255,255,255,0.07) !important;
+  border-color: rgba(255,255,255,0.1) !important;
+}
+
+[data-tardis="tardis"] .month-detail-panel,
+[data-tardis="interior"] .month-detail-panel,
+[data-tardis="tardis"] .month-detail-event,
+[data-tardis="interior"] .month-detail-event {
+  background: rgba(255,255,255,0.07) !important;
+  border-color: rgba(255,255,255,0.1) !important;
+}
