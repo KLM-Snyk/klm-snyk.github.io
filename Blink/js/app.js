@@ -652,10 +652,10 @@ function saveWorkerUrl() {
 const slackDigestState = {
   loading: false,
   error: null,
-  html: null,
-  asOf: null,
-  counts: { people: 0, work: 0, incidents: 0 },
-  handover: null,
+  html: localStorage.getItem('uyt_digest_html') || null,
+  asOf: localStorage.getItem('uyt_digest_asof') || null,
+  counts: JSON.parse(localStorage.getItem('uyt_digest_counts') || '{"people":0,"work":0,"incidents":0}'),
+  handover: JSON.parse(localStorage.getItem('uyt_digest_handover') || 'null'),
 };
 
 async function fetchSlackDigest() {
@@ -697,6 +697,11 @@ async function fetchSlackDigest() {
       work:      countSection(digestHtml, 'Work Items'),
       incidents: countSection(digestHtml, 'Incidents'),
     };
+    // Persist to localStorage so it shows instantly on next page load
+    localStorage.setItem('uyt_digest_html', slackDigestState.html);
+    localStorage.setItem('uyt_digest_asof', slackDigestState.asOf);
+    localStorage.setItem('uyt_digest_counts', JSON.stringify(slackDigestState.counts));
+    localStorage.setItem('uyt_digest_handover', JSON.stringify(slackDigestState.handover));
   } catch (e) {
     console.error('Slack digest error:', e);
     slackDigestState.error = e.message || 'Failed to load digest.';
@@ -1767,7 +1772,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       renderDashboard();
       fetchSlackDigest().then(() => {
         renderDashboard();
-        if (state.screen === 'slack') renderSlack();
+        renderSlack();
       });
     }
   }
