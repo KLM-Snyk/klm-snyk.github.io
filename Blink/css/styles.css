@@ -2484,3 +2484,18 @@ html, body {
   align-items: flex-start;
   gap: 4px;
 }
+
+.handover-banner {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.handover-banner a {
+  color: var(--primary);
+}

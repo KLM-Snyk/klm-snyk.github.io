@@ -278,7 +278,7 @@ function renderSlack() {
     </div>
 
     ${slackDigestState.handover ? `
-    <div class="cal-banner cal-banner--ooo" style="margin-bottom:16px;flex-direction:column;align-items:flex-start;gap:6px">
+    <div class="handover-banner" style="margin-bottom:16px">
       <div style="display:flex;align-items:center;gap:8px;font-weight:700;font-size:13px">
         🌏 Region Handover
         <span style="font-size:11px;font-weight:400;color:var(--text-secondary)">${escHtml(slackDigestState.handover.time)}</span>
