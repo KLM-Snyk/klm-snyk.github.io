@@ -2515,7 +2515,7 @@ html, body {
 
 /* Tardis easter egg backgrounds — dark mode only */
 [data-dark="true"][data-tardis="tardis"] {
-  background-image: linear-gradient(rgba(0,0,15,0.75), rgba(0,0,15,0.75)), url('../tardis1.jpg');
+  background-image: linear-gradient(rgba(0,0,15,0.75), rgba(0,0,15,0.75)), url('../tardis1.png');
   background-size: cover;
   background-position: center;
   background-attachment: fixed;
@@ -2615,6 +2615,43 @@ html, body {
 [data-tardis="interior"] .month-detail-panel,
 [data-tardis="tardis"] .month-detail-event,
 [data-tardis="interior"] .month-detail-event {
+  background: rgba(255,255,255,0.07) !important;
+  border-color: rgba(255,255,255,0.1) !important;
+}
+
+[data-dark="true"][data-tardis="tally"] {
+  background-image: linear-gradient(rgba(0,0,0,0.82), rgba(0,0,0,0.82)), url('../TallyMarks.jpeg');
+  background-size: cover;
+  background-position: center;
+  background-attachment: fixed;
+}
+
+[data-dark="true"][data-tardis="tally"] .sidebar {
+  background: rgba(0,0,0,0.45);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-right: 1px solid rgba(255,255,255,0.08);
+}
+
+/* Tally background transparency — same glass treatment */
+[data-tardis="tally"] .dash-card {
+  background: rgba(255,255,255,0.07) !important;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border-color: rgba(255,255,255,0.12) !important;
+}
+
+[data-tardis="tally"] .screen-header { background: transparent !important; border-bottom-color: rgba(255,255,255,0.1); }
+[data-tardis="tally"] .screen-body,
+[data-tardis="tally"] .calendar-content-area,
+[data-tardis="tally"] .screen,
+[data-tardis="tally"] .content { background: transparent !important; }
+[data-tardis="tally"] .upcoming-event-item,
+[data-tardis="tally"] .handover-banner,
+[data-tardis="tally"] .slack-digest-full .digest-list li,
+[data-tardis="tally"] .drive-file-item,
+[data-tardis="tally"] .month-detail-panel,
+[data-tardis="tally"] .month-detail-event {
   background: rgba(255,255,255,0.07) !important;
   border-color: rgba(255,255,255,0.1) !important;
 }

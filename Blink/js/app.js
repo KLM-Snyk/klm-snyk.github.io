@@ -370,6 +370,7 @@ function renderSettingsPanel() {
           <button onclick="setTardis('none')" class="tardis-btn ${p.tardisBackground === 'none' || !p.tardisBackground ? 'active' : ''}">None</button>
           <button onclick="setTardis('tardis')" class="tardis-btn ${p.tardisBackground === 'tardis' ? 'active' : ''}">Tardis</button>
           <button onclick="setTardis('interior')" class="tardis-btn ${p.tardisBackground === 'interior' ? 'active' : ''}">Bigger on the inside</button>
+          <button onclick="setTardis('tally')" class="tardis-btn ${p.tardisBackground === 'tally' ? 'active' : ''}">Tally</button>
         </div>
       </div>
       ` : ''}
