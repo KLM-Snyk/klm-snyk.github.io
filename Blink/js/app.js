@@ -1539,118 +1539,83 @@ function renderSetupStep() {
   const content = document.getElementById('setup-content');
 
   if (step === 'welcome') {
-    content.innerHTML = `
-      <div class="setup-icon">⚡</div>
-      <h1 class="setup-title">Welcome to Blink!</h1>
-      <p class="setup-desc">Blink puts your whole workday in one place — calendar, Slack, emails, and files. Setup takes about 2 minutes.</p>
-      <div class="setup-feature-list">
-        <div class="setup-feature">📆 Your calendar and upcoming meetings</div>
-        <div class="setup-feature">💬 A daily Slack digest of what matters</div>
-        <div class="setup-feature">📬 Gmail unread count</div>
-        <div class="setup-feature">📁 Google Drive files shared with you</div>
-      </div>
-      <div class="setup-actions">
-        <button class="setup-btn-primary" onclick="setupNext()">Let's get started →</button>
-      </div>
-    \`;
+    content.innerHTML = '<div class="setup-icon">⚡</div>' +
+      '<h1 class="setup-title">Welcome to Blink!</h1>' +
+      '<p class="setup-desc">Blink puts your whole workday in one place — calendar, Slack, emails, and files. Setup takes about 2 minutes.</p>' +
+      '<div class="setup-feature-list">' +
+        '<div class="setup-feature">📆 Your calendar and upcoming meetings</div>' +
+        '<div class="setup-feature">💬 A daily Slack digest of what matters</div>' +
+        '<div class="setup-feature">📬 Gmail unread count</div>' +
+        '<div class="setup-feature">📁 Google Drive files shared with you</div>' +
+      '</div>' +
+      '<div class="setup-actions">' +
+        '<button class="setup-btn-primary" onclick="setupNext()">Let\'s get started →</button>' +
+      '</div>';
   }
 
   else if (step === 'google') {
     const connected = calIsConnected();
-    content.innerHTML = `
-      <div class="setup-icon">🔗</div>
-      <h1 class="setup-title">Step 1: Connect Google</h1>
-      <p class="setup-desc">Blink needs access to your Google account to show your calendar, Gmail, and Drive files.</p>
-      ${connected ? \`
-        <div class="setup-connected-badge">✓ Connected as \${escHtml(calState.userProfile?.name || 'Google User')}</div>
-        <p style="font-size:13px;color:var(--text-secondary);margin-top:8px">You're all set! Click Next to continue.</p>
-      \` : \`
-        <button class="setup-btn-secondary" onclick="calConnect()" style="margin-top:8px">
-          <svg width="18" height="18" viewBox="0 0 24 24" style="vertical-align:middle;margin-right:8px"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>
-          Sign in with Google
-        </button>
-        <p style="font-size:12px;color:var(--text-secondary);margin-top:12px">Blink only reads your data — it never sends emails, modifies your calendar, or shares anything.</p>
-      \`}
-      <div class="setup-actions">
-        <button class="setup-btn-ghost" onclick="setupNext()">Skip for now</button>
-        ${connected ? \`<button class="setup-btn-primary" onclick="setupNext()">Next →</button>\` : ''}
-      </div>
-    \`;
+    const name = escHtml(calState.userProfile?.name || 'Google User');
+    content.innerHTML = '<div class="setup-icon">🔗</div>' +
+      '<h1 class="setup-title">Step 1: Connect Google</h1>' +
+      '<p class="setup-desc">Blink needs access to your Google account to show your calendar, Gmail, and Drive files.</p>' +
+      (connected
+        ? '<div class="setup-connected-badge">✓ Connected as ' + name + '</div><p style="font-size:13px;color:var(--text-secondary);margin-top:8px">You\'re all set! Click Next to continue.</p>'
+        : '<button class="setup-btn-secondary" onclick="calConnect()" style="margin-top:8px">Sign in with Google</button>' +
+          '<p style="font-size:12px;color:var(--text-secondary);margin-top:12px">Blink only reads your data — it never sends emails or modifies your calendar.</p>'
+      ) +
+      '<div class="setup-actions">' +
+        '<button class="setup-btn-ghost" onclick="setupNext()">Skip for now</button>' +
+        (connected ? '<button class="setup-btn-primary" onclick="setupNext()">Next →</button>' : '') +
+      '</div>';
   }
 
   else if (step === 'slack') {
     const hasToken = !!localStorage.getItem('uyt_slack_token');
-    content.innerHTML = `
-      <div class="setup-icon">💬</div>
-      <h1 class="setup-title">Step 2: Connect Slack</h1>
-      <p class="setup-desc">Blink reads your Slack channels to build a daily digest. Here's how to get your token:</p>
-
-      <div class="setup-steps-list">
-        <div class="setup-step-item">
-          <div class="setup-step-num">1</div>
-          <div>Go to <a href="https://api.slack.com/apps" target="_blank" style="color:var(--primary);font-weight:600">api.slack.com/apps</a> and click the <strong>UseYourTools</strong> app</div>
-        </div>
-        <div class="setup-step-item">
-          <div class="setup-step-num">2</div>
-          <div>Click <strong>OAuth & Permissions</strong> in the left sidebar</div>
-        </div>
-        <div class="setup-step-item">
-          <div class="setup-step-num">3</div>
-          <div>Scroll down to <strong>User OAuth Token</strong> — it starts with <code style="background:var(--surface);padding:2px 6px;border-radius:4px">xoxp-</code></div>
-        </div>
-        <div class="setup-step-item">
-          <div class="setup-step-num">4</div>
-          <div>Copy it and paste it below</div>
-        </div>
-      </div>
-
-      <div class="cal-input-row" style="margin-top:16px">
-        <input class="cal-client-input" id="setup-slack-token" type="password"
-          placeholder="xoxp-..."
-          value="${escHtml(localStorage.getItem('uyt_slack_token') || '')}">
-        <button class="cal-connect-btn" onclick="setupSaveSlackToken()">Save</button>
-      </div>
-      ${hasToken ? '<div class="setup-connected-badge" style="margin-top:8px">✓ Slack token saved</div>' : ''}
-
-      <div class="setup-actions">
-        <button class="setup-btn-ghost" onclick="setupBack()">← Back</button>
-        <button class="setup-btn-ghost" onclick="setupNext()">Skip for now</button>
-        <button class="setup-btn-primary" onclick="setupNext()">Next →</button>
-      </div>
-    \`;
+    const savedToken = escHtml(localStorage.getItem('uyt_slack_token') || '');
+    content.innerHTML = '<div class="setup-icon">💬</div>' +
+      '<h1 class="setup-title">Step 2: Connect Slack</h1>' +
+      '<p class="setup-desc">Blink reads your Slack channels to build a daily digest. Here\'s how to get your token:</p>' +
+      '<div class="setup-steps-list">' +
+        '<div class="setup-step-item"><div class="setup-step-num">1</div><div>Go to <a href="https://api.slack.com/apps" target="_blank" style="color:var(--primary);font-weight:600">api.slack.com/apps</a> and click the <strong>UseYourTools</strong> app</div></div>' +
+        '<div class="setup-step-item"><div class="setup-step-num">2</div><div>Click <strong>OAuth &amp; Permissions</strong> in the left sidebar</div></div>' +
+        '<div class="setup-step-item"><div class="setup-step-num">3</div><div>Scroll down to <strong>User OAuth Token</strong> — it starts with <code style="background:var(--surface);padding:2px 6px;border-radius:4px">xoxp-</code></div></div>' +
+        '<div class="setup-step-item"><div class="setup-step-num">4</div><div>Copy it and paste it below</div></div>' +
+      '</div>' +
+      '<div class="cal-input-row" style="margin-top:16px">' +
+        '<input class="cal-client-input" id="setup-slack-token" type="password" placeholder="xoxp-..." value="' + savedToken + '">' +
+        '<button class="cal-connect-btn" onclick="setupSaveSlackToken()">Save</button>' +
+      '</div>' +
+      (hasToken ? '<div class="setup-connected-badge" style="margin-top:8px">✓ Slack token saved</div>' : '') +
+      '<div class="setup-actions">' +
+        '<button class="setup-btn-ghost" onclick="setupBack()">← Back</button>' +
+        '<button class="setup-btn-ghost" onclick="setupNext()">Skip for now</button>' +
+        '<button class="setup-btn-primary" onclick="setupNext()">Next →</button>' +
+      '</div>';
   }
 
   else if (step === 'tools') {
-    const sfUrl  = localStorage.getItem('uyt_salesforce_url') || '';
-    const wdUrl  = localStorage.getItem('uyt_workday_url')    || '';
-    content.innerHTML = `
-      <div class="setup-icon">🔧</div>
-      <h1 class="setup-title">Step 3: Your Tools</h1>
-      <p class="setup-desc">Add links to Salesforce and Workday so the dashboard buttons take you straight there.</p>
-
-      <div class="setup-field-label">Salesforce Cases URL <span style="font-weight:400;color:var(--text-secondary)">(optional)</span></div>
-      <div class="cal-input-row" style="margin-bottom:16px">
-        <input class="cal-client-input" id="setup-sf-url" type="text"
-          placeholder="https://yourorg.lightning.force.com/lightning/o/Case/list"
-          value="${escHtml(sfUrl)}">
-        <button class="cal-connect-btn" onclick="setupSaveSalesforce()">Save</button>
-      </div>
-
-      <div class="setup-field-label">Workday Tasks URL <span style="font-weight:400;color:var(--text-secondary)">(optional)</span></div>
-      <div class="cal-input-row" style="margin-bottom:8px">
-        <input class="cal-client-input" id="setup-wd-url" type="text"
-          placeholder="https://wd103.myworkday.com/yourorg/d/task/..."
-          value="${escHtml(wdUrl)}">
-        <button class="cal-connect-btn" onclick="setupSaveWorkday()">Save</button>
-      </div>
-      <p style="font-size:12px;color:var(--text-secondary);margin-top:8px">Not sure what to put here? Ask your manager or skip — you can add these later in Settings.</p>
-
-      <div class="setup-actions">
-        <button class="setup-btn-ghost" onclick="setupBack()">← Back</button>
-        <button class="setup-btn-ghost" onclick="setupNext()">Skip for now</button>
-        <button class="setup-btn-primary" onclick="setupNext()">Next →</button>
-      </div>
-    \`;
+    const sfUrl = escHtml(localStorage.getItem('uyt_salesforce_url') || '');
+    const wdUrl = escHtml(localStorage.getItem('uyt_workday_url') || '');
+    content.innerHTML = '<div class="setup-icon">🔧</div>' +
+      '<h1 class="setup-title">Step 3: Your Tools</h1>' +
+      '<p class="setup-desc">Add links to Salesforce and Workday so the dashboard buttons take you straight there.</p>' +
+      '<div class="setup-field-label">Salesforce Cases URL <span style="font-weight:400;color:var(--text-secondary)">(optional)</span></div>' +
+      '<div class="cal-input-row" style="margin-bottom:16px">' +
+        '<input class="cal-client-input" id="setup-sf-url" type="text" placeholder="https://yourorg.lightning.force.com/lightning/o/Case/list" value="' + sfUrl + '">' +
+        '<button class="cal-connect-btn" onclick="setupSaveSalesforce()">Save</button>' +
+      '</div>' +
+      '<div class="setup-field-label">Workday Tasks URL <span style="font-weight:400;color:var(--text-secondary)">(optional)</span></div>' +
+      '<div class="cal-input-row" style="margin-bottom:8px">' +
+        '<input class="cal-client-input" id="setup-wd-url" type="text" placeholder="https://wd103.myworkday.com/yourorg/d/task/..." value="' + wdUrl + '">' +
+        '<button class="cal-connect-btn" onclick="setupSaveWorkday()">Save</button>' +
+      '</div>' +
+      '<p style="font-size:12px;color:var(--text-secondary);margin-top:8px">Not sure? Ask your manager or skip — you can add these later in Settings.</p>' +
+      '<div class="setup-actions">' +
+        '<button class="setup-btn-ghost" onclick="setupBack()">← Back</button>' +
+        '<button class="setup-btn-ghost" onclick="setupNext()">Skip for now</button>' +
+        '<button class="setup-btn-primary" onclick="setupNext()">Next →</button>' +
+      '</div>';
   }
 
   else if (step === 'preferences') {
@@ -1662,52 +1627,45 @@ function renderSetupStep() {
       { id: 'sunny',  color: '#D4A574', label: 'Sunny'  },
       { id: 'purple', color: '#9B6FA8', label: 'Violet' },
     ];
-    content.innerHTML = `
-      <div class="setup-icon">🎨</div>
-      <h1 class="setup-title">Step 4: Make it yours</h1>
-      <p class="setup-desc">Almost done! Just a couple of quick preferences.</p>
-
-      <div class="setup-field-label">What's your name?</div>
-      <input class="cal-client-input" id="setup-name" type="text"
-        placeholder="e.g. Alex" value="${escHtml(calState.userProfile?.name || p.userName)}"
-        style="margin-bottom:20px;width:100%;box-sizing:border-box">
-
-      <div class="setup-field-label">Pick a color theme</div>
-      <div class="theme-swatches" style="margin-bottom:8px">
-        ${themes.map(t => \`
-          <div class="theme-option" onclick="setupSelectTheme('\${t.id}')">
-            <div class="theme-swatch \${p.colorScheme === t.id ? 'selected' : ''}" style="background:\${t.color}"></div>
-            <span class="theme-swatch-label">\${t.label}</span>
-          </div>
-        \`).join('')}
-      </div>
-
-      <div class="setup-actions">
-        <button class="setup-btn-ghost" onclick="setupBack()">← Back</button>
-        <button class="setup-btn-primary" onclick="setupSavePrefs()">Next →</button>
-      </div>
-    \`;
+    const swatches = themes.map(t =>
+      '<div class="theme-option" onclick="setupSelectTheme(\'' + t.id + '\')">' +
+        '<div class="theme-swatch ' + (p.colorScheme === t.id ? 'selected' : '') + '" style="background:' + t.color + '"></div>' +
+        '<span class="theme-swatch-label">' + t.label + '</span>' +
+      '</div>'
+    ).join('');
+    const nameVal = escHtml(calState.userProfile?.name || p.userName);
+    content.innerHTML = '<div class="setup-icon">🎨</div>' +
+      '<h1 class="setup-title">Step 4: Make it yours</h1>' +
+      '<p class="setup-desc">Almost done! Just a couple of quick preferences.</p>' +
+      '<div class="setup-field-label">What\'s your name?</div>' +
+      '<input class="cal-client-input" id="setup-name" type="text" placeholder="e.g. Alex" value="' + nameVal + '" style="margin-bottom:20px;width:100%;box-sizing:border-box">' +
+      '<div class="setup-field-label">Pick a color theme</div>' +
+      '<div class="theme-swatches" style="margin-bottom:8px">' + swatches + '</div>' +
+      '<div class="setup-actions">' +
+        '<button class="setup-btn-ghost" onclick="setupBack()">← Back</button>' +
+        '<button class="setup-btn-primary" onclick="setupSavePrefs()">Next →</button>' +
+      '</div>';
   }
 
   else if (step === 'done') {
-    const connected = calIsConnected();
+    const hasSF = !!localStorage.getItem('uyt_salesforce_url');
+    const hasWD = !!localStorage.getItem('uyt_workday_url');
     const hasSlack = !!localStorage.getItem('uyt_slack_token');
-    content.innerHTML = `
-      <div class="setup-icon">🎉</div>
-      <h1 class="setup-title">You're ready!</h1>
-      <p class="setup-desc">Blink is set up and ready to go. Here's what's connected:</p>
-      <div class="setup-feature-list">
-        ${connected ? '<div class="setup-feature">✅ Google — calendar, Gmail &amp; Drive connected</div>' : '<div class="setup-feature" style="opacity:0.5">○ Google — connect anytime from Settings</div>'}
-        ${hasSlack ? '<div class="setup-feature">✅ Slack — digest ready</div>' : '<div class="setup-feature" style="opacity:0.5">○ Slack — add your token anytime from Settings</div>'}
-        ${localStorage.getItem('uyt_salesforce_url') ? '<div class="setup-feature">✅ Salesforce linked</div>' : '<div class="setup-feature" style="opacity:0.5">○ Salesforce — add URL in Settings</div>'}
-        ${localStorage.getItem('uyt_workday_url') ? '<div class="setup-feature">✅ Workday linked</div>' : '<div class="setup-feature" style="opacity:0.5">○ Workday — add URL in Settings</div>'}
-      </div>
-      <p style="font-size:13px;color:var(--text-secondary);margin-top:8px">You can change any of this later — just click the ⚙️ gear icon in the top right.</p>
-      <div class="setup-actions">
-        <button class="setup-btn-ghost" onclick="setupBack()">← Back</button>
-        <button class="setup-btn-primary" onclick="completeSetup()">Open Blink →</button>
-      </div>
-    \`;
+    const conn = calIsConnected();
+    content.innerHTML = '<div class="setup-icon">🎉</div>' +
+      '<h1 class="setup-title">You\'re ready!</h1>' +
+      '<p class="setup-desc">Blink is set up. Here\'s what\'s connected:</p>' +
+      '<div class="setup-feature-list">' +
+        (conn ? '<div class="setup-feature">✅ Google — calendar, Gmail &amp; Drive</div>' : '<div class="setup-feature" style="opacity:0.5">○ Google — connect anytime from Settings</div>') +
+        (hasSlack ? '<div class="setup-feature">✅ Slack — digest ready</div>' : '<div class="setup-feature" style="opacity:0.5">○ Slack — add your token in Settings</div>') +
+        (hasSF ? '<div class="setup-feature">✅ Salesforce linked</div>' : '<div class="setup-feature" style="opacity:0.5">○ Salesforce — add URL in Settings</div>') +
+        (hasWD ? '<div class="setup-feature">✅ Workday linked</div>' : '<div class="setup-feature" style="opacity:0.5">○ Workday — add URL in Settings</div>') +
+      '</div>' +
+      '<p style="font-size:13px;color:var(--text-secondary);margin-top:8px">Change anything later — just click the ⚙️ gear icon in the top right.</p>' +
+      '<div class="setup-actions">' +
+        '<button class="setup-btn-ghost" onclick="setupBack()">← Back</button>' +
+        '<button class="setup-btn-primary" onclick="completeSetup()">Open Blink →</button>' +
+      '</div>';
   }
 
 // Setup helper functions
