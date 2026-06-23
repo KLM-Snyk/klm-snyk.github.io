@@ -265,7 +265,7 @@ function renderSlackText(text) {
 function renderSlack() {
   const el = document.getElementById('slack-content');
   if (!el) return;
-  const workerUrl = localStorage.getItem('uyt_digest_worker_url');
+  const workerUrl = 'https://uyt-slack-digest.kar-marsten.workers.dev';
   const channels = getSlackChannels();
   if (!workerUrl) {
     el.innerHTML = `<div class="cal-connect-prompt"><div class="cal-connect-icon">💬</div><h3>Set up Slack Digest</h3><p>Add your Cloudflare Worker URL in Settings to enable the push-button Slack digest.</p><button class="connect-btn" onclick="openSettings()">Open Settings</button></div>`;
@@ -307,7 +307,7 @@ async function fetchSlackDigestFull() {
 function renderSlackAndAutoFetch() {
   renderSlack();
   // Auto-fetch if no digest loaded yet and worker is configured
-  if (!slackDigestState.html && !slackDigestState.loading && localStorage.getItem('uyt_digest_worker_url')) {
+  if (!slackDigestState.html && !slackDigestState.loading && 'https://uyt-slack-digest.kar-marsten.workers.dev') {
     fetchSlackDigestFull();
   }
 }
@@ -444,10 +444,10 @@ function renderSettingsPanel() {
         <div class="cal-input-row">
           <input class="cal-client-input" id="worker-url-input" type="text"
             placeholder="https://your-worker.workers.dev"
-            value="${escHtml(localStorage.getItem('uyt_digest_worker_url') || '')}">
+            value="${escHtml('https://uyt-slack-digest.kar-marsten.workers.dev' || '')}">
           <button class="cal-connect-btn" onclick="saveWorkerUrl()">Save</button>
         </div>
-        ${localStorage.getItem('uyt_digest_worker_url') ? `<div style="font-size:12px;color:var(--primary);margin-top:6px;font-weight:600">✓ Worker URL saved</div>` : ''}
+        ${'https://uyt-slack-digest.kar-marsten.workers.dev' ? `<div style="font-size:12px;color:var(--primary);margin-top:6px;font-weight:600">✓ Worker URL saved</div>` : ''}
       </div>
     </div>
 
@@ -659,7 +659,7 @@ const slackDigestState = {
 };
 
 async function fetchSlackDigest() {
-  const workerUrl = localStorage.getItem('uyt_digest_worker_url');
+  const workerUrl = 'https://uyt-slack-digest.kar-marsten.workers.dev';
   if (!workerUrl) {
     slackDigestState.error = 'Add your Worker URL in Settings first.';
     slackDigestState.loading = false;
@@ -1570,33 +1570,21 @@ function renderSetupStep() {
     `;
   }
 
-  else if (step === 'slack') {
-    const hasWorker = !!localStorage.getItem('uyt_digest_worker_url');
+   else if (step === 'slack') {
     content.innerHTML = `
       <div class="setup-icon">💬</div>
       <h1 class="setup-title">Slack Digest</h1>
-      <p class="setup-desc">Get a daily digest of your key Slack channels — incidents, work items, and people updates — with one button press.</p>
-
-      <div class="setup-field-label">Cloudflare Worker URL</div>
-      <div class="cal-input-row" style="margin-bottom:8px">
-        <input class="cal-client-input" id="setup-worker-url" type="text"
-          placeholder="https://your-worker.workers.dev"
-          value="${escHtml(localStorage.getItem('uyt_digest_worker_url') || '')}">
-        <button class="cal-connect-btn" onclick="setupSaveWorker()">Save</button>
+      <p class="setup-desc">Blink automatically searches your key Slack channels and gives you a daily digest of people updates, work items, and escalations. No setup needed.</p>
+      <div class="setup-feature-list">
+        <div class="setup-feature">✅ Already configured — no setup needed</div>
+        <div class="setup-feature">💬 ${getSlackChannels().map(c => '#' + c.name).join(' · ')}</div>
+        <div class="setup-feature">⚙️ Customize channels anytime in Settings</div>
       </div>
-      ${hasWorker ? `<div class="setup-connected-badge">✓ Worker URL saved</div>` : ''}
-
-      <div class="setup-field-label" style="margin-top:16px">Default channels (pre-loaded, edit in Settings)</div>
-      <div style="font-size:13px;color:var(--text-secondary);line-height:1.8">
-        ${getSlackChannels().map(c => `#${escHtml(c.name)}`).join(' · ')}
-      </div>
-
       <div class="setup-actions">
         <button class="setup-btn-ghost" onclick="setupBack()">← Back</button>
-        <button class="setup-btn-ghost" onclick="setupNext()">Skip for now</button>
         <button class="setup-btn-primary" onclick="setupNext()">Next →</button>
       </div>
-    `;
+    \`;
   }
 
   else if (step === 'tools') {
@@ -1686,7 +1674,7 @@ function renderSetupStep() {
       <p class="setup-desc">Blink is ready. You can always update settings by clicking the gear icon in the top right of any screen.</p>
       <div class="setup-feature-list">
         ${calIsConnected() ? '<div class="setup-feature">✅ Google connected</div>' : '<div class="setup-feature" style="opacity:0.5">○ Google — connect in Settings</div>'}
-        ${localStorage.getItem('uyt_digest_worker_url') ? '<div class="setup-feature">✅ Slack Digest configured</div>' : '<div class="setup-feature" style="opacity:0.5">○ Slack — configure in Settings</div>'}
+        ${'https://uyt-slack-digest.kar-marsten.workers.dev' ? '<div class="setup-feature">✅ Slack Digest configured</div>' : '<div class="setup-feature" style="opacity:0.5">○ Slack — configure in Settings</div>'}
         ${localStorage.getItem('uyt_salesforce_url') ? '<div class="setup-feature">✅ Salesforce linked</div>' : '<div class="setup-feature" style="opacity:0.5">○ Salesforce — add URL in Settings</div>'}
         ${localStorage.getItem('uyt_workday_url') ? '<div class="setup-feature">✅ Workday linked</div>' : '<div class="setup-feature" style="opacity:0.5">○ Workday — add URL in Settings</div>'}
       </div>
@@ -1767,7 +1755,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     await calInit();
     slackInit();
     // Auto-fetch digest in background if worker configured and no digest yet
-    if (localStorage.getItem('uyt_digest_worker_url') && !slackDigestState.html) {
+    if ('https://uyt-slack-digest.kar-marsten.workers.dev' && !slackDigestState.html) {
       slackDigestState.loading = true;
       renderDashboard();
       fetchSlackDigest().then(() => {
