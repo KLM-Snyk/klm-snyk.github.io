@@ -363,6 +363,16 @@ function renderSettingsPanel() {
           <div class="toggle-track"></div>
         </label>
       </div>
+      ${p.darkMode && p.colorScheme === 'modern' ? `
+      <div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border)">
+        <div class="settings-label" style="margin-bottom:8px;font-size:12px;color:var(--text-secondary)">🎭 Easter egg backgrounds</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button onclick="setTardis('none')" class="tardis-btn ${p.tardisBackground === 'none' || !p.tardisBackground ? 'active' : ''}">None</button>
+          <button onclick="setTardis('tardis')" class="tardis-btn ${p.tardisBackground === 'tardis' ? 'active' : ''}">Tardis</button>
+          <button onclick="setTardis('interior')" class="tardis-btn ${p.tardisBackground === 'interior' ? 'active' : ''}">Bigger on the inside</button>
+        </div>
+      </div>
+      ` : ''}
     </div>
 
     <!-- Time & Planner -->
@@ -647,6 +657,13 @@ function setupSaveSlackToken() {
 function saveSlackToken() {
   const token = document.getElementById('slack-token-settings')?.value.trim();
   if (token) { localStorage.setItem('uyt_slack_token', token); renderSettingsPanel(); }
+}
+
+function setTardis(value) {
+  state.prefs.tardisBackground = value;
+  savePrefs(state.prefs);
+  applyTheme(state.prefs);
+  renderSettingsPanel();
 }
 
 function saveWorkerUrl() {

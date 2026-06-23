@@ -10,6 +10,7 @@ const DEFAULT_PREFS = {
   endHour: 22,                    // 22 = 10:00 PM
   use12HourClock: true,
   showZenQuotes: true,
+  tardisBackground: 'none',      // none | tardis | interior
   calendarSyncProvider: 'none',   // none | google | outlook
   emailClient: 'default',         // default | gmail
   timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
@@ -32,5 +33,7 @@ function savePrefs(prefs) {
 function applyTheme(prefs) {
   const body = document.body;
   body.setAttribute('data-theme', prefs.colorScheme);
-  body.setAttribute('data-dark', prefs.darkMode && prefs.colorScheme === 'modern' ? 'true' : 'false');
+  const isDark = prefs.darkMode && prefs.colorScheme === 'modern';
+  body.setAttribute('data-dark', isDark ? 'true' : 'false');
+  body.setAttribute('data-tardis', isDark ? (prefs.tardisBackground || 'none') : 'none');
 }

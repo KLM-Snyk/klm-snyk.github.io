@@ -2512,3 +2512,59 @@ html, body {
 .handover-banner a {
   color: var(--primary);
 }
+
+/* Tardis easter egg backgrounds — dark mode only */
+[data-dark="true"][data-tardis="tardis"] {
+  background-image: linear-gradient(rgba(0,0,15,0.75), rgba(0,0,15,0.75)), url('../tardis1.jpg');
+  background-size: cover;
+  background-position: center;
+  background-attachment: fixed;
+}
+
+[data-dark="true"][data-tardis="interior"] {
+  background-image: linear-gradient(rgba(10,5,0,0.78), rgba(10,5,0,0.78)), url('../tardis3.jpg');
+  background-size: cover;
+  background-position: center;
+  background-attachment: fixed;
+}
+
+[data-dark="true"][data-tardis="tardis"] .sidebar,
+[data-dark="true"][data-tardis="interior"] .sidebar {
+  background: rgba(0,0,0,0.45);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-right: 1px solid rgba(255,255,255,0.08);
+}
+
+[data-dark="true"][data-tardis="tardis"] .dash-card,
+[data-dark="true"][data-tardis="interior"] .dash-card,
+[data-dark="true"][data-tardis="tardis"] .screen-header,
+[data-dark="true"][data-tardis="interior"] .screen-header {
+  background: rgba(0,0,0,0.4);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+.tardis-btn {
+  padding: 6px 14px;
+  border-radius: 99px;
+  border: 1.5px solid var(--border);
+  background: none;
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: var(--font);
+  transition: all var(--transition);
+}
+
+.tardis-btn:hover {
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
+.tardis-btn.active {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: white;
+}
