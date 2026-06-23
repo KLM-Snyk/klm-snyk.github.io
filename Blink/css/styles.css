@@ -1340,15 +1340,27 @@ html, body {
 }
 
 .cal-banner--oncall {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  color: var(--text);
+  background: #FEF3C7;
+  border: 1px solid #FCD34D;
+  color: #92400E;
+}
+
+[data-dark="true"] .cal-banner--oncall {
+  background: #422006;
+  border: 1px solid #92400E;
+  color: #FCD34D;
 }
 
 .cal-banner--ooo {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  color: var(--text);
+  background: #DBEAFE;
+  border: 1px solid #93C5FD;
+  color: #1E40AF;
+}
+
+[data-dark="true"] .cal-banner--ooo {
+  background: #1e3a5f;
+  border: 1px solid #1E40AF;
+  color: #93C5FD;
 }
 
 .cal-banner--upcoming {
