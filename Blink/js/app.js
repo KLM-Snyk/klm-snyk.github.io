@@ -363,7 +363,7 @@ function renderSettingsPanel() {
           <div class="toggle-track"></div>
         </label>
       </div>
-      ${p.darkMode && p.colorScheme === 'modern' ? `
+      ${(p.darkMode === true || p.darkMode === 'true') && p.colorScheme === 'modern' ? `
       <div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border)">
         <div class="settings-label" style="margin-bottom:8px;font-size:12px;color:var(--text-secondary)">🎭 Easter egg backgrounds</div>
         <div style="display:flex;gap:8px;flex-wrap:wrap">
