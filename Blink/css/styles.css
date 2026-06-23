@@ -2489,3 +2489,10 @@ html, body {
   color: inherit !important;
   opacity: 0.9;
 }
+
+.setup-step-cta {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+}

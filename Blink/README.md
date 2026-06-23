@@ -68,9 +68,15 @@ The Google OAuth Client ID is pre-filled — no setup needed for users.
 Authorized JavaScript origin: `https://klm-snyk.github.io`
 
 ### Distributing Slack tokens
-Each user needs their own `xoxp-` Slack User OAuth Token from the UseYourTools Slack app:
-- Go to api.slack.com/apps → UseYourTools → OAuth & Permissions → User OAuth Token
-- Send each user their token to paste during setup
+Each user generates their **own** `xoxp-` token — you don't create tokens for them.
+Their token is tied to their personal Slack account and only reads channels they are already a member of.
+
+Steps for each user:
+1. Go to api.slack.com/apps → **UseYourTools** → **OAuth & Permissions**
+2. Copy the **User OAuth Token** (starts with `xoxp-`)
+3. Paste it into Blink during setup (or Settings → Slack)
+
+This means each manager's digest is automatically personalized to their own Slack access — no admin involvement per user.
 
 ---
 
