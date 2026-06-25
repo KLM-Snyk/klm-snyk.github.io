@@ -692,7 +692,13 @@ function calTodayEvents() {
 }
 
 function calUpcomingEvents() {
-  return calState.events;
+  const now = new Date();
+  const todayStr = now.toISOString().slice(0, 10);
+  return calState.events.filter(e => {
+    const start = (e.start || '').slice(0, 10);
+    // Include today and future events only
+    return start >= todayStr;
+  });
 }
 
 function calFormatEventTime(event) {
