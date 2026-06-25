@@ -275,9 +275,9 @@ async function calFetchUpcoming(daysAhead = 7) {
 
   const params = new URLSearchParams({
     calendarId:   'primary',
-    timeMin:      now.toISOString(),
+    timeMin:      new Date(now.getFullYear(), now.getMonth(), 1).toISOString(),
     timeMax:      end.toISOString(),
-    maxResults:   20,
+    maxResults:   100,
     singleEvents: 'true',
     orderBy:      'startTime',
   });
