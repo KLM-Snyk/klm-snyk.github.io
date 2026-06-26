@@ -902,6 +902,9 @@ function renderDashboard() {
                 `).join('')}
               </div>
               <div class="dash-card-action" style="margin-top:6px">Open in Workday ${ICONS.arrowRight}</div>
+            ` : slackDigestState.workday && slackDigestState.workday.length === 0 ? `
+              <div class="dash-card-sub" style="margin-top:6px;font-size:11px">No recent Workday notifications</div>
+              <div class="dash-card-action">Open in Workday ${ICONS.arrowRight}</div>
             ` : `
               <div class="dash-card-value">—</div>
               <div class="dash-card-sub">Tasks &amp; actions</div>
