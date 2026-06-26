@@ -605,6 +605,7 @@ function bindSettingEvents() {
     state.prefs.darkMode = darkEl.checked;
     savePrefs(state.prefs);
     applyTheme(state.prefs);
+    renderSettingsPanel();
   });
 
   const startEl = document.getElementById('pref-start');
