@@ -113,7 +113,7 @@ function _calSilentRefresh() {
 
       if (typeof renderDashboard     === 'function') renderDashboard();
       if (typeof renderSettingsPanel === 'function') renderSettingsPanel();
-      if (typeof renderSetupStep      === 'function' && document.getElementById('setup-wizard')?.style.display !== 'none') renderSetupStep();
+      if (typeof renderSetupStep === 'function') { setTimeout(renderSetupStep, 100); }
       // Ensure app is visible after reconnect
       const appEl = document.querySelector('.app');
       if (appEl && appEl.style.display === 'none') {
