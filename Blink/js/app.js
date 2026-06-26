@@ -459,6 +459,13 @@ function renderSettingsPanel() {
             Sign in with Slack
           </a>
         `}
+        <details style="margin-top:12px">
+          <summary style="font-size:12px;color:var(--text-secondary);cursor:pointer">Having trouble? Paste token manually</summary>
+          <div class="cal-input-row" style="margin-top:8px">
+            <input class="cal-client-input" id="slack-manual-token" type="password" placeholder="xoxp-...">
+            <button class="cal-connect-btn" onclick="const t=document.getElementById('slack-manual-token').value.trim();if(t){localStorage.setItem('uyt_slack_token',t);renderSettingsPanel();}">Save</button>
+          </div>
+        </details>
       </div>
     </div>
 
