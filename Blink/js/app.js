@@ -475,39 +475,7 @@ function renderSettingsPanel() {
         </div>
       
     
-    <!-- Slack -->
-    <div class="settings-section">
-      <div class="settings-section-title">Slack</div>
-      ${slackIsConnected() ? `
-        <div class="cal-connect-box">
-          <div class="cal-connected-row">
-            <div class="cal-status-dot"></div>
-            <div class="cal-status-label">Connected</div>
-            <button class="cal-disconnect-btn" onclick="slackDisconnect()">Disconnect</button>
-          </div>
-        </div>
-      ` : `
-        <div class="cal-connect-box">
-          <p>
-            Connect Slack to see your unread thread mentions on the dashboard.
-            You'll need a Slack User OAuth Token —
-            <a href="https://api.slack.com/apps" target="_blank">create a Slack app here</a>,
-            add the scopes <code>channels:read</code>, <code>groups:read</code>,
-            <code>im:read</code>, <code>mpim:read</code>, install it to your workspace,
-            and copy the <strong>User OAuth Token</strong> (starts with <code>xoxp-</code>).
-          </p>
-          <div class="cal-input-row">
-            <input
-              class="cal-client-input"
-              id="slack-token-input"
-              type="password"
-              placeholder="xoxp-your-slack-token"
-              value="">
-            <button class="cal-connect-btn" onclick="slackConnect()">Connect</button>
-          </div>
-        </div>
-      `}
-    </div>
+    
 
     <!-- Google Calendar -->
     <div class="settings-section">
