@@ -2684,3 +2684,32 @@ html, body {
 button, a.setup-btn-primary, a.cal-connect-btn {
   transition: opacity 0.1s, transform 0.1s;
 }
+
+/* Weeping Angel refresh button */
+@keyframes angelPulse {
+  0%   { opacity: 0.15; transform: scale(0.95); }
+  50%  { opacity: 1;    transform: scale(1.05); }
+  100% { opacity: 0.15; transform: scale(0.95); }
+}
+
+.icon-btn.tardis-refresh img {
+  opacity: 0.25;
+  transition: opacity 0.3s;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.icon-btn.tardis-refresh:hover img {
+  opacity: 0.8;
+}
+
+.icon-btn.refreshing img {
+  animation: angelPulse 1.2s ease-in-out infinite;
+  opacity: 1;
+}
+
+.icon-btn:active {
+  background: var(--border) !important;
+  opacity: 0.7;
+  transform: scale(0.9);
+}
