@@ -150,8 +150,9 @@ async function refreshApp() {
   // Show spinning state on refresh buttons + Weeping Angel overlay
   document.querySelectorAll('.icon-btn[onclick*="refreshApp"]').forEach(b => b.classList.add('refreshing'));
   const angelOverlay = document.getElementById('angel-overlay');
-  const _tardis = state.prefs?.tardisBackground || localStorage.getItem('uyt_work_prefs') && JSON.parse(localStorage.getItem('uyt_work_prefs'))?.tardisBackground || 'none';
-  const isWhovian = ['tardis', 'interior', 'tally'].includes(_tardis);
+  const _tardis = state.prefs?.tardisBackground || 'none';
+  const _isDark = state.prefs?.darkMode && state.prefs?.colorScheme === 'modern';
+  const isWhovian = _isDark && ['tardis', 'interior', 'tally'].includes(_tardis);
   if (angelOverlay && isWhovian) angelOverlay.classList.add('active');
   calState.driveLoading = true;
   renderDashboard();
