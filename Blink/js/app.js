@@ -876,7 +876,7 @@ function renderDashboard() {
               <div class="dash-card-title">Cases</div>
             </div>
             <div class="dash-card-value">—</div>
-            <div class="dash-card-sub">Platinum &amp; Gold open cases</div>
+            <div class="dash-card-sub">Your open cases</div>
             <div class="dash-card-action">Open in Salesforce ${ICONS.arrowRight}</div>
           </div>
 
@@ -1606,9 +1606,9 @@ function renderSetupStep() {
           'Open Slack Token Page ↗' +
         '</a>' +
         '<div class="setup-steps-list">' +
-          '<div class="setup-step-item"><div class="setup-step-num">1</div><div>Click the button above — it opens the Slack token page in a new tab</div></div>' +
-          '<div class="setup-step-item"><div class="setup-step-num">2</div><div>Scroll to <strong>User OAuth Token</strong> and copy it — starts with <code style="background:var(--surface);padding:2px 6px;border-radius:4px;font-size:11px">xoxp-</code></div></div>' +
-          '<div class="setup-step-item"><div class="setup-step-num">3</div><div>Come back here, paste it below, and click <strong>Save</strong></div></div>' +
+          '<div class="setup-step-item"><div class="setup-step-num">1</div><div>Click the button above to open the Slack token page</div></div>' +
+          '<div class="setup-step-item"><div class="setup-step-num">2</div><div>If you see <em>contact a collaborator</em> — click <strong>Back to My Apps</strong>, then <strong>Generate Token</strong> and select the Snyk workspace</div></div>' +
+          '<div class="setup-step-item"><div class="setup-step-num">3</div><div>Copy the token (starts with <code style="background:var(--surface);padding:2px 6px;border-radius:4px;font-size:11px">xoxe.xoxp-</code>) — paste it below and click <strong>Save</strong></div></div>' +
         '</div>' +
       '</div>' +
       '<div class="cal-input-row" style="margin-top:16px">' +
