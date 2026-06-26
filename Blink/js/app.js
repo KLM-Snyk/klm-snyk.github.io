@@ -735,6 +735,7 @@ const slackDigestState = {
   asOf: localStorage.getItem('uyt_digest_asof') || null,
   counts: JSON.parse(localStorage.getItem('uyt_digest_counts') || '{"people":0,"work":0,"incidents":0}'),
   handover: JSON.parse(localStorage.getItem('uyt_digest_handover') || 'null'),
+  workday: JSON.parse(localStorage.getItem('uyt_digest_workday') || 'null'),
 };
 
 async function fetchSlackDigest() {
@@ -760,6 +761,8 @@ async function fetchSlackDigest() {
     const data = await res.json();
     const digestHtml = data.html || '';
     slackDigestState.handover = data.handover || null;
+    slackDigestState.workday = data.workday || null;
+    localStorage.setItem('uyt_digest_workday', JSON.stringify(slackDigestState.workday));
     slackDigestState.html = digestHtml || '<div class="digest-empty">No results</div>';
     slackDigestState.error = null;
     slackDigestState.asOf = new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
@@ -914,9 +917,21 @@ function renderDashboard() {
               </div>
               <div class="dash-card-title">Workday</div>
             </div>
-            <div class="dash-card-value">—</div>
-            <div class="dash-card-sub">Tasks &amp; actions</div>
-            <div class="dash-card-action">Open in Workday ${ICONS.arrowRight}</div>
+            ${slackDigestState.workday && slackDigestState.workday.length > 0 ? `
+              <div style="margin-top:6px;display:flex;flex-direction:column;gap:4px;max-height:120px;overflow-y:auto">
+                ${slackDigestState.workday.slice(0,5).map(w => `
+                  <div style="font-size:12px;display:flex;gap:6px;align-items:baseline">
+                    <span style="color:var(--text-secondary);flex-shrink:0">${escHtml(w.time)}</span>
+                    <span style="color:var(--text)">${renderSlackText(w.text.slice(0,80))}${w.text.length>80?'…':''}</span>
+                  </div>
+                `).join('')}
+              </div>
+              <div class="dash-card-action" style="margin-top:6px">Open in Workday ${ICONS.arrowRight}</div>
+            ` : `
+              <div class="dash-card-value">—</div>
+              <div class="dash-card-sub">Tasks &amp; actions</div>
+              <div class="dash-card-action">Open in Workday ${ICONS.arrowRight}</div>
+            `}
           </div>
 
           <div class="dash-card" onclick="window.open(localStorage.getItem('uyt_salesforce_url') || 'https://salesforce.com','_blank')">
