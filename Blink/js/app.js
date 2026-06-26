@@ -445,7 +445,7 @@ function renderSettingsPanel() {
           <button class="cal-connect-btn" style="margin-top:10px;background:none;border:1.5px solid var(--border);color:var(--text)" onclick="localStorage.removeItem('uyt_slack_token');renderSettingsPanel()">Disconnect</button>
         ` : `
           <p>Sign in with Slack to enable the digest. Uses your existing SSO — no passwords needed.</p>
-          <a href="https://uyt-slack-digest.kar-marsten.workers.dev/oauth/start" class="cal-connect-btn" style="display:inline-flex;align-items:center;gap:8px;text-decoration:none;color:white">
+          <a href="#" onclick="triggerSlackOAuth();return false;" class="cal-connect-btn" style="display:inline-flex;align-items:center;gap:8px;text-decoration:none;color:white">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14.5 10c-.83 0-1.5-.67-1.5-1.5v-5c0-.83.67-1.5 1.5-1.5s1.5.67 1.5 1.5v5c0 .83-.67 1.5-1.5 1.5z"/><path d="M20.5 10H19V8.5c0-.83.67-1.5 1.5-1.5s1.5.67 1.5 1.5-.67 1.5-1.5 1.5z"/><path d="M9.5 14c.83 0 1.5.67 1.5 1.5v5c0 .83-.67 1.5-1.5 1.5S8 21.33 8 20.5v-5c0-.83.67-1.5 1.5-1.5z"/><path d="M3.5 14H5v1.5c0 .83-.67 1.5-1.5 1.5S2 16.33 2 15.5 2.67 14 3.5 14z"/><path d="M14 14.5c0-.83.67-1.5 1.5-1.5h5c.83 0 1.5.67 1.5 1.5s-.67 1.5-1.5 1.5h-5c-.83 0-1.5-.67-1.5-1.5z"/><path d="M15.5 19H14v1.5c0 .83.67 1.5 1.5 1.5s1.5-.67 1.5-1.5-.67-1.5-1.5-1.5z"/><path d="M10 9.5C10 8.67 9.33 8 8.5 8h-5C2.67 8 2 8.67 2 9.5S2.67 11 3.5 11h5c.83 0 1.5-.67 1.5-1.5z"/><path d="M8.5 5H10V3.5C10 2.67 9.33 2 8.5 2S7 2.67 7 3.5 7.67 5 8.5 5z"/></svg>
             Sign in with Slack
           </a>
@@ -666,9 +666,40 @@ function saveSlackToken() {
 }
 
 function triggerSlackOAuth() {
-  // Store current page so we can return after Slack OAuth
-  localStorage.setItem('uyt_pre_oauth_state', 'connected');
-  window.location.href = 'https://uyt-slack-digest.kar-marsten.workers.dev/oauth/start';
+  const width = 600, height = 700;
+  const left = Math.round(window.screenX + (window.outerWidth - width) / 2);
+  const top = Math.round(window.screenY + (window.outerHeight - height) / 2);
+  const popup = window.open(
+    'https://uyt-slack-digest.kar-marsten.workers.dev/oauth/start',
+    'slack-oauth',
+    'width=' + width + ',height=' + height + ',left=' + left + ',top=' + top + ',toolbar=no,menubar=no'
+  );
+
+  // Listen for postMessage from popup
+  function _handleSlackMessage(event) {
+    if (event.origin !== 'https://klm-snyk.github.io') return;
+    if (event.data?.type === 'slack-token' && event.data.token) {
+      localStorage.setItem('uyt_slack_token', event.data.token);
+      window.removeEventListener('message', _handleSlackMessage);
+      if (popup && !popup.closed) popup.close();
+      if (typeof renderSetupStep === 'function') renderSetupStep();
+      if (typeof renderSettingsPanel === 'function') renderSettingsPanel();
+      if (typeof renderDashboard === 'function') renderDashboard();
+    }
+  }
+  window.addEventListener('message', _handleSlackMessage);
+
+  // Also poll for popup close as fallback
+  const poll = setInterval(function() {
+    if (popup.closed) {
+      clearInterval(poll);
+      if (localStorage.getItem('uyt_slack_token')) {
+        if (typeof renderSetupStep === 'function') renderSetupStep();
+        if (typeof renderSettingsPanel === 'function') renderSettingsPanel();
+        if (typeof renderDashboard === 'function') renderDashboard();
+      }
+    }
+  }, 500);
 }
 
 function setTardis(value) {
@@ -1618,7 +1649,7 @@ function renderSetupStep() {
       '<p class="setup-desc">Blink reads your Slack channels to build a daily digest. Here\'s how to get your token:</p>' +
       '<div class="setup-step-cta">' +
         '<p style="margin:0 0 12px;font-size:13px;color:var(--text)">Sign in with your Slack account to give Blink access to your channels. It uses your existing SSO — no passwords needed.</p>' +
-        '<a href="https://uyt-slack-digest.kar-marsten.workers.dev/oauth/start" class="setup-btn-primary" style="display:inline-flex;align-items:center;gap:8px;text-decoration:none;margin-bottom:16px">' +
+        '<a href="#" onclick="triggerSlackOAuth();return false;" class="setup-btn-primary" style="display:inline-flex;align-items:center;gap:8px;text-decoration:none;margin-bottom:16px">' +
           '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14.5 10c-.83 0-1.5-.67-1.5-1.5v-5c0-.83.67-1.5 1.5-1.5s1.5.67 1.5 1.5v5c0 .83-.67 1.5-1.5 1.5z"/><path d="M20.5 10H19V8.5c0-.83.67-1.5 1.5-1.5s1.5.67 1.5 1.5-.67 1.5-1.5 1.5z"/><path d="M9.5 14c.83 0 1.5.67 1.5 1.5v5c0 .83-.67 1.5-1.5 1.5S8 21.33 8 20.5v-5c0-.83.67-1.5 1.5-1.5z"/><path d="M3.5 14H5v1.5c0 .83-.67 1.5-1.5 1.5S2 16.33 2 15.5 2.67 14 3.5 14z"/><path d="M14 14.5c0-.83.67-1.5 1.5-1.5h5c.83 0 1.5.67 1.5 1.5s-.67 1.5-1.5 1.5h-5c-.83 0-1.5-.67-1.5-1.5z"/><path d="M15.5 19H14v1.5c0 .83.67 1.5 1.5 1.5s1.5-.67 1.5-1.5-.67-1.5-1.5-1.5z"/><path d="M10 9.5C10 8.67 9.33 8 8.5 8h-5C2.67 8 2 8.67 2 9.5S2.67 11 3.5 11h5c.83 0 1.5-.67 1.5-1.5z"/><path d="M8.5 5H10V3.5C10 2.67 9.33 2 8.5 2S7 2.67 7 3.5 7.67 5 8.5 5z"/></svg>' +
           'Sign in with Slack ↗' +
         '</a>' +
@@ -1776,8 +1807,19 @@ document.addEventListener('DOMContentLoaded', async () => {
   if (plannerNext)  plannerNext.addEventListener('click', () => plannerChangeDay(1));
   if (plannerToday) plannerToday.addEventListener('click', plannerGoToday);
 
+  // If this is a popup window returning from Slack OAuth, notify parent and close
+  if (window.opener && window.location.hash.includes('slack-token=')) {
+    const params = new URLSearchParams(window.location.hash.slice(1));
+    const token = params.get('slack-token');
+    if (token) {
+      window.opener.postMessage({ type: 'slack-token', token: token }, 'https://klm-snyk.github.io');
+      window.close();
+    }
+  }
+
   // Handle Slack OAuth callback — token arrives in URL fragment
   const hash = window.location.hash;
+  let _returnedFromSlackOAuth = false;
   if (hash.includes('slack-token=')) {
     const params = new URLSearchParams(hash.slice(1));
     const token = params.get('slack-token');
@@ -1785,6 +1827,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       localStorage.setItem('uyt_slack_token', token);
       localStorage.removeItem('uyt_pre_oauth_state');
       window.history.replaceState(null, '', window.location.pathname);
+      _returnedFromSlackOAuth = true;
     }
   }
   if (hash.includes('slack-error=')) {
@@ -1792,10 +1835,16 @@ document.addEventListener('DOMContentLoaded', async () => {
     console.warn('Slack OAuth error:', params.get('slack-error'));
     localStorage.removeItem('uyt_pre_oauth_state');
     window.history.replaceState(null, '', window.location.pathname);
+    _returnedFromSlackOAuth = true;
   }
 
   if (!isSetupComplete()) {
     startSetup();
+    // If returning from Slack OAuth, jump to tools step
+    if (_returnedFromSlackOAuth) {
+      setupStep = setupSteps.indexOf('tools');
+      renderSetupStep();
+    }
   } else {
     document.querySelector('.app').style.display = 'flex';
     navigate('dashboard');
