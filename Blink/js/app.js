@@ -1599,6 +1599,15 @@ function renderSetupStep() {
         '<button class="setup-btn-ghost" onclick="setupNext()">Skip for now</button>' +
         (connected ? '<button class="setup-btn-primary" onclick="setupNext()">Next →</button>' : '') +
       '</div>';
+    // Poll until Google connects then auto-advance
+    if (!calIsConnected()) {
+      const _poll = setInterval(function() {
+        if (calIsConnected()) {
+          clearInterval(_poll);
+          setTimeout(function() { setupNext(); }, 800);
+        }
+      }, 500);
+    }
   }
 
   else if (step === 'slack') {
