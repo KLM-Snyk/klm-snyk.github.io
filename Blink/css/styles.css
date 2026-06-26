@@ -2688,8 +2688,8 @@ button, a.setup-btn-primary, a.cal-connect-btn {
 /* Weeping Angel loading overlay */
 @keyframes angelFade {
   0%   { opacity: 0; }
-  20%  { opacity: 0.85; }
-  80%  { opacity: 0.85; }
+  30%  { opacity: 0.75; }
+  70%  { opacity: 0.75; }
   100% { opacity: 0; }
 }
 
@@ -2698,7 +2698,7 @@ button, a.setup-btn-primary, a.cal-connect-btn {
 }
 
 #angel-overlay.active #angel-img {
-  animation: angelFade 1.5s ease-in-out infinite;
+  animation: angelFade 3s ease-in-out infinite;
 }
 
 /* Refresh button spin */
