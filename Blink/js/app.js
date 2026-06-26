@@ -440,14 +440,16 @@ function renderSettingsPanel() {
     <div class="settings-section">
       <div class="settings-section-title">Slack</div>
       <div class="cal-connect-box">
-        <p>Your Slack User OAuth Token (xoxp-...) — stored locally, used to read your channels for the digest.</p>
-        <div class="cal-input-row">
-          <input class="cal-client-input" id="slack-token-settings" type="password"
-            placeholder="xoxp-..."
-            value="${escHtml(localStorage.getItem('uyt_slack_token') || '')}">
-          <button class="cal-connect-btn" onclick="saveSlackToken()">Save</button>
-        </div>
-        ${localStorage.getItem('uyt_slack_token') ? `<div style="font-size:12px;color:var(--primary);margin-top:6px;font-weight:600">✓ Token saved</div>` : ''}
+        ${localStorage.getItem('uyt_slack_token') ? `
+          <div class="setup-connected-badge">✓ Connected to Slack</div>
+          <button class="cal-connect-btn" style="margin-top:10px;background:none;border:1.5px solid var(--border);color:var(--text)" onclick="localStorage.removeItem('uyt_slack_token');renderSettingsPanel()">Disconnect</button>
+        ` : `
+          <p>Sign in with Slack to enable the digest. Uses your existing SSO — no passwords needed.</p>
+          <a href="https://uyt-slack-digest.kar-marsten.workers.dev/oauth/start" class="cal-connect-btn" style="display:inline-flex;align-items:center;gap:8px;text-decoration:none">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14.5 10c-.83 0-1.5-.67-1.5-1.5v-5c0-.83.67-1.5 1.5-1.5s1.5.67 1.5 1.5v5c0 .83-.67 1.5-1.5 1.5z"/><path d="M20.5 10H19V8.5c0-.83.67-1.5 1.5-1.5s1.5.67 1.5 1.5-.67 1.5-1.5 1.5z"/><path d="M9.5 14c.83 0 1.5.67 1.5 1.5v5c0 .83-.67 1.5-1.5 1.5S8 21.33 8 20.5v-5c0-.83.67-1.5 1.5-1.5z"/><path d="M3.5 14H5v1.5c0 .83-.67 1.5-1.5 1.5S2 16.33 2 15.5 2.67 14 3.5 14z"/><path d="M14 14.5c0-.83.67-1.5 1.5-1.5h5c.83 0 1.5.67 1.5 1.5s-.67 1.5-1.5 1.5h-5c-.83 0-1.5-.67-1.5-1.5z"/><path d="M15.5 19H14v1.5c0 .83.67 1.5 1.5 1.5s1.5-.67 1.5-1.5-.67-1.5-1.5-1.5z"/><path d="M10 9.5C10 8.67 9.33 8 8.5 8h-5C2.67 8 2 8.67 2 9.5S2.67 11 3.5 11h5c.83 0 1.5-.67 1.5-1.5z"/><path d="M8.5 5H10V3.5C10 2.67 9.33 2 8.5 2S7 2.67 7 3.5 7.67 5 8.5 5z"/></svg>
+            Sign in with Slack
+          </a>
+        `}
       </div>
     </div>
 
@@ -1600,10 +1602,10 @@ function renderSetupStep() {
       '<h1 class="setup-title">Step 2: Connect Slack</h1>' +
       '<p class="setup-desc">Blink reads your Slack channels to build a daily digest. Here\'s how to get your token:</p>' +
       '<div class="setup-step-cta">' +
-        '<p style="margin:0 0 12px;font-size:13px;color:var(--text)">Blink needs your personal Slack token to read only the channels <strong>you</strong> are already a member of. Your token stays on your device.</p>' +
-        '<a href="https://api.slack.com/apps/A0BAVHH5YK1/oauth" target="_blank" class="setup-btn-primary" style="display:inline-flex;align-items:center;gap:8px;text-decoration:none;margin-bottom:16px">' +
+        '<p style="margin:0 0 12px;font-size:13px;color:var(--text)">Sign in with your Slack account to give Blink access to your channels. It uses your existing SSO — no passwords needed.</p>' +
+        '<a href="https://uyt-slack-digest.kar-marsten.workers.dev/oauth/start" class="setup-btn-primary" style="display:inline-flex;align-items:center;gap:8px;text-decoration:none;margin-bottom:16px">' +
           '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14.5 10c-.83 0-1.5-.67-1.5-1.5v-5c0-.83.67-1.5 1.5-1.5s1.5.67 1.5 1.5v5c0 .83-.67 1.5-1.5 1.5z"/><path d="M20.5 10H19V8.5c0-.83.67-1.5 1.5-1.5s1.5.67 1.5 1.5-.67 1.5-1.5 1.5z"/><path d="M9.5 14c.83 0 1.5.67 1.5 1.5v5c0 .83-.67 1.5-1.5 1.5S8 21.33 8 20.5v-5c0-.83.67-1.5 1.5-1.5z"/><path d="M3.5 14H5v1.5c0 .83-.67 1.5-1.5 1.5S2 16.33 2 15.5 2.67 14 3.5 14z"/><path d="M14 14.5c0-.83.67-1.5 1.5-1.5h5c.83 0 1.5.67 1.5 1.5s-.67 1.5-1.5 1.5h-5c-.83 0-1.5-.67-1.5-1.5z"/><path d="M15.5 19H14v1.5c0 .83.67 1.5 1.5 1.5s1.5-.67 1.5-1.5-.67-1.5-1.5-1.5z"/><path d="M10 9.5C10 8.67 9.33 8 8.5 8h-5C2.67 8 2 8.67 2 9.5S2.67 11 3.5 11h5c.83 0 1.5-.67 1.5-1.5z"/><path d="M8.5 5H10V3.5C10 2.67 9.33 2 8.5 2S7 2.67 7 3.5 7.67 5 8.5 5z"/></svg>' +
-          'Open Slack Token Page ↗' +
+          'Sign in with Slack ↗' +
         '</a>' +
         '<div class="setup-steps-list">' +
           '<div class="setup-step-item"><div class="setup-step-num">1</div><div>Click the button above to open the Slack token page</div></div>' +
@@ -1758,6 +1760,22 @@ document.addEventListener('DOMContentLoaded', async () => {
   if (plannerPrev)  plannerPrev.addEventListener('click', () => plannerChangeDay(-1));
   if (plannerNext)  plannerNext.addEventListener('click', () => plannerChangeDay(1));
   if (plannerToday) plannerToday.addEventListener('click', plannerGoToday);
+
+  // Handle Slack OAuth callback — token arrives in URL fragment
+  const hash = window.location.hash;
+  if (hash.includes('slack-token=')) {
+    const params = new URLSearchParams(hash.slice(1));
+    const token = params.get('slack-token');
+    if (token) {
+      localStorage.setItem('uyt_slack_token', token);
+      window.history.replaceState(null, '', window.location.pathname);
+    }
+  }
+  if (hash.includes('slack-error=')) {
+    const params = new URLSearchParams(hash.slice(1));
+    console.warn('Slack OAuth error:', params.get('slack-error'));
+    window.history.replaceState(null, '', window.location.pathname);
+  }
 
   if (!isSetupComplete()) {
     startSetup();
