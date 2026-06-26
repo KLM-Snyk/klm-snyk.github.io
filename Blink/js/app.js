@@ -1654,16 +1654,12 @@ function renderSetupStep() {
           'Sign in with Slack ↗' +
         '</a>' +
         '<div class="setup-steps-list">' +
-          '<div class="setup-step-item"><div class="setup-step-num">1</div><div>Click the button above to open the Slack token page</div></div>' +
-          '<div class="setup-step-item"><div class="setup-step-num">2</div><div>If you see <em>contact a collaborator</em> — click <strong>Back to My Apps</strong>, then <strong>Generate Token</strong> and select the Snyk workspace</div></div>' +
-          '<div class="setup-step-item"><div class="setup-step-num">3</div><div>Copy the token (starts with <code style="background:var(--surface);padding:2px 6px;border-radius:4px;font-size:11px">xoxe.xoxp-</code>) — paste it below and click <strong>Save</strong></div></div>' +
+          '<div class="setup-step-item"><div class="setup-step-num">1</div><div>Click <strong>Sign in with Slack</strong> above</div></div>' +
+          '<div class="setup-step-item"><div class="setup-step-num">2</div><div>A popup will open — sign in with your Snyk Slack account (SSO)</div></div>' +
+          '<div class="setup-step-item"><div class="setup-step-num">3</div><div>Approve access — the popup closes automatically and you are connected</div></div>' +
         '</div>' +
       '</div>' +
-      '<div class="cal-input-row" style="margin-top:16px">' +
-        '<input class="cal-client-input" id="setup-slack-token" type="password" placeholder="xoxp-..." value="' + savedToken + '">' +
-        '<button class="cal-connect-btn" onclick="setupSaveSlackToken()">Save</button>' +
-      '</div>' +
-      (hasToken ? '<div class="setup-connected-badge" style="margin-top:8px">✓ Slack token saved</div>' : '') +
+            (hasToken ? '<div class="setup-connected-badge" style="margin-top:8px">✓ Slack token saved</div>' : '') +
       '<div class="setup-actions">' +
         '<button class="setup-btn-ghost" onclick="setupBack()">← Back</button>' +
         '<button class="setup-btn-ghost" onclick="setupNext()">Skip for now</button>' +
