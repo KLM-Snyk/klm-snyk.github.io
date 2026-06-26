@@ -114,6 +114,12 @@ function _calSilentRefresh() {
       if (typeof renderDashboard     === 'function') renderDashboard();
       if (typeof renderSettingsPanel === 'function') renderSettingsPanel();
       if (typeof renderSetupStep      === 'function' && document.getElementById('setup-wizard')?.style.display !== 'none') renderSetupStep();
+      // Ensure app is visible after reconnect
+      const appEl = document.querySelector('.app');
+      if (appEl && appEl.style.display === 'none') {
+        appEl.style.display = 'flex';
+        if (typeof navigate === 'function') navigate('dashboard');
+      }
     },
   });
   tokenClient.requestAccessToken({ prompt: '' });
