@@ -147,6 +147,11 @@ function navigate(screen) {
 
 async function refreshApp() {
   if (!calIsConnected()) return;
+  // Show spinning state on refresh buttons + Weeping Angel overlay
+  document.querySelectorAll('.icon-btn[onclick*="refreshApp"]').forEach(b => b.classList.add('refreshing'));
+  const angelOverlay = document.getElementById('angel-overlay');
+  const isWhovian = ['tardis', 'interior', 'tally'].includes(state.prefs.tardisBackground);
+  if (angelOverlay && isWhovian) angelOverlay.classList.add('active');
   calState.driveLoading = true;
   renderDashboard();
   if (state.screen === 'calendar') renderCalendar();
@@ -163,6 +168,8 @@ async function refreshApp() {
   ]);
   await calFetchDriveMentions();
   calState.driveLoading = false;
+  document.querySelectorAll('.icon-btn[onclick*="refreshApp"]').forEach(b => b.classList.remove('refreshing'));
+  if (angelOverlay) angelOverlay.classList.remove('active');
 
   renderDashboard();
   if (state.screen === 'calendar') renderCalendar();
@@ -368,7 +375,7 @@ function renderSettingsPanel() {
       </div>
       ${(p.darkMode === true || p.darkMode === 'true') && p.colorScheme === 'modern' ? `
       <div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border)">
-        <div class="settings-label" style="margin-bottom:8px;font-size:12px;color:var(--text-secondary)">🎭 Easter egg backgrounds</div>
+        <div class="settings-label" style="margin-bottom:8px;font-size:12px;color:var(--text-secondary)">🌀 Whovian</div>
         <div style="display:flex;gap:8px;flex-wrap:wrap">
           <button onclick="setTardis('none')" class="tardis-btn ${p.tardisBackground === 'none' || !p.tardisBackground ? 'active' : ''}">None</button>
           <button onclick="setTardis('tardis')" class="tardis-btn ${p.tardisBackground === 'tardis' ? 'active' : ''}">Tardis</button>

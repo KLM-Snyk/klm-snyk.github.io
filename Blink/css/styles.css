@@ -2685,27 +2685,30 @@ button, a.setup-btn-primary, a.cal-connect-btn {
   transition: opacity 0.1s, transform 0.1s;
 }
 
-/* Weeping Angel refresh button */
-@keyframes angelPulse {
-  0%   { opacity: 0.15; transform: scale(0.95); }
-  50%  { opacity: 1;    transform: scale(1.05); }
-  100% { opacity: 0.15; transform: scale(0.95); }
+/* Weeping Angel loading overlay */
+@keyframes angelFade {
+  0%   { opacity: 0; }
+  20%  { opacity: 0.85; }
+  80%  { opacity: 0.85; }
+  100% { opacity: 0; }
 }
 
-.icon-btn.tardis-refresh img {
-  opacity: 0.25;
-  transition: opacity 0.3s;
-  border-radius: 50%;
-  object-fit: cover;
+#angel-overlay.active {
+  display: flex !important;
 }
 
-.icon-btn.tardis-refresh:hover img {
-  opacity: 0.8;
+#angel-overlay.active #angel-img {
+  animation: angelFade 1.5s ease-in-out infinite;
 }
 
-.icon-btn.refreshing img {
-  animation: angelPulse 1.2s ease-in-out infinite;
-  opacity: 1;
+/* Refresh button spin */
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
+.icon-btn.refreshing svg {
+  animation: spin 1s linear infinite;
 }
 
 .icon-btn:active {

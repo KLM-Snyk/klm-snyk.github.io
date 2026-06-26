@@ -86,8 +86,8 @@
     <div class="screen-header">
       <h2>Dashboard</h2>
       <div class="header-actions">
-        <button class="icon-btn tardis-refresh" onclick="refreshApp()" title="Refresh" style="padding:2px">
-          <img src="angel.webp" alt="refresh" style="width:22px;height:22px;border-radius:50%;display:block;object-fit:cover">
+        <button class="icon-btn" onclick="refreshApp()" title="Refresh">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 11-2.12-9.36L23 10"/></svg>
         </button>
         <button class="icon-btn" id="about-btn-dashboard" onclick="openAbout()" title="About">
           <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
@@ -129,8 +129,8 @@
     <div class="screen-header">
       <h2>Drive</h2>
       <div class="header-actions">
-        <button class="icon-btn tardis-refresh" onclick="refreshApp()" title="Refresh" style="padding:2px">
-          <img src="angel.webp" alt="refresh" style="width:22px;height:22px;border-radius:50%;display:block;object-fit:cover">
+        <button class="icon-btn" onclick="refreshApp()" title="Refresh">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 11-2.12-9.36L23 10"/></svg>
         </button>
         <button class="icon-btn" onclick="openAbout()" title="About">
           <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
@@ -153,8 +153,8 @@
     <div class="screen-header">
       <h2>Calendar</h2>
       <div class="header-actions">
-        <button class="icon-btn tardis-refresh" onclick="refreshApp()" title="Refresh" style="padding:2px">
-          <img src="angel.webp" alt="refresh" style="width:22px;height:22px;border-radius:50%;display:block;object-fit:cover">
+        <button class="icon-btn" onclick="refreshApp()" title="Refresh">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 11-2.12-9.36L23 10"/></svg>
         </button>
         <button class="icon-btn" onclick="openAbout()" title="About">
           <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
@@ -175,8 +175,8 @@
     <div class="screen-header">
       <h2>Cases</h2>
       <div class="header-actions">
-        <button class="icon-btn tardis-refresh" onclick="refreshApp()" title="Refresh" style="padding:2px">
-          <img src="angel.webp" alt="refresh" style="width:22px;height:22px;border-radius:50%;display:block;object-fit:cover">
+        <button class="icon-btn" onclick="refreshApp()" title="Refresh">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 11-2.12-9.36L23 10"/></svg>
         </button>
         <button class="icon-btn" onclick="openAbout()" title="About">
           <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
@@ -280,10 +280,15 @@
   </div>
 </div>
 
-<script src="js/preferences.js?v=13.3"></script>
-<script src="js/calendar.js?v=13.3"></script>
-<script src="js/slack.js?v=13.3"></script>
-<script src="js/app.js?v=13.3"></script>
+<!-- Weeping Angel loading overlay -->
+<div id="angel-overlay" style="display:none;position:fixed;inset:0;z-index:9999;pointer-events:none;align-items:center;justify-content:center">
+  <img src="angel.webp" id="angel-img" alt="" style="max-height:70vh;max-width:60vw;object-fit:contain;opacity:0;transition:opacity 0.4s">
+</div>
+
+<script src="js/preferences.js?v=13.6"></script>
+<script src="js/calendar.js?v=13.6"></script>
+<script src="js/slack.js?v=13.6"></script>
+<script src="js/app.js?v=13.6"></script>
 
 </body>
 </html>
