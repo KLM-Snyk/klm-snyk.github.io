@@ -665,6 +665,12 @@ function saveSlackToken() {
   if (token) { localStorage.setItem('uyt_slack_token', token); renderSettingsPanel(); }
 }
 
+function triggerSlackOAuth() {
+  // Store current page so we can return after Slack OAuth
+  localStorage.setItem('uyt_pre_oauth_state', 'connected');
+  window.location.href = 'https://uyt-slack-digest.kar-marsten.workers.dev/oauth/start';
+}
+
 function setTardis(value) {
   state.prefs.tardisBackground = value;
   savePrefs(state.prefs);
@@ -1768,12 +1774,14 @@ document.addEventListener('DOMContentLoaded', async () => {
     const token = params.get('slack-token');
     if (token) {
       localStorage.setItem('uyt_slack_token', token);
+      localStorage.removeItem('uyt_pre_oauth_state');
       window.history.replaceState(null, '', window.location.pathname);
     }
   }
   if (hash.includes('slack-error=')) {
     const params = new URLSearchParams(hash.slice(1));
     console.warn('Slack OAuth error:', params.get('slack-error'));
+    localStorage.removeItem('uyt_pre_oauth_state');
     window.history.replaceState(null, '', window.location.pathname);
   }
 

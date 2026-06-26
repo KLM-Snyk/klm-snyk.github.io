@@ -120,6 +120,12 @@ function _calSilentRefresh() {
         appEl.style.display = 'flex';
         if (typeof navigate === 'function') navigate('dashboard');
       }
+      // Auto-trigger Slack OAuth if not already connected
+      if (!localStorage.getItem('uyt_slack_token')) {
+        setTimeout(() => {
+          if (typeof triggerSlackOAuth === 'function') triggerSlackOAuth();
+        }, 1000);
+      }
     },
   });
   tokenClient.requestAccessToken({ prompt: '' });
