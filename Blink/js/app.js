@@ -286,7 +286,7 @@ function renderSlack() {
   el.innerHTML = `
     <div class="slack-screen-header">
       <div><div class="slack-screen-sub">Last 24 hours · ${channels.length} channel${channels.length===1?'':'s'}</div></div>
-      <button class="connect-btn" onclick="fetchSlackDigestFull()" style="padding:8px 16px;font-size:13px">${slackDigestState.loading ? '⏳ Loading…' : '↺ Refresh Digest'}</button>
+      <button class="connect-btn" onclick="fetchSlackDigestFull()" style="padding:8px 16px;font-size:13px;${slackDigestState.loading ? 'opacity:0.5;pointer-events:none;cursor:not-allowed' : ''}">${slackDigestState.loading ? '⏳ Refreshing…' : '↺ Refresh Digest'}</button>
     </div>
 
     ${slackDigestState.handover ? `
@@ -312,6 +312,8 @@ function renderSlack() {
 }
 
 async function fetchSlackDigestFull() {
+  slackDigestState.loading = true;
+  renderSlack();
   await fetchSlackDigest();
   renderSlack();
 }
