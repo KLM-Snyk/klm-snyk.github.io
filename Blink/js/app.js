@@ -314,7 +314,15 @@ function renderSlack() {
 async function fetchSlackDigestFull() {
   slackDigestState.loading = true;
   renderSlack();
+  // Show angel overlay if Whovian background is active
+  const _angelOverlay = document.getElementById('angel-overlay');
+  const _tardis = state.prefs?.tardisBackground || 'none';
+  const _isDark = state.prefs?.darkMode && state.prefs?.colorScheme === 'modern';
+  if (_angelOverlay && _isDark && ['tardis', 'interior', 'tally'].includes(_tardis)) {
+    _angelOverlay.classList.add('active');
+  }
   await fetchSlackDigest();
+  if (_angelOverlay) _angelOverlay.classList.remove('active');
   renderSlack();
 }
 
