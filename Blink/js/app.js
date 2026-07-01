@@ -365,6 +365,11 @@ async function fetchMailMessages() {
   mailState.loading = true;
   mailState.error = null;
   renderMail();
+  // Show Weeping Angel if Whovian background active
+  const _mailAngel = document.getElementById('angel-overlay');
+  const _mailTardis = state.prefs?.tardisBackground || 'none';
+  const _mailDark = state.prefs?.darkMode && state.prefs?.colorScheme === 'modern';
+  if (_mailAngel && _mailDark && ['tardis','interior','tally'].includes(_mailTardis)) _mailAngel.classList.add('active');
   try {
     const excluded = getGmailExcluded();
     const exclusionClause = excluded.length ? ' ' + excluded.map(id => '-label:' + id).join(' ') : '';
@@ -425,6 +430,7 @@ async function fetchMailMessages() {
     mailState.error = e.message;
   } finally {
     mailState.loading = false;
+    if (_mailAngel) _mailAngel.classList.remove('active');
     renderMail();
   }
 }
@@ -541,8 +547,8 @@ function renderMail() {
     const labelName = mailGetLabelName(lid);
     const badge = unreadCount > 0 ? ' <span class="mail-label-badge">' + unreadCount + ' unread</span>' : '';
     const toggle = isExpanded
-      ? '<button class="mail-label-toggle" onclick="mailToggle(' + JSON.stringify(lid) + ',false)">▾</button>'
-      : '<button class="mail-label-toggle" onclick="mailToggle(' + JSON.stringify(lid) + ',true)">▸</button>';
+      ? '<button class="mail-label-toggle" onclick="mailToggle(\'' + lid.replace(/'/g,'') + '\',false)">▾</button>'
+      : '<button class="mail-label-toggle" onclick="mailToggle(\'' + lid.replace(/'/g,'') + '\',true)">▸</button>';
     const colHeader = isExpanded
       ? '<div class="mail-col-header"><span>Date</span><span>Sender</span><span>Subject</span></div>'
       : '';
