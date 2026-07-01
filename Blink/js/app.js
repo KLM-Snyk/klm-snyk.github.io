@@ -339,8 +339,8 @@ function renderSlackAndAutoFetch() {
 
 
 /* ============================================================
-   Mail Screen — 30-day unread synopsis (client-side only)
-   No AI, no worker, no email content leaves the browser
+   Mail Screen — grouped by label, collapsible, paginated
+   Client-side only — no AI, no worker, no content leaves browser
    ============================================================ */
 
 const mailState = {
@@ -348,7 +348,11 @@ const mailState = {
   messages: JSON.parse(localStorage.getItem('uyt_mail_messages') || 'null'),
   asOf: localStorage.getItem('uyt_mail_asof') || null,
   error: null,
-  filter: 'all', // 'all' | 'label:X' | 'sender:X'
+  search: '',
+  searchSender: '',
+  searchDate: '',
+  expanded: {},   // label -> true/false
+  page: {},       // label -> page index (0-based, 10 per page)
 };
 
 function getGmailExcluded() {
@@ -365,7 +369,6 @@ async function fetchMailMessages() {
     const excluded = getGmailExcluded();
     const exclusionClause = excluded.length ? ' ' + excluded.map(id => '-label:' + id).join(' ') : '';
     const q = 'is:unread newer_than:30d -in:spam -in:trash' + exclusionClause;
-    // Step 1: get message IDs (up to 100)
     const params = new URLSearchParams({ q, maxResults: 100 });
     const listRes = await fetch(
       'https://gmail.googleapis.com/gmail/v1/users/me/messages?' + params,
@@ -373,9 +376,9 @@ async function fetchMailMessages() {
     );
     if (!listRes.ok) throw new Error('Failed to list messages');
     const listData = await listRes.json();
-    const ids = (listData.messages || []).map(m => m.id);
-    // Step 2: fetch metadata for each (subject, from, date, snippet, labelIds)
-    const messages = await Promise.all(ids.map(async id => {
+    const ids = (listData.messages || []).map(function(m) { return m.id; });
+    // Fetch metadata for each message
+    const messages = (await Promise.all(ids.map(async function(id) {
       try {
         const r = await fetch(
           'https://gmail.googleapis.com/gmail/v1/users/me/messages/' + id + '?format=metadata&metadataHeaders=From&metadataHeaders=Subject&metadataHeaders=Date',
@@ -383,32 +386,37 @@ async function fetchMailMessages() {
         );
         if (!r.ok) return null;
         const d = await r.json();
-        const headers = d.payload?.headers || [];
-        const getHeader = name => (headers.find(h => h.name === name) || {}).value || '';
-        const from = getHeader('From');
-        const subject = getHeader('Subject');
-        const date = getHeader('Date');
-        const senderMatch = from.match(/^(.+?)\s*</) || from.match(/^(.+)$/);
+        const headers = d.payload ? d.payload.headers || [] : [];
+        const getH = function(name) { return (headers.find(function(h) { return h.name === name; }) || {}).value || ''; };
+        const from = getH('From');
+        const senderMatch = from.match(/^"?(.+?)"?\s*</) || from.match(/^(.+)$/);
         const senderName = senderMatch ? senderMatch[1].replace(/"/g, '').trim() : from;
         const senderEmail = (from.match(/<(.+?)>/) || [])[1] || from;
+        const dateStr = getH('Date');
+        const ts = dateStr ? new Date(dateStr).getTime() : 0;
+        const isUnread = (d.labelIds || []).includes('UNREAD');
+        const labelIds = (d.labelIds || []).filter(function(l) {
+          return !['UNREAD','STARRED','IMPORTANT','CATEGORY_PROMOTIONS','CATEGORY_SOCIAL','CATEGORY_UPDATES','CATEGORY_FORUMS','CATEGORY_PERSONAL'].includes(l);
+        });
         return {
           id,
-          subject: subject || '(no subject)',
+          subject: getH('Subject') || '(no subject)',
           sender: senderName,
           senderEmail,
           snippet: d.snippet || '',
-          date: new Date(date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
-          ts: new Date(date).getTime(),
-          labelIds: d.labelIds || [],
+          dateStr: ts ? new Date(ts).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '',
+          dateFull: ts ? new Date(ts).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '',
+          ts,
+          labelIds,
+          isUnread,
           link: 'https://mail.google.com/mail/u/0/#all/' + id,
         };
-      } catch { return null; }
-    }));
-    mailState.messages = messages.filter(Boolean).sort((a, b) => b.ts - a.ts);
+      } catch(e) { return null; }
+    }))).filter(Boolean).sort(function(a, b) { return b.ts - a.ts; });
+    mailState.messages = messages;
     mailState.asOf = new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
-    localStorage.setItem('uyt_mail_messages', JSON.stringify(mailState.messages));
+    localStorage.setItem('uyt_mail_messages', JSON.stringify(messages));
     localStorage.setItem('uyt_mail_asof', mailState.asOf);
-    // Also refresh label breakdown while we're at it
     calFetchGmailLabelBreakdown();
   } catch(e) {
     mailState.error = e.message;
@@ -418,18 +426,65 @@ async function fetchMailMessages() {
   }
 }
 
-function toggleGmailExclude(labelId) {
-  const excluded = getGmailExcluded();
-  const idx = excluded.indexOf(labelId);
-  if (idx === -1) excluded.push(labelId);
-  else excluded.splice(idx, 1);
-  localStorage.setItem('uyt_gmail_excluded_labels', JSON.stringify(excluded));
-  renderSettingsPanel();
-  // Refresh count
-  calFetchUnreadCount().then(() => renderDashboard());
+function mailGetLabelName(labelId) {
+  // Map system label IDs to friendly names
+  const names = { INBOX: 'Inbox', SENT: 'Sent', DRAFT: 'Drafts' };
+  if (names[labelId]) return names[labelId];
+  // Try from breakdown cache
+  const breakdown = calState.gmailBreakdown || [];
+  const found = breakdown.find(function(l) { return l.id === labelId; });
+  if (found) return found.name;
+  return labelId;
 }
 
-function setMailFilter(f) { mailState.filter = f; renderMail(); }
+function mailRenderRows(msgs, labelId) {
+  const page = mailState.page[labelId] || 0;
+  const start = page * 10;
+  const slice = msgs.slice(start, start + 10);
+  const rows = slice.map(function(m) {
+    return '<a class="mail-row" href="' + escHtml(m.link) + '" target="_blank">' +
+      '<div class="mail-row-date">' + escHtml(m.dateStr) + '</div>' +
+      '<div class="mail-row-sender">' + escHtml(m.sender) + '</div>' +
+      '<div class="mail-row-subject">' + escHtml(m.subject) + '</div>' +
+      '</a>';
+  }).join('');
+  const safeId = labelId.replace(/'/g, '');
+  const prevBtn = page > 0
+    ? '<button class="mail-page-btn" onclick="mailPage(' + JSON.stringify(safeId) + ',-1)">← Prev 10</button>'
+    : '';
+  const nextBtn = msgs.length > start + 10
+    ? '<button class="mail-page-btn" onclick="mailPage(' + JSON.stringify(safeId) + ',1)">Next 10 →</button>'
+    : '';
+  const pageNav = (prevBtn || nextBtn)
+    ? '<div class="mail-page-nav">' + prevBtn + '<span style="font-size:12px;color:var(--text-secondary)">' + (start+1) + '–' + Math.min(start+10, msgs.length) + ' of ' + msgs.length + '</span>' + nextBtn + '</div>'
+    : '';
+  return rows + pageNav;
+}
+
+function mailToggle(lid, val) { mailState.expanded[lid] = val; mailState.page[lid] = 0; renderMail(); }
+
+function mailPage(labelId, dir) {
+  const cur = mailState.page[labelId] || 0;
+  mailState.page[labelId] = Math.max(0, cur + dir);
+  renderMail();
+}
+
+function mailApplySearch(msgs) {
+  let filtered = msgs;
+  const kw = mailState.search.trim().toLowerCase();
+  const sender = mailState.searchSender.trim().toLowerCase();
+  const date = mailState.searchDate.trim();
+  if (kw) filtered = filtered.filter(function(m) {
+    return m.subject.toLowerCase().includes(kw) || m.snippet.toLowerCase().includes(kw);
+  });
+  if (sender) filtered = filtered.filter(function(m) {
+    return m.sender.toLowerCase().includes(sender) || m.senderEmail.toLowerCase().includes(sender);
+  });
+  if (date) filtered = filtered.filter(function(m) { return m.dateFull.toLowerCase().includes(date.toLowerCase()); });
+  return filtered;
+}
+
+function setMailFilter(f) { mailState.search = f; renderMail(); }
 
 function renderMail() {
   const el = document.getElementById('screen-mail-content');
@@ -447,47 +502,61 @@ function renderMail() {
     return;
   }
   if (!mailState.messages) {
-    el.innerHTML = '<div class="cal-connect-prompt"><div class="cal-connect-icon">📬</div><h3>30-day unread</h3><p>Unread messages from the last 30 days, grouped and filtered — no content leaves your browser.</p><button class="connect-btn" onclick="fetchMailMessages()">Load Mail</button></div>';
+    el.innerHTML = '<div class="cal-connect-prompt"><div class="cal-connect-icon">📬</div><h3>30-day mail</h3><p>Unread and recent messages grouped by label. Nothing leaves your browser.</p><button class="connect-btn" onclick="fetchMailMessages()">Load Mail</button></div>';
     return;
   }
-  const msgs = mailState.messages;
-  // Build filter chips
-  const senders = [...new Set(msgs.map(m => m.senderEmail))].slice(0, 8);
-  const labelIds = [...new Set(msgs.flatMap(m => m.labelIds.filter(l => !['UNREAD','INBOX','IMPORTANT','STARRED'].includes(l))))].slice(0, 8);
-  // Apply current filter
-  let filtered = msgs;
-  if (mailState.filter.startsWith('sender:')) {
-    const s = mailState.filter.slice(7);
-    filtered = msgs.filter(m => m.senderEmail === s);
-  } else if (mailState.filter.startsWith('label:')) {
-    const l = mailState.filter.slice(6);
-    filtered = msgs.filter(m => m.labelIds.includes(l));
-  }
-  // Group by sender for display
-  const filterAll = mailState.filter === 'all' ? 'active' : '';
-  let chipParts = ['<button class="drive-filter ' + filterAll + '" onclick="setMailFilter(&quot;all&quot;)">All (' + msgs.length + ')</button>'];
-  senders.forEach(function(s) {
-    const count = msgs.filter(function(m) { return m.senderEmail === s; }).length;
-    const name = (msgs.find(function(m) { return m.senderEmail === s; }) || {}).sender || s;
-    const active = mailState.filter === 'sender:' + s ? 'active' : '';
-    const safeSender = s.replace(/['"]/g, '');
-    chipParts.push('<button class="drive-filter ' + active + '" onclick="setMailFilter(&quot;sender:' + safeSender + '&quot;)">' + escHtml(name.split(' ')[0]) + ' (' + count + ')</button>');
+
+  // Search bar
+  const searchHtml = '<div class="mail-search-bar">' +
+    '<input class="mail-search-input" placeholder="🔍 Keyword search…" value="' + escHtml(mailState.search) + '" oninput="mailState.search=this.value;renderMail()">' +
+    '<input class="mail-search-input" placeholder="👤 Sender…" value="' + escHtml(mailState.searchSender) + '" oninput="mailState.searchSender=this.value;renderMail()">' +
+    '<input class="mail-search-input" placeholder="📅 Date (e.g. Jun)…" value="' + escHtml(mailState.searchDate) + '" oninput="mailState.searchDate=this.value;renderMail()">' +
+    '</div>';
+
+  // Group by label, INBOX first
+  const msgs = mailApplySearch(mailState.messages);
+  const labelOrder = ['INBOX'];
+  const labelMap = {};
+  msgs.forEach(function(m) {
+    (m.labelIds.length ? m.labelIds : ['INBOX']).forEach(function(lid) {
+      if (!labelMap[lid]) labelMap[lid] = [];
+      if (!labelMap[lid].find(function(x) { return x.id === m.id; })) labelMap[lid].push(m);
+    });
   });
-  const chipHtml = chipParts.join('');
-  const rowsHtml = filtered.map(m =>
-    '<a class="mail-row" href="' + escHtml(m.link) + '" target="_blank">' +
-    '<div class="mail-row-sender">' + escHtml(m.sender) + '</div>' +
-    '<div class="mail-row-subject">' + escHtml(m.subject) + '</div>' +
-    '<div class="mail-row-date">' + escHtml(m.date) + '</div>' +
-    '<div class="mail-row-snippet">' + escHtml(m.snippet.slice(0, 120)) + '</div>' +
-    '</a>'
-  ).join('') || '<div style="padding:24px;text-align:center;color:var(--text-secondary)">No messages match this filter</div>';
-  el.innerHTML =
-    '<div class="mail-header"><div class="mail-meta">Last updated ' + escHtml(mailState.asOf || '') + ' · ' + msgs.length + ' unread</div>' +
-    '<button class="connect-btn" onclick="fetchMailMessages()" style="padding:8px 16px;font-size:13px;' + (mailState.loading ? 'opacity:0.5;pointer-events:none' : '') + '">↺ Refresh</button></div>' +
-    '<div class="drive-filters" style="margin-bottom:16px">' + chipHtml + '</div>' +
-    '<div class="mail-list">' + rowsHtml + '</div>';
+  // Add remaining labels after INBOX
+  Object.keys(labelMap).forEach(function(lid) { if (!labelOrder.includes(lid)) labelOrder.push(lid); });
+
+  const excluded = getGmailExcluded();
+  const groupsHtml = labelOrder.filter(function(lid) {
+    return labelMap[lid] && labelMap[lid].length > 0 && !excluded.includes(lid);
+  }).map(function(lid) {
+    const labelMsgs = labelMap[lid].sort(function(a,b) { return b.ts - a.ts; });
+    const unreadCount = labelMsgs.filter(function(m) { return m.isUnread; }).length;
+    const isExpanded = mailState.expanded[lid] !== false; // default expanded
+    const labelName = mailGetLabelName(lid);
+    const badge = unreadCount > 0 ? ' <span class="mail-label-badge">' + unreadCount + ' unread</span>' : '';
+    const toggle = isExpanded
+      ? '<button class="mail-label-toggle" onclick="mailToggle(' + JSON.stringify(lid) + ',false)">▾</button>'
+      : '<button class="mail-label-toggle" onclick="mailToggle(' + JSON.stringify(lid) + ',true)">▸</button>';
+    const colHeader = isExpanded
+      ? '<div class="mail-col-header"><span>Date</span><span>Sender</span><span>Subject</span></div>'
+      : '';
+    const body = isExpanded ? mailRenderRows(labelMsgs, lid) : '';
+    return '<div class="mail-label-group">' +
+      '<div class="mail-label-header">' + toggle + '<span class="mail-label-name">' + escHtml(labelName) + '</span>' + badge + '<span class="mail-label-total">(' + labelMsgs.length + ')</span></div>' +
+      colHeader +
+      '<div class="mail-list">' + body + '</div>' +
+      '</div>';
+  }).join('');
+
+  const headerHtml = '<div class="mail-header">' +
+    '<div class="mail-meta">Last updated ' + escHtml(mailState.asOf || '') + ' · ' + msgs.length + ' messages</div>' +
+    '<button class="connect-btn" onclick="fetchMailMessages()" style="padding:8px 16px;font-size:13px">↺ Refresh</button>' +
+    '</div>';
+
+  el.innerHTML = headerHtml + searchHtml + groupsHtml;
 }
+
 
 /* ============================================================
    Cases Screen (Jira)
