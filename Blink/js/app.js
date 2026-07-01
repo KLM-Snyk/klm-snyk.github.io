@@ -141,6 +141,7 @@ function navigate(screen) {
   if (screen === 'dashboard') renderDashboard();
   if (screen === 'calendar')  renderCalendar();
   if (screen === 'slack')     renderSlackAndAutoFetch();
+  if (screen === 'mail')      renderMail();
   if (screen === 'cases')     renderCases();
   if (screen === 'drive')     renderDrive();
   if (screen === 'planner')   renderPlanner();
@@ -335,6 +336,158 @@ function renderSlackAndAutoFetch() {
   }
 }
 
+
+
+/* ============================================================
+   Mail Screen — 30-day unread synopsis (client-side only)
+   No AI, no worker, no email content leaves the browser
+   ============================================================ */
+
+const mailState = {
+  loading: false,
+  messages: JSON.parse(localStorage.getItem('uyt_mail_messages') || 'null'),
+  asOf: localStorage.getItem('uyt_mail_asof') || null,
+  error: null,
+  filter: 'all', // 'all' | 'label:X' | 'sender:X'
+};
+
+function getGmailExcluded() {
+  try { return JSON.parse(localStorage.getItem('uyt_gmail_excluded_labels') || '[]'); }
+  catch { return []; }
+}
+
+async function fetchMailMessages() {
+  if (!calState.token) return;
+  mailState.loading = true;
+  mailState.error = null;
+  renderMail();
+  try {
+    const excluded = getGmailExcluded();
+    const exclusionClause = excluded.length ? ' ' + excluded.map(id => '-label:' + id).join(' ') : '';
+    const q = 'is:unread newer_than:30d -in:spam -in:trash' + exclusionClause;
+    // Step 1: get message IDs (up to 100)
+    const params = new URLSearchParams({ q, maxResults: 100 });
+    const listRes = await fetch(
+      'https://gmail.googleapis.com/gmail/v1/users/me/messages?' + params,
+      { headers: { Authorization: 'Bearer ' + calState.token } }
+    );
+    if (!listRes.ok) throw new Error('Failed to list messages');
+    const listData = await listRes.json();
+    const ids = (listData.messages || []).map(m => m.id);
+    // Step 2: fetch metadata for each (subject, from, date, snippet, labelIds)
+    const messages = await Promise.all(ids.map(async id => {
+      try {
+        const r = await fetch(
+          'https://gmail.googleapis.com/gmail/v1/users/me/messages/' + id + '?format=metadata&metadataHeaders=From&metadataHeaders=Subject&metadataHeaders=Date',
+          { headers: { Authorization: 'Bearer ' + calState.token } }
+        );
+        if (!r.ok) return null;
+        const d = await r.json();
+        const headers = d.payload?.headers || [];
+        const getHeader = name => (headers.find(h => h.name === name) || {}).value || '';
+        const from = getHeader('From');
+        const subject = getHeader('Subject');
+        const date = getHeader('Date');
+        const senderMatch = from.match(/^(.+?)\s*</) || from.match(/^(.+)$/);
+        const senderName = senderMatch ? senderMatch[1].replace(/"/g, '').trim() : from;
+        const senderEmail = (from.match(/<(.+?)>/) || [])[1] || from;
+        return {
+          id,
+          subject: subject || '(no subject)',
+          sender: senderName,
+          senderEmail,
+          snippet: d.snippet || '',
+          date: new Date(date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+          ts: new Date(date).getTime(),
+          labelIds: d.labelIds || [],
+          link: 'https://mail.google.com/mail/u/0/#all/' + id,
+        };
+      } catch { return null; }
+    }));
+    mailState.messages = messages.filter(Boolean).sort((a, b) => b.ts - a.ts);
+    mailState.asOf = new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+    localStorage.setItem('uyt_mail_messages', JSON.stringify(mailState.messages));
+    localStorage.setItem('uyt_mail_asof', mailState.asOf);
+    // Also refresh label breakdown while we're at it
+    calFetchGmailLabelBreakdown();
+  } catch(e) {
+    mailState.error = e.message;
+  } finally {
+    mailState.loading = false;
+    renderMail();
+  }
+}
+
+function toggleGmailExclude(labelId) {
+  const excluded = getGmailExcluded();
+  const idx = excluded.indexOf(labelId);
+  if (idx === -1) excluded.push(labelId);
+  else excluded.splice(idx, 1);
+  localStorage.setItem('uyt_gmail_excluded_labels', JSON.stringify(excluded));
+  renderSettingsPanel();
+  // Refresh count
+  calFetchUnreadCount().then(() => renderDashboard());
+}
+
+function setMailFilter(f) { mailState.filter = f; renderMail(); }
+
+function renderMail() {
+  const el = document.getElementById('screen-mail-content');
+  if (!el) return;
+  if (!calIsConnected()) {
+    el.innerHTML = '<div class="cal-connect-prompt"><div class="cal-connect-icon">📬</div><h3>Connect Google</h3><p>Sign in with Google to see your mail.</p><button class="connect-btn" onclick="openSettings()">Connect</button></div>';
+    return;
+  }
+  if (mailState.loading) {
+    el.innerHTML = '<div class="cal-connect-prompt"><div class="cal-connect-icon">⏳</div><h3>Loading mail…</h3></div>';
+    return;
+  }
+  if (mailState.error) {
+    el.innerHTML = '<div class="cal-connect-prompt"><div class="cal-connect-icon">⚠️</div><h3>Error</h3><p>' + escHtml(mailState.error) + '</p><button class="connect-btn" onclick="fetchMailMessages()">Try again</button></div>';
+    return;
+  }
+  if (!mailState.messages) {
+    el.innerHTML = '<div class="cal-connect-prompt"><div class="cal-connect-icon">📬</div><h3>30-day unread</h3><p>Unread messages from the last 30 days, grouped and filtered — no content leaves your browser.</p><button class="connect-btn" onclick="fetchMailMessages()">Load Mail</button></div>';
+    return;
+  }
+  const msgs = mailState.messages;
+  // Build filter chips
+  const senders = [...new Set(msgs.map(m => m.senderEmail))].slice(0, 8);
+  const labelIds = [...new Set(msgs.flatMap(m => m.labelIds.filter(l => !['UNREAD','INBOX','IMPORTANT','STARRED'].includes(l))))].slice(0, 8);
+  // Apply current filter
+  let filtered = msgs;
+  if (mailState.filter.startsWith('sender:')) {
+    const s = mailState.filter.slice(7);
+    filtered = msgs.filter(m => m.senderEmail === s);
+  } else if (mailState.filter.startsWith('label:')) {
+    const l = mailState.filter.slice(6);
+    filtered = msgs.filter(m => m.labelIds.includes(l));
+  }
+  // Group by sender for display
+  const filterAll = mailState.filter === 'all' ? 'active' : '';
+  let chipParts = ['<button class="drive-filter ' + filterAll + '" onclick="setMailFilter(&quot;all&quot;)">All (' + msgs.length + ')</button>'];
+  senders.forEach(function(s) {
+    const count = msgs.filter(function(m) { return m.senderEmail === s; }).length;
+    const name = (msgs.find(function(m) { return m.senderEmail === s; }) || {}).sender || s;
+    const active = mailState.filter === 'sender:' + s ? 'active' : '';
+    const safeSender = s.replace(/['"]/g, '');
+    chipParts.push('<button class="drive-filter ' + active + '" onclick="setMailFilter(&quot;sender:' + safeSender + '&quot;)">' + escHtml(name.split(' ')[0]) + ' (' + count + ')</button>');
+  });
+  const chipHtml = chipParts.join('');
+  const rowsHtml = filtered.map(m =>
+    '<a class="mail-row" href="' + escHtml(m.link) + '" target="_blank">' +
+    '<div class="mail-row-sender">' + escHtml(m.sender) + '</div>' +
+    '<div class="mail-row-subject">' + escHtml(m.subject) + '</div>' +
+    '<div class="mail-row-snippet">' + escHtml(m.snippet.slice(0, 100)) + '</div>' +
+    '<div class="mail-row-date">' + escHtml(m.date) + '</div>' +
+    '</a>'
+  ).join('') || '<div style="padding:24px;text-align:center;color:var(--text-secondary)">No messages match this filter</div>';
+  el.innerHTML =
+    '<div class="mail-header"><div class="mail-meta">Last updated ' + escHtml(mailState.asOf || '') + ' · ' + msgs.length + ' unread</div>' +
+    '<button class="connect-btn" onclick="fetchMailMessages()" style="padding:8px 16px;font-size:13px;' + (mailState.loading ? 'opacity:0.5;pointer-events:none' : '') + '">↺ Refresh</button></div>' +
+    '<div class="drive-filters" style="margin-bottom:16px">' + chipHtml + '</div>' +
+    '<div class="mail-list">' + rowsHtml + '</div>';
+}
 
 /* ============================================================
    Cases Screen (Jira)
@@ -613,6 +766,22 @@ function renderSettingsPanel() {
       
     
     
+
+    <!-- Gmail Excluded Labels -->
+    <div class="settings-section">
+      <div class="settings-section-title">Gmail</div>
+      <div class="cal-connect-box">
+        <p>Labels to exclude from your unread count and Mail page. Only labels with unread mail appear here.</p>
+        ${calState.gmailBreakdown && calState.gmailBreakdown.length > 0 ? `
+          <div style="display:flex;flex-direction:column;gap:4px;margin-bottom:10px">
+            ${calState.gmailBreakdown.map(l => {
+              const excluded = getGmailExcluded().includes(l.id);
+              return '<div class="slack-channel-row"><span class="slack-channel-name">' + escHtml(l.name) + '</span><span class="slack-channel-id">' + l.unread + ' unread</span><button class="slack-channel-remove" onclick="toggleGmailExclude(' + JSON.stringify(l.id) + ')" title="' + (excluded ? 'Re-include' : 'Exclude') + '" style="color:' + (excluded ? 'var(--primary)' : 'var(--text-secondary)') + '">' + (excluded ? '↩' : '✕') + '</button></div>';
+            }).join('')}
+          </div>
+        ` : '<p style="font-size:12px;color:var(--text-secondary)">Load mail to see label breakdown here.</p>'}
+      </div>
+    </div>
 
     <!-- Google Calendar -->
     <div class="settings-section">
@@ -1011,26 +1180,31 @@ function renderDashboard() {
     <div class="dashboard-layout">
       <div class="dashboard-main">
         <div class="dashboard-cards">
-          <div class="dash-card">
+          <div class="dash-card" onclick="calIsConnected() && navigate('mail')" style="${calIsConnected() ? 'cursor:pointer' : ''}">
             <div class="dash-card-header">
               <div class="dash-card-icon">${ICONS.calendar}</div>
               <div class="dash-card-title">Gmail</div>
             </div>
             ${!calIsConnected() ? `
               <div class="dash-card-value">—</div>
-              <div class="dash-card-sub">Connect Google Calendar to also see your Gmail unread count</div>
-              <div class="dash-card-action" onclick="openSettings()" style="cursor:pointer">Connect ${ICONS.arrowRight}</div>
+              <div class="dash-card-sub">Connect Google to see your inbox</div>
+              <div class="dash-card-action" onclick="openSettings();event.stopPropagation()" style="cursor:pointer">Connect ${ICONS.arrowRight}</div>
             ` : calState.unreadCount === null ? `
               <div class="dash-card-value">—</div>
               <div class="dash-card-sub">Loading inbox…</div>
             ` : calState.unreadCount === 0 ? `
               <div class="dash-card-value" style="font-size:22px">0 📭</div>
               <div class="dash-card-sub">${getInboxZeroMessage()}</div>
-              <div class="dash-card-action"><a href="https://mail.google.com" target="_blank" style="color:inherit;text-decoration:none">Enjoy it while it lasts ${ICONS.arrowRight}</a></div>
+              <div class="dash-card-action">View mail ${ICONS.arrowRight}</div>
             ` : `
-              <div class="dash-card-value" style="font-size:22px">${calState.unreadCount}</div>
-              <div class="dash-card-sub">unread email${calState.unreadCount === 1 ? '' : 's'} waiting for you</div>
-              <div class="dash-card-action"><a href="https://mail.google.com" target="_blank" style="color:inherit;text-decoration:none">Open Gmail ${ICONS.arrowRight}</a></div>
+              <div class="dash-card-value" style="font-size:28px;font-weight:700">${calState.unreadCount}${calState.unreadCountCapped ? '+' : ''}</div>
+              <div class="dash-card-sub">unread email${calState.unreadCount === 1 ? '' : 's'}</div>
+              ${calState.gmailBreakdown && calState.gmailBreakdown.length > 0 ? `
+                <div style="margin-top:6px;display:flex;flex-direction:column;gap:3px">
+                  ${calState.gmailBreakdown.slice(0,4).map(l => `<div class="sf-tier-row"><span class="sf-tier-label" style="max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escHtml(l.name)}</span><span class="sf-tier-stat">${l.unread}</span></div>`).join('')}
+                </div>
+              ` : ''}
+              <div class="dash-card-action" style="margin-top:6px">View all ${ICONS.arrowRight}</div>
             `}
           </div>
 
@@ -2058,7 +2232,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     try {
       await calInit();
       slackInit();
-      if (!slackDigestState.html) {
+      // Fetch Gmail label breakdown lazily
+    if (calIsConnected()) calFetchGmailLabelBreakdown().then(() => renderDashboard());
+    if (!slackDigestState.html) {
         slackDigestState.loading = true;
         renderDashboard();
         fetchSlackDigest().then(() => { renderDashboard(); renderSlack(); });

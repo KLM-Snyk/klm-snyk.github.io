@@ -2731,3 +2731,14 @@ button, a.setup-btn-primary, a.cal-connect-btn {
 .cases-issue-key { font-size:11px; font-weight:700; color:var(--primary); flex-shrink:0; font-family:monospace; }
 .cases-issue-summary { font-size:13px; color:var(--text); flex:1; }
 .cases-issue-status { font-size:11px; color:var(--text-secondary); flex-shrink:0; }
+
+/* Mail screen */
+.mail-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:16px; padding-bottom:16px; border-bottom:1px solid var(--border); }
+.mail-meta { font-size:13px; color:var(--text-secondary); }
+.mail-list { display:flex; flex-direction:column; gap:4px; }
+.mail-row { display:grid; grid-template-columns:140px 1fr auto; grid-template-rows:auto auto; gap:2px 12px; padding:10px 12px; background:var(--surface); border:1px solid var(--border); border-radius:var(--radius-sm); text-decoration:none; transition:border-color var(--transition); }
+.mail-row:hover { border-color:var(--primary); }
+.mail-row-sender { font-size:12px; font-weight:700; color:var(--primary); grid-row:1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.mail-row-subject { font-size:13px; font-weight:600; color:var(--text); grid-column:2; grid-row:1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.mail-row-date { font-size:11px; color:var(--text-secondary); grid-column:3; grid-row:1; white-space:nowrap; }
+.mail-row-snippet { font-size:12px; color:var(--text-secondary); grid-column:1/-1; grid-row:2; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }

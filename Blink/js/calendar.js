@@ -20,6 +20,8 @@ const calState = {
   fetchError: null,
   userProfile: null,
   unreadCount: null,
+  unreadCountCapped: false,
+  gmailBreakdown: JSON.parse(localStorage.getItem('uyt_gmail_breakdown') || '[]'),
   oncall: null,
   oncallLast: null,
   oncallNext: null,
@@ -209,19 +211,77 @@ function calConnect() {
 async function calFetchUnreadCount() {
   if (!calState.token) return;
   try {
+    const excluded = JSON.parse(localStorage.getItem('uyt_gmail_excluded_labels') || '[]');
+    // Build exclusion clause from denylist
+    const exclusionClause = excluded.length
+      ? ' ' + excluded.map(id => '-label:' + id).join(' ')
+      : '';
+    const q = 'is:unread -in:spam -in:trash' + exclusionClause;
+    let total = 0;
+    let pageToken = null;
+    const MAX_PAGES = 5; // cap at ~500 messages, show 500+ if exceeded
+    let pages = 0;
+    let cappedAt = null;
+    do {
+      const params = new URLSearchParams({ q, maxResults: 100 });
+      if (pageToken) params.set('pageToken', pageToken);
+      const res = await fetch(
+        'https://gmail.googleapis.com/gmail/v1/users/me/messages?' + params,
+        { headers: { Authorization: `Bearer ${calState.token}` } }
+      );
+      if (!res.ok) break;
+      const data = await res.json();
+      total += (data.messages || []).length;
+      pageToken = data.nextPageToken || null;
+      pages++;
+      if (pages >= MAX_PAGES && pageToken) { cappedAt = total; pageToken = null; }
+    } while (pageToken);
+    calState.unreadCount = total;
+    calState.unreadCountCapped = cappedAt !== null;
+    // Cache it
+    localStorage.setItem('uyt_gmail_unread', String(total));
+    localStorage.setItem('uyt_gmail_unread_capped', cappedAt !== null ? '1' : '0');
+  } catch (err) {
+    console.warn('Could not fetch Gmail unread count:', err);
+    calState.unreadCount = null;
+  }
+}
+
+async function calFetchGmailLabelBreakdown() {
+  if (!calState.token) return;
+  try {
+    const excluded = JSON.parse(localStorage.getItem('uyt_gmail_excluded_labels') || '[]');
+    // Get all labels
     const res = await fetch(
-      'https://gmail.googleapis.com/gmail/v1/users/me/labels/INBOX',
+      'https://gmail.googleapis.com/gmail/v1/users/me/labels',
       { headers: { Authorization: `Bearer ${calState.token}` } }
     );
     if (!res.ok) return;
     const data = await res.json();
-    calState.unreadCount = typeof data.messagesUnread === 'number' ? data.messagesUnread
-                         : typeof data.threadsUnread  === 'number' ? data.threadsUnread
-                         : 0;
-    console.log('Gmail label data:', data);
+    const labels = (data.labels || []).filter(l =>
+      !['SPAM', 'TRASH', 'SENT', 'DRAFT', 'UNREAD', 'STARRED', 'IMPORTANT'].includes(l.id) &&
+      !excluded.includes(l.id)
+    );
+    // Fetch unread count per label in parallel (batched)
+    const details = await Promise.all(labels.map(async l => {
+      try {
+        const r = await fetch(
+          'https://gmail.googleapis.com/gmail/v1/users/me/labels/' + l.id,
+          { headers: { Authorization: `Bearer ${calState.token}` } }
+        );
+        if (!r.ok) return null;
+        const d = await r.json();
+        return { id: l.id, name: l.name, unread: d.messagesUnread || 0 };
+      } catch { return null; }
+    }));
+    const breakdown = details
+      .filter(d => d && d.unread > 0)
+      .sort((a, b) => b.unread - a.unread);
+    calState.gmailBreakdown = breakdown;
+    localStorage.setItem('uyt_gmail_breakdown', JSON.stringify(breakdown));
   } catch (err) {
-    console.warn('Could not fetch Gmail unread count:', err);
-    calState.unreadCount = null;
+    console.warn('Gmail label breakdown error:', err);
+    calState.gmailBreakdown = [];
   }
 }
 
