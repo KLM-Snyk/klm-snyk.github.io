@@ -2716,3 +2716,18 @@ button, a.setup-btn-primary, a.cal-connect-btn {
   opacity: 0.7;
   transform: scale(0.9);
 }
+
+/* Cases screen */
+.cases-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:20px; padding-bottom:16px; border-bottom:1px solid var(--border); }
+.cases-meta { font-size:13px; color:var(--text-secondary); }
+.cases-project { margin-bottom:24px; }
+.cases-project-header { display:flex; align-items:center; gap:10px; margin-bottom:10px; padding-bottom:8px; border-bottom:2px solid var(--border); }
+.cases-project-key { font-size:12px; font-weight:700; background:var(--primary); color:white; padding:2px 8px; border-radius:4px; }
+.cases-project-name { font-size:14px; font-weight:600; color:var(--text); flex:1; }
+.cases-project-count { font-size:12px; font-weight:700; color:var(--primary); background:var(--primary-light); padding:2px 8px; border-radius:99px; }
+.cases-issue-list { display:flex; flex-direction:column; gap:4px; }
+.cases-issue { display:flex; align-items:baseline; gap:10px; padding:8px 10px; background:var(--surface); border:1px solid var(--border); border-radius:var(--radius-sm); text-decoration:none; transition:border-color var(--transition); }
+.cases-issue:hover { border-color:var(--primary); }
+.cases-issue-key { font-size:11px; font-weight:700; color:var(--primary); flex-shrink:0; font-family:monospace; }
+.cases-issue-summary { font-size:13px; color:var(--text); flex:1; }
+.cases-issue-status { font-size:11px; color:var(--text-secondary); flex-shrink:0; }

@@ -141,6 +141,7 @@ function navigate(screen) {
   if (screen === 'dashboard') renderDashboard();
   if (screen === 'calendar')  renderCalendar();
   if (screen === 'slack')     renderSlackAndAutoFetch();
+  if (screen === 'cases')     renderCases();
   if (screen === 'drive')     renderDrive();
   if (screen === 'planner')   renderPlanner();
 }
@@ -334,6 +335,98 @@ function renderSlackAndAutoFetch() {
   }
 }
 
+
+/* ============================================================
+   Cases Screen (Jira)
+   ============================================================ */
+
+const jiraState = {
+  loading: false,
+  issues: null,
+  error: null,
+  asOf: null,
+};
+
+function getJiraProjects() {
+  try { return JSON.parse(localStorage.getItem('uyt_jira_projects') || '[]'); }
+  catch { return []; }
+}
+
+async function fetchJiraIssues() {
+  const token = localStorage.getItem('uyt_jira_token');
+  const cloud = localStorage.getItem('uyt_jira_cloud');
+  if (!token || !cloud) return;
+  jiraState.loading = true;
+  jiraState.error = null;
+  renderCases();
+  const projects = getJiraProjects().map(p => p.key).join(',');
+  try {
+    const res = await fetch(
+      'https://uyt-slack-digest.kar-marsten.workers.dev/jira/issues?t=' + encodeURIComponent(token) + '&c=' + encodeURIComponent(cloud) + (projects ? '&p=' + encodeURIComponent(projects) : ''),
+      { headers: { 'Content-Type': 'application/json' } }
+    );
+    const data = await res.json();
+    if (data.issues) {
+      jiraState.issues = data.issues;
+      jiraState.asOf = new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+      localStorage.setItem('uyt_jira_issues', JSON.stringify(jiraState.issues));
+      localStorage.setItem('uyt_jira_asof', jiraState.asOf);
+    } else {
+      jiraState.error = data.errorMessages?.[0] || 'Failed to load issues';
+    }
+  } catch(e) {
+    jiraState.error = e.message;
+  } finally {
+    jiraState.loading = false;
+    renderCases();
+    renderDashboard();
+  }
+}
+
+function renderCases() {
+  const el = document.getElementById('screen-cases-content');
+  if (!el) return;
+  const token = localStorage.getItem('uyt_jira_token');
+  if (!token) {
+    el.innerHTML = '<div class="cal-connect-prompt"><div class="cal-connect-icon">🎫</div><h3>Connect Jira</h3><p>Sign in with Atlassian to see your open cases.</p><button class="connect-btn" onclick="triggerJiraOAuth()">Sign in with Atlassian</button></div>';
+    return;
+  }
+  if (jiraState.loading) {
+    el.innerHTML = '<div class="cal-connect-prompt"><div class="cal-connect-icon">⏳</div><h3>Loading cases…</h3></div>';
+    return;
+  }
+  if (jiraState.error) {
+    el.innerHTML = '<div class="cal-connect-prompt"><div class="cal-connect-icon">⚠️</div><h3>Error loading cases</h3><p>' + escHtml(jiraState.error) + '</p><button class="connect-btn" onclick="fetchJiraIssues()">Try again</button></div>';
+    return;
+  }
+  if (!jiraState.issues) {
+    el.innerHTML = '<div class="cal-connect-prompt"><div class="cal-connect-icon">🎫</div><h3>Ready to load</h3><p>Click refresh to load your open cases.</p><button class="connect-btn" onclick="fetchJiraIssues()">Load Cases</button></div>';
+    return;
+  }
+  // Group by project
+  const byProject = {};
+  for (const issue of jiraState.issues) {
+    const proj = issue.fields.project.key;
+    if (!byProject[proj]) byProject[proj] = { name: issue.fields.project.name, issues: [] };
+    byProject[proj].issues.push(issue);
+  }
+  const projectHtml = Object.entries(byProject).map(([key, proj]) =>
+    '<div class="cases-project">' +
+    '<div class="cases-project-header"><span class="cases-project-key">' + escHtml(key) + '</span><span class="cases-project-name">' + escHtml(proj.name) + '</span><span class="cases-project-count">' + proj.issues.length + '</span></div>' +
+    '<div class="cases-issue-list">' +
+    proj.issues.map(issue =>
+      '<a class="cases-issue" href="https://snyksec.atlassian.net/browse/' + escHtml(issue.key) + '" target="_blank">' +
+      '<span class="cases-issue-key">' + escHtml(issue.key) + '</span>' +
+      '<span class="cases-issue-summary">' + escHtml(issue.fields.summary) + '</span>' +
+      '<span class="cases-issue-status">' + escHtml(issue.fields.status.name) + '</span>' +
+      '</a>'
+    ).join('') +
+    '</div></div>'
+  ).join('');
+
+  el.innerHTML = '<div class="cases-header"><div class="cases-meta">Last updated ' + escHtml(jiraState.asOf || '') + ' · ' + jiraState.issues.length + ' open</div><button class="connect-btn" onclick="fetchJiraIssues()" style="padding:8px 16px;font-size:13px">↺ Refresh</button></div>' + (projectHtml || '<div class="cal-connect-prompt" style="margin-top:32px"><div class="cal-connect-icon">✅</div><h3>No open cases</h3></div>');
+}
+
 /* ============================================================
    Settings Panel
    ============================================================ */
@@ -433,6 +526,33 @@ function renderSettingsPanel() {
       </div>
     </div>
 
+
+    <!-- Jira -->
+    <div class="settings-section">
+      <div class="settings-section-title">Jira</div>
+      <div class="cal-connect-box">
+        ${localStorage.getItem('uyt_jira_token') ? `
+          <div class="setup-connected-badge">✓ Connected to Jira</div>
+          <button class="cal-connect-btn" style="margin-top:10px;background:none;border:1.5px solid var(--border);color:var(--text)" onclick="localStorage.removeItem('uyt_jira_token');localStorage.removeItem('uyt_jira_cloud');renderSettingsPanel()">Disconnect</button>
+        ` : `
+          <p>Sign in with Atlassian to see your open Jira cases.</p>
+          <a href="#" onclick="triggerJiraOAuth();return false;" class="cal-connect-btn" style="display:inline-flex;align-items:center;gap:8px;text-decoration:none;color:white">
+            Sign in with Atlassian
+          </a>
+        `}
+        ${localStorage.getItem('uyt_jira_token') ? `
+          <div style="margin-top:12px">
+            <div class="settings-label" style="margin-bottom:6px">Projects to show (leave empty for all)</div>
+            ${getJiraProjects().map((p, i) => '<div class="slack-channel-row"><span class="slack-channel-name">' + escHtml(p.key) + '</span><span class="slack-channel-id">' + escHtml(p.name) + '</span><button class="slack-channel-remove" onclick="removeJiraProject(' + i + ')">✕</button></div>').join('')}
+            <div class="cal-input-row" style="margin-top:8px">
+              <input class="cal-client-input" id="jira-proj-key" placeholder="Project key (e.g. SCIR)" style="flex:1">
+              <input class="cal-client-input" id="jira-proj-name" placeholder="Name" style="flex:1">
+              <button class="cal-connect-btn" onclick="addJiraProject()">Add</button>
+            </div>
+          </div>
+        ` : ''}
+      </div>
+    </div>
 
     <!-- Tools URLs -->
     <div class="settings-section">
@@ -658,6 +778,54 @@ function setupSaveSlackToken() {
 function saveSlackToken() {
   const token = document.getElementById('slack-token-settings')?.value.trim();
   if (token) { localStorage.setItem('uyt_slack_token', token); renderSettingsPanel(); }
+}
+
+function addJiraProject() {
+  const key = document.getElementById('jira-proj-key')?.value.trim().toUpperCase();
+  const name = document.getElementById('jira-proj-name')?.value.trim();
+  if (!key) return;
+  const projects = getJiraProjects();
+  if (!projects.find(p => p.key === key)) { projects.push({ key, name: name || key }); localStorage.setItem('uyt_jira_projects', JSON.stringify(projects)); }
+  renderSettingsPanel();
+}
+
+function removeJiraProject(index) {
+  const projects = getJiraProjects();
+  projects.splice(index, 1);
+  localStorage.setItem('uyt_jira_projects', JSON.stringify(projects));
+  renderSettingsPanel();
+}
+
+function triggerJiraOAuth() {
+  const width = 600, height = 700;
+  const left = Math.round(window.screenX + (window.outerWidth - width) / 2);
+  const top = Math.round(window.screenY + (window.outerHeight - height) / 2);
+  const popup = window.open(
+    'https://uyt-slack-digest.kar-marsten.workers.dev/jira/start',
+    'jira-oauth',
+    'width=' + width + ',height=' + height + ',left=' + left + ',top=' + top + ',toolbar=no,menubar=no'
+  );
+  function _handleJiraMessage(event) {
+    if (event.origin !== 'https://klm-snyk.github.io') return;
+    if (event.data?.type === 'jira-token') {
+      localStorage.setItem('uyt_jira_token', event.data.token);
+      localStorage.setItem('uyt_jira_cloud', event.data.cloud || '');
+      window.removeEventListener('message', _handleJiraMessage);
+      if (popup && !popup.closed) popup.close();
+      if (typeof renderSettingsPanel === 'function') renderSettingsPanel();
+      if (typeof renderCases === 'function') renderCases();
+    }
+  }
+  window.addEventListener('message', _handleJiraMessage);
+  const poll = setInterval(function() {
+    if (popup.closed) {
+      clearInterval(poll);
+      if (localStorage.getItem('uyt_jira_token')) {
+        if (typeof renderSettingsPanel === 'function') renderSettingsPanel();
+        if (typeof renderCases === 'function') renderCases();
+      }
+    }
+  }, 500);
 }
 
 function triggerSlackOAuth() {
@@ -922,14 +1090,20 @@ function renderDashboard() {
             `}
           </div>
 
-          <div class="dash-card" onclick="window.open(localStorage.getItem('uyt_salesforce_url') || 'https://salesforce.com','_blank')">
+          <div class="dash-card" onclick="navigate('cases')" style="cursor:pointer">
             <div class="dash-card-header">
               <div class="dash-card-icon">${ICONS.cases}</div>
               <div class="dash-card-title">Cases</div>
             </div>
-            <div class="dash-card-value">—</div>
-            <div class="dash-card-sub">Your open cases</div>
-            <div class="dash-card-action">Open in Salesforce ${ICONS.arrowRight}</div>
+            ${jiraState.loading ? '<div class="dash-card-sub" style="margin-top:8px">⏳ Loading…</div>' :
+              jiraState.issues && jiraState.issues.length > 0 ? (() => {
+                const byProj = {};
+                jiraState.issues.forEach(i => { const k = i.fields.project.key; byProj[k] = (byProj[k]||0)+1; });
+                return Object.entries(byProj).map(([k,c]) => '<div class="sf-tier-row"><span class="sf-tier-label">' + escHtml(k) + '</span><span class="sf-tier-stat">' + c + ' open</span></div>').join('') +
+                  '<div class="dash-card-action" style="margin-top:6px">View all ${ICONS.arrowRight}</div>';
+              })() :
+              jiraState.issues ? '<div class="dash-card-sub">No open cases ✅</div>' :
+              '<div class="dash-card-sub">Your open Jira cases</div><div class="dash-card-action">View cases ${ICONS.arrowRight}</div>'}
           </div>
 
           <div class="dash-card" onclick="navigate('drive')">
@@ -1816,6 +1990,17 @@ document.addEventListener('DOMContentLoaded', async () => {
   if (plannerNext)  plannerNext.addEventListener('click', () => plannerChangeDay(1));
   if (plannerToday) plannerToday.addEventListener('click', plannerGoToday);
 
+  // If this is a popup returning from Jira OAuth, notify parent and close
+  if (window.opener && window.location.hash.includes('jira-token=')) {
+    const params = new URLSearchParams(window.location.hash.slice(1));
+    const token = params.get('jira-token');
+    const cloud = params.get('jira-cloud');
+    if (token) {
+      window.opener.postMessage({ type: 'jira-token', token, cloud }, 'https://klm-snyk.github.io');
+      window.close();
+    }
+  }
+
   // If this is a popup window returning from Slack OAuth, notify parent and close
   if (window.opener && window.location.hash.includes('slack-token=')) {
     const params = new URLSearchParams(window.location.hash.slice(1));
@@ -1839,6 +2024,19 @@ document.addEventListener('DOMContentLoaded', async () => {
       _returnedFromSlackOAuth = true;
     }
   }
+  // Handle Jira OAuth callback
+  if (hash.includes('jira-token=')) {
+    const params = new URLSearchParams(hash.slice(1));
+    const token = params.get('jira-token');
+    const cloud = params.get('jira-cloud');
+    if (token) { localStorage.setItem('uyt_jira_token', token); localStorage.setItem('uyt_jira_cloud', cloud || ''); window.history.replaceState(null, '', window.location.pathname); }
+  }
+  if (hash.includes('jira-error=')) {
+    const params = new URLSearchParams(hash.slice(1));
+    console.warn('Jira OAuth error:', params.get('jira-error'));
+    window.history.replaceState(null, '', window.location.pathname);
+  }
+
   if (hash.includes('slack-error=')) {
     const params = new URLSearchParams(hash.slice(1));
     console.warn('Slack OAuth error:', params.get('slack-error'));
