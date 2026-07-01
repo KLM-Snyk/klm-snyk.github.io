@@ -241,6 +241,7 @@ async function calFetchGmailLabelBreakdown() {
     const data = await res.json();
     const labels = (data.labels || []).filter(l =>
       !['SPAM', 'TRASH', 'SENT', 'DRAFT', 'UNREAD', 'STARRED', 'IMPORTANT'].includes(l.id) &&
+      !l.id.startsWith('CATEGORY_') &&
       !excluded.includes(l.id)
     );
     // Fetch unread count per label in parallel (batched)
