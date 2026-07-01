@@ -478,8 +478,8 @@ function renderMail() {
     '<a class="mail-row" href="' + escHtml(m.link) + '" target="_blank">' +
     '<div class="mail-row-sender">' + escHtml(m.sender) + '</div>' +
     '<div class="mail-row-subject">' + escHtml(m.subject) + '</div>' +
-    '<div class="mail-row-snippet">' + escHtml(m.snippet.slice(0, 100)) + '</div>' +
     '<div class="mail-row-date">' + escHtml(m.date) + '</div>' +
+    '<div class="mail-row-snippet">' + escHtml(m.snippet.slice(0, 120)) + '</div>' +
     '</a>'
   ).join('') || '<div style="padding:24px;text-align:center;color:var(--text-secondary)">No messages match this filter</div>';
   el.innerHTML =
