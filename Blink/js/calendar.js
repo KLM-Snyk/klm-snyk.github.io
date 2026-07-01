@@ -211,36 +211,17 @@ function calConnect() {
 async function calFetchUnreadCount() {
   if (!calState.token) return;
   try {
-    const excluded = JSON.parse(localStorage.getItem('uyt_gmail_excluded_labels') || '[]');
-    // Build exclusion clause from denylist
-    const exclusionClause = excluded.length
-      ? ' ' + excluded.map(id => '-label:' + id).join(' ')
-      : '';
-    const q = 'is:unread -in:spam -in:trash' + exclusionClause;
-    let total = 0;
-    let pageToken = null;
-    const MAX_PAGES = 5; // cap at ~500 messages, show 500+ if exceeded
-    let pages = 0;
-    let cappedAt = null;
-    do {
-      const params = new URLSearchParams({ q, maxResults: 100 });
-      if (pageToken) params.set('pageToken', pageToken);
-      const res = await fetch(
-        'https://gmail.googleapis.com/gmail/v1/users/me/messages?' + params,
-        { headers: { Authorization: `Bearer ${calState.token}` } }
-      );
-      if (!res.ok) break;
-      const data = await res.json();
-      total += (data.messages || []).length;
-      pageToken = data.nextPageToken || null;
-      pages++;
-      if (pages >= MAX_PAGES && pageToken) { cappedAt = total; pageToken = null; }
-    } while (pageToken);
-    calState.unreadCount = total;
-    calState.unreadCountCapped = cappedAt !== null;
-    // Cache it
-    localStorage.setItem('uyt_gmail_unread', String(total));
-    localStorage.setItem('uyt_gmail_unread_capped', cappedAt !== null ? '1' : '0');
+    // INBOX label API — inbox-only unread count
+    // Messages moved out of inbox are NOT counted even if still unread
+    const res = await fetch(
+      'https://gmail.googleapis.com/gmail/v1/users/me/labels/INBOX',
+      { headers: { Authorization: 'Bearer ' + calState.token } }
+    );
+    if (!res.ok) return;
+    const data = await res.json();
+    calState.unreadCount = typeof data.messagesUnread === 'number' ? data.messagesUnread : 0;
+    calState.unreadCountCapped = false;
+    localStorage.setItem('uyt_gmail_unread', String(calState.unreadCount));
   } catch (err) {
     console.warn('Could not fetch Gmail unread count:', err);
     calState.unreadCount = null;
