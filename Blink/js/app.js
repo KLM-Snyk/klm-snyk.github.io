@@ -395,8 +395,11 @@ async function fetchMailMessages() {
         const dateStr = getH('Date');
         const ts = dateStr ? new Date(dateStr).getTime() : 0;
         const isUnread = (d.labelIds || []).includes('UNREAD');
+        // Only keep INBOX and user-created labels (no system/category labels)
+        const SKIP_LABELS = ['UNREAD','STARRED','IMPORTANT','SENT','DRAFT',
+          'CATEGORY_PROMOTIONS','CATEGORY_SOCIAL','CATEGORY_UPDATES','CATEGORY_FORUMS','CATEGORY_PERSONAL'];
         const labelIds = (d.labelIds || []).filter(function(l) {
-          return !['UNREAD','STARRED','IMPORTANT','CATEGORY_PROMOTIONS','CATEGORY_SOCIAL','CATEGORY_UPDATES','CATEGORY_FORUMS','CATEGORY_PERSONAL'].includes(l);
+          return !SKIP_LABELS.includes(l) && !l.startsWith('CATEGORY_');
         });
         return {
           id,
@@ -516,6 +519,8 @@ function renderMail() {
   // Group by label, INBOX first
   const msgs = mailApplySearch(mailState.messages);
   const labelOrder = ['INBOX'];
+  // INBOX expanded by default on first load
+  if (mailState.expanded['INBOX'] === undefined) mailState.expanded['INBOX'] = true;
   const labelMap = {};
   msgs.forEach(function(m) {
     (m.labelIds.length ? m.labelIds : ['INBOX']).forEach(function(lid) {
@@ -532,7 +537,7 @@ function renderMail() {
   }).map(function(lid) {
     const labelMsgs = labelMap[lid].sort(function(a,b) { return b.ts - a.ts; });
     const unreadCount = labelMsgs.filter(function(m) { return m.isUnread; }).length;
-    const isExpanded = mailState.expanded[lid] !== false; // default expanded
+    const isExpanded = mailState.expanded[lid] === true; // default collapsed
     const labelName = mailGetLabelName(lid);
     const badge = unreadCount > 0 ? ' <span class="mail-label-badge">' + unreadCount + ' unread</span>' : '';
     const toggle = isExpanded
