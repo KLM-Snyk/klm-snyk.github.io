@@ -403,7 +403,9 @@ async function fetchMailMessages() {
         // Only keep INBOX and user-created labels (no system/category labels)
         const SKIP_LABELS = ['UNREAD','STARRED','IMPORTANT','SENT','DRAFT',
           'CATEGORY_PROMOTIONS','CATEGORY_SOCIAL','CATEGORY_UPDATES','CATEGORY_FORUMS','CATEGORY_PERSONAL'];
-        const labelIds = (d.labelIds || []).filter(function(l) {
+        const rawLabelIds = d.labelIds || [];
+        const inInbox = rawLabelIds.includes('INBOX');
+        const labelIds = rawLabelIds.filter(function(l) {
           return !SKIP_LABELS.includes(l) && !l.startsWith('CATEGORY_');
         });
         return {
@@ -418,6 +420,7 @@ async function fetchMailMessages() {
           labelIds,
           isUnread,
           link: 'https://mail.google.com/mail/u/0/#all/' + id,
+          inInbox,
         };
       } catch(e) { return null; }
     }))).filter(Boolean).sort(function(a, b) { return b.ts - a.ts; });
@@ -529,7 +532,9 @@ function renderMail() {
   if (mailState.expanded['INBOX'] === undefined) mailState.expanded['INBOX'] = true;
   const labelMap = {};
   msgs.forEach(function(m) {
-    (m.labelIds.length ? m.labelIds : ['INBOX']).forEach(function(lid) {
+    // Skip messages with no meaningful labels after filtering (e.g. pure CATEGORY_ messages)
+    const assignedLabels = m.labelIds.length ? m.labelIds : (m.inInbox ? ['INBOX'] : []);
+    assignedLabels.forEach(function(lid) {
       if (!labelMap[lid]) labelMap[lid] = [];
       if (!labelMap[lid].find(function(x) { return x.id === m.id; })) labelMap[lid].push(m);
     });
