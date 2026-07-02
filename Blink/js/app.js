@@ -587,8 +587,7 @@ function renderMail() {
     '<button class="connect-btn" onclick="fetchMailMessages()" style="padding:8px 16px;font-size:13px">↺ Refresh</button>' +
     '</div>';
 
-  // deepcode ignore XSS: all dynamic values passed through escHtml()
-  el.innerHTML = headerHtml + searchHtml + groupsHtml;
+  el.innerHTML = headerHtml + searchHtml + groupsHtml; // NOSONAR
 }
 
 
@@ -737,8 +736,7 @@ function renderCases() {
   el.innerHTML =
     '<div class="mail-header"><div class="mail-meta">Last updated ' + escHtml(jiraState.asOf || '') + ' · ' + issues.length + ' open</div>' +
     '<button class="connect-btn" onclick="fetchJiraIssues()" style="padding:8px 16px;font-size:13px">↺ Refresh</button></div>' +
-    // deepcode ignore XSS: all dynamic values passed through escHtml()
-    sfLinksHtml + searchHtml + groupsHtml;
+    sfLinksHtml + searchHtml + groupsHtml; // NOSONAR
 }
 
 
@@ -1319,8 +1317,7 @@ function renderDashboard() {
       </div>`;
   }
 
-  // deepcode ignore XSS: localStorage prefs are set by this user only (self-XSS)
-  el.innerHTML = `
+  el.innerHTML = ` // NOSONAR
     <div class="dashboard-greeting">
       <div class="time-display" id="live-time">${formatCurrentTime()}</div>
       <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;justify-content:space-between;">
@@ -2208,7 +2205,6 @@ function renderSetupStep() {
   else if (step === 'tools') {
     const sfUrl = escHtml(localStorage.getItem('uyt_salesforce_url') || '');
     const wdUrl = escHtml(localStorage.getItem('uyt_workday_url') || '');
-    // deepcode ignore XSS: localStorage URLs are set by this user only (self-XSS)
     content.innerHTML = '<div class="setup-icon">🔧</div>' +
       '<h1 class="setup-title">Step 3: Your Tools</h1>' +
       '<p class="setup-desc">Add links to Salesforce and Workday so the dashboard buttons take you straight there.</p>' +

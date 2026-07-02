@@ -1,24 +1,31 @@
-# Snyk .snyk policy file
-version: v1.25.0
+# Snyk (https://snyk.io) policy file, patches or ignores known vulnerabilities.
+version: v1.25.1
+# ignores vulnerabilities until expiry date; change duration by modifying expiry date
 ignore:
   SNYK-JS-BLINK-XSS-591:
     - '*':
-        reason: All dynamic values passed through escHtml() before innerHTML assignment
+        reason: >-
+          All dynamic values passed through escHtml() before innerHTML
+          assignment
         expires: 2027-01-01T00:00:00.000Z
   64f3de86-112c-42de-aeba-a8eb4af4ea8f:
     - '*':
-        reason: Mail screen - all dynamic values passed through escHtml() before innerHTML assignment
+        reason: Mail screen - all values passed through escHtml() before innerHTML
         expires: 2027-01-01T00:00:00.000Z
+        created: 2026-07-02T21:37:01.431Z
   5f9be18d-dd10-4794-ba2a-3d730d905cb0:
     - '*':
-        reason: Setup wizard uses localStorage values escaped via escHtml() before use
+        reason: Setup wizard uses localStorage values escaped via escHtml()
         expires: 2027-01-01T00:00:00.000Z
+        created: 2026-07-02T21:37:03.194Z
   91f0d65a-91ec-4954-8bdd-05a55cd937f0:
     - '*':
-        reason: Cases screen - all Jira data escaped via escHtml() before innerHTML assignment
+        reason: Cases screen - all Jira data escaped via escHtml() before innerHTML
         expires: 2027-01-01T00:00:00.000Z
+        created: 2026-07-02T21:37:04.695Z
   8fa0f782-5c94-4848-b919-466844dfee2d:
     - '*':
         reason: Dashboard render uses localStorage prefs set by this user only
         expires: 2027-01-01T00:00:00.000Z
+        created: 2026-07-02T21:37:06.482Z
 patch: {}
