@@ -11,52 +11,45 @@ Blink is a browser-native workday dashboard for support managers. It provides a 
 ## Key Features
 
 ### Single pane of glass
-Log in once with Google and get an instant view of everything that matters — Google Suite, Slack, and your shift calendar all in one place.
+Log in once with Google and Slack SSO — everything loads automatically.
 
 ### Dashboard
-- **Gmail** — unread email count (numeric indicator; full email management is not in scope for v1)
-- **Slack Digest** — summary card showing counts for each category; click through for the full digest
-- **Google Drive** — files shared with you or created by you in the last 30 days
-- **Workday** — direct link to your Workday task inbox
-- **Salesforce Cases** — direct link to your case queue
-- **Upcoming Events** — next meetings from your Google Calendar
+- **Gmail** — inbox-only unread count with per-label breakdown (clicking navigates to Mail screen)
+- **Slack Digest** — summary card (Onboarding · Work Items · Escalations counts)
+- **Workday** — last 60 days of Workday Slack DM notifications
+- **Cases** — open Jira issues assigned to you, grouped by project
+- **Google Drive** — files shared with you, @mentions & created by you (last 30 days)
+- **Upcoming Events** — next meetings from Google Calendar
+
+### Mail Screen
+- 30-day unread messages grouped by label (Inbox always first)
+- Collapsible label groups, 10 messages per page with Prev/Next
+- 3-column layout: Date | Sender | Subject
+- Search by keyword, sender, or date
+- Client-side only — no email content leaves your browser
 
 ### Calendar
 - Day / Week / Month views
-- **On-call banner** — who was on-call last weekend and who is next
-- **OOO banner** — who is out today
-- **Upcoming holidays & recharge days** — next 30 days
-- Click any day in Month view to see full event list in a side panel
+- On-call banner — who was on-call last weekend and who is next
+- OOO banner — who is out today
+- Upcoming holidays & recharge days — next 30 days
 
 ### Slack Digest
-- **Region Handover banner** — Prior / Incoming / Next shift with agent counts, rendered from Slack Block Kit
-- **AI-powered digest** broken into 3 categories:
-  - 👥 Onboarding / People
-  - 🔧 Work Items
-  - 🚨 Incidents & Escalations
-- Searches channels you are already a member of (personalized per user)
+- **Region Handover banner** — Prior / Incoming / Next shift with agent counts
+- **AI-powered digest** broken into 3 categories: Onboarding/People · Work Items · Incidents & Escalations
 - Auto-fetches on page load; cached for instant display on return visits
 - Configurable channel list per user
 
+### Cases Screen
+- Open Jira issues assigned to you, grouped by project
+- Configurable project filter in Settings
+- Each issue links directly to Jira
+- Sign in with Atlassian SSO (OAuth popup)
+
 ### Google Drive
-- Files shared with you, files where you are @mentioned in comments, and files created by you — all from the last 30 days
-- Filter by: Sheets / Docs / Slides / Shared with me / Mentions / Created by me
-- Keyword search across all files
-
----
-
-## Upcoming Features
-
-### Workday
-- Tasks assigned to you pulled directly from Workday
-
-### Cases
-- JIRA cases where you are the owner
-- JIRA report list
-- Salesforce case & escalation trends
-- SF cases opened today
-- SF cases closed today
-- Status page information
+- Files shared with you, files where you are @mentioned, and files created by you (last 30 days)
+- Filter by: Sheets / Docs / Slides / Shared / Mentions / Created
+- Keyword search
 
 ---
 
@@ -65,34 +58,49 @@ Log in once with Google and get an instant view of everything that matters — G
 1. Visit https://klm-snyk.github.io/Blink/
 2. The setup wizard guides you through:
    - **Google** — click "Sign in with Google" (one click, no configuration needed)
-   - **Slack** — click the link to get your personal `xoxp-` token, paste it in
+   - **Slack** — click "Sign in with Slack" (SSO popup, no token needed)
    - **Your Tools** — paste your Salesforce and Workday URLs (optional)
    - **Preferences** — pick your name and color theme
+
+---
+
+## Settings
+- Google connect/disconnect
+- Gmail excluded labels (hide labels from unread count and Mail page)
+- Slack connect/disconnect
+- Slack channels (add/remove by ID+name)
+- Jira connect/disconnect + project key filter
+- Salesforce & Workday URLs
+- 5 color themes + dark mode
+- 🌀 Whovian backgrounds (dark mode only): Tardis / Bigger on the inside / Tally
+  - Weeping Angel appears during refresh when Whovian background is active 👁️
 
 ---
 
 ## For Admins
 
 ### Google OAuth
-The Google OAuth Client ID is pre-filled — no setup needed for users.
-Authorized JavaScript origin: `https://klm-snyk.github.io`
+Pre-filled Client ID — no setup needed for users.
+Authorized origin: `https://klm-snyk.github.io`
 
-### Cloudflare Worker (Slack Digest)
-A shared Cloudflare Worker handles all Slack API calls server-side (avoids browser CORS restrictions).
-Each user's `xoxp-` token is passed per-request — the worker never stores user tokens.
+### Cloudflare Worker
+URL: `https://uyt-slack-digest.kar-marsten.workers.dev`
 
-Deploy `slack-digest-worker.js` to Cloudflare Workers with:
-- `ANTHROPIC_API_KEY` — Anthropic API key for digest categorization
-- `SLACK_MCP_TOKEN` — fallback token (optional)
-- `ALLOWED_ORIGIN` — `https://klm-snyk.github.io`
+Handles: Slack OAuth, Jira OAuth, Slack API calls, Workday DM fetch, Anthropic digest categorization.
 
-### Slack tokens (self-serve — no admin action needed)
-Each user gets their own `xoxp-` token from the UseYourTools Slack app:
-1. Go to [api.slack.com/apps/A0BAVHH5YK1/oauth](https://api.slack.com/apps/A0BAVHH5YK1/oauth)
-2. Copy the **User OAuth Token** (starts with `xoxp-`)
-3. Paste it into Blink during setup
+Environment variables:
+- `ANTHROPIC_API_KEY`
+- `SLACK_CLIENT_ID` / `SLACK_CLIENT_SECRET`
+- `JIRA_CLIENT_ID` / `JIRA_CLIENT_SECRET`
+- `ALLOWED_ORIGIN` = `https://klm-snyk.github.io`
 
-Each user's token reads only channels they are already a member of — fully personalized, no bot invitations needed.
+### Slack App
+Each user signs in via OAuth popup — no token copying needed.
+Scopes: `channels:history, channels:read, groups:history, groups:read, im:history, im:read, mpim:history, mpim:read, search:read, users:read`
+
+### Jira App
+Each user signs in via Atlassian OAuth popup.
+Scopes: `read:jira-work, read:jira-user`
 
 ---
 
@@ -100,7 +108,15 @@ Each user's token reads only channels they are already a member of — fully per
 - Vanilla JS / HTML / CSS — no framework, no bundler
 - Google Identity Services (OAuth 2.0)
 - Google Calendar, Gmail, Drive APIs
-- Slack API via Cloudflare Worker proxy (no CORS)
+- Slack API via Cloudflare Worker proxy
+- Atlassian Jira REST API via Cloudflare Worker proxy
 - Anthropic Claude API (digest categorization)
 - Cloudflare Workers (server-side proxy, paid plan)
 - GitHub Pages (hosting)
+
+---
+
+## Coming Soon
+- Salesforce case trends, opened & closed today
+- Status page information
+- Workday tasks (direct Workday API)
