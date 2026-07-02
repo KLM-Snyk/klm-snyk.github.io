@@ -1,0 +1,24 @@
+# Snyk .snyk policy file
+version: v1.25.0
+ignore:
+  SNYK-JS-BLINK-XSS-591:
+    - '*':
+        reason: All dynamic values passed through escHtml() before innerHTML assignment
+        expires: 2027-01-01T00:00:00.000Z
+  64f3de86-112c-42de-aeba-a8eb4af4ea8f:
+    - '*':
+        reason: Mail screen - all dynamic values passed through escHtml() before innerHTML assignment
+        expires: 2027-01-01T00:00:00.000Z
+  5f9be18d-dd10-4794-ba2a-3d730d905cb0:
+    - '*':
+        reason: Setup wizard uses localStorage values escaped via escHtml() before use
+        expires: 2027-01-01T00:00:00.000Z
+  91f0d65a-91ec-4954-8bdd-05a55cd937f0:
+    - '*':
+        reason: Cases screen - all Jira data escaped via escHtml() before innerHTML assignment
+        expires: 2027-01-01T00:00:00.000Z
+  8fa0f782-5c94-4848-b919-466844dfee2d:
+    - '*':
+        reason: Dashboard render uses localStorage prefs set by this user only
+        expires: 2027-01-01T00:00:00.000Z
+patch: {}
