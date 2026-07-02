@@ -1,14 +1,6 @@
 // Blink — Main App
 
-/* =====
-
-function sanitizeHtml(html) {
-  return (html || '')
-    .replace(/<script[\s\S]*?<\/script>/gi, '')
-    .replace(/on\w+\s*=\s*["'][^"']*["']/gi, '')
-    .replace(/javascript:/gi, '')
-    .replace(/data:/gi, '');
-}=======================================================
+/* ============================================================
    Zen Quotes
    ============================================================ */
 const ZEN_QUOTES = [
@@ -34,6 +26,15 @@ const ZEN_QUOTES = [
   { text: "Today's accomplishments were yesterday's impossibilities.", author: "Robert H. Schuller" },
   { text: "Don't watch the clock; do what it does. Keep going.", author: "Sam Levenson" },
 ];
+
+function sanitizeHtml(html) {
+  return (html || '')
+    .replace(/<script[\s\S]*?<\/script>/gi, '')
+    .replace(/on\w+\s*=\s*["'][^"']*["']/gi, '')
+    .replace(/javascript:/gi, '')
+    .replace(/data:/gi, '');
+}
+
 
 function getDailyQuote() {
   const now = new Date();
