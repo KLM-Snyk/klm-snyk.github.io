@@ -1359,10 +1359,10 @@ function renderDashboard() {
                 const byProj = {};
                 jiraState.issues.forEach(i => { const k = i.fields.project.key; byProj[k] = (byProj[k]||0)+1; });
                 return Object.entries(byProj).map(([k,c]) => '<div class="sf-tier-row"><span class="sf-tier-label">' + escHtml(k) + '</span><span class="sf-tier-stat">' + c + ' open</span></div>').join('') +
-                  '<div class="dash-card-action" style="margin-top:6px">View all ${ICONS.arrowRight}</div>';
+                  '<div class="dash-card-action" style="margin-top:6px">View all ' + ICONS.arrowRight + '</div>';
               })() :
               jiraState.issues ? '<div class="dash-card-sub">No open cases ✅</div>' :
-              '<div class="dash-card-sub">Your open Jira cases</div><div class="dash-card-action">View cases ${ICONS.arrowRight}</div>'}
+              '<div class="dash-card-sub">Your open Jira cases</div><div class="dash-card-action">View cases ' + ICONS.arrowRight + '</div>'}
           </div>
 
           <div class="dash-card" onclick="navigate('drive')">
