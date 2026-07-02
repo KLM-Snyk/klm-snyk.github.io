@@ -2414,6 +2414,10 @@ document.addEventListener('DOMContentLoaded', async () => {
       slackInit();
       // Fetch Gmail label breakdown lazily
     if (calIsConnected()) calFetchGmailLabelBreakdown().then(() => renderDashboard());
+    // Auto-fetch Jira issues if connected
+    if (localStorage.getItem('uyt_jira_token') && !jiraState.issues) {
+      setTimeout(function() { fetchJiraIssues(); }, 2000);
+    }
     // Auto-fetch digest if no cache — small delay to ensure token is ready
       if (!slackDigestState.html && localStorage.getItem('uyt_slack_token')) {
         setTimeout(function() {
