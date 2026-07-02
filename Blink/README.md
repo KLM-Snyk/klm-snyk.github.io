@@ -10,20 +10,17 @@ Blink is a browser-native workday dashboard for support managers. It provides a 
 
 ## Key Features
 
-### Single pane of glass
-Log in once with Google and Slack SSO — everything loads automatically.
-
 ### Dashboard
-- **Gmail** — inbox-only unread count with per-label breakdown (clicking navigates to Mail screen)
-- **Slack Digest** — summary card (Onboarding · Work Items · Escalations counts)
+- **Gmail** — inbox-only unread count with per-label breakdown; click to open Mail screen
+- **Slack Digest** — Onboarding · Work Items · Escalations counts; auto-fetches on load
 - **Workday** — last 60 days of Workday Slack DM notifications
-- **Cases** — open Jira issues assigned to you, grouped by project
+- **Cases** — open Jira issues assigned to you, grouped by project; auto-fetches on load
 - **Google Drive** — files shared with you, @mentions & created by you (last 30 days)
 - **Upcoming Events** — next meetings from Google Calendar
 
 ### Mail Screen
 - 30-day unread messages grouped by label (Inbox always first)
-- Collapsible label groups, 10 messages per page with Prev/Next
+- Collapsible label groups, 10 messages per page with Prev/Next pagination
 - 3-column layout: Date | Sender | Subject
 - Search by keyword, sender, or date
 - Client-side only — no email content leaves your browser
@@ -35,19 +32,19 @@ Log in once with Google and Slack SSO — everything loads automatically.
 - Upcoming holidays & recharge days — next 30 days
 
 ### Slack Digest
-- **Region Handover banner** — Prior / Incoming / Next shift with agent counts
-- **AI-powered digest** broken into 3 categories: Onboarding/People · Work Items · Incidents & Escalations
+- Region Handover banner — Prior / Incoming / Next shift with agent counts
+- AI-powered digest: Onboarding/People · Work Items · Incidents & Escalations
 - Auto-fetches on page load; cached for instant display on return visits
 - Configurable channel list per user
 
 ### Cases Screen
 - Open Jira issues assigned to you, grouped by project
+- Collapsible project groups with keyword and project search
 - Configurable project filter in Settings
 - Each issue links directly to Jira
-- Sign in with Atlassian SSO (OAuth popup)
 
 ### Google Drive
-- Files shared with you, files where you are @mentioned, and files created by you (last 30 days)
+- Files shared with you, @mentioned in comments, and created by you (last 30 days)
 - Filter by: Sheets / Docs / Slides / Shared / Mentions / Created
 - Keyword search
 
@@ -57,18 +54,18 @@ Log in once with Google and Slack SSO — everything loads automatically.
 
 1. Visit https://klm-snyk.github.io/Blink/
 2. The setup wizard guides you through:
-   - **Google** — click "Sign in with Google" (one click, no configuration needed)
-   - **Slack** — click "Sign in with Slack" (SSO popup, no token needed)
-   - **Your Tools** — paste your Salesforce and Workday URLs (optional)
-   - **Preferences** — pick your name and color theme
+   - **Google** — Sign in with Google (one click)
+   - **Slack** — Sign in with Slack (SSO popup)
+   - **Jira** — Sign in with Atlassian (SSO popup)
+   - **Your Tools** — Salesforce and Workday URLs (optional)
+   - **Preferences** — name and color theme
 
 ---
 
 ## Settings
 - Google connect/disconnect
 - Gmail excluded labels (hide labels from unread count and Mail page)
-- Slack connect/disconnect
-- Slack channels (add/remove by ID+name)
+- Slack connect/disconnect + channel list
 - Jira connect/disconnect + project key filter
 - Salesforce & Workday URLs
 - 5 color themes + dark mode
@@ -99,6 +96,7 @@ Scopes: `channels:history, channels:read, groups:history, groups:read, im:histor
 ### Jira App
 Each user signs in via Atlassian OAuth popup.
 Scopes: `read:jira-work, read:jira-user`
+Add managers as Contributors on the app at developer.atlassian.com.
 
 ---
 

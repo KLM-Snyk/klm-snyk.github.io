@@ -1075,25 +1075,13 @@ function closeAbout() {
   document.getElementById('about-overlay').classList.remove('open');
 }
 
-function saveAnthropicKey() {
-  const key = document.getElementById('anthropic-key-input')?.value.trim();
-  if (key) { localStorage.setItem('uyt_anthropic_key', key); renderSettingsPanel(); }
-}
 
 function saveToolUrl(key, inputId) {
   const url = document.getElementById(inputId)?.value.trim();
   if (url) { localStorage.setItem(key, url); renderSettingsPanel(); }
 }
 
-function setupSaveSlackToken() {
-  const token = document.getElementById('setup-slack-token')?.value.trim();
-  if (token) { localStorage.setItem('uyt_slack_token', token); renderSetupStep(); }
-}
 
-function saveSlackToken() {
-  const token = document.getElementById('slack-token-settings')?.value.trim();
-  if (token) { localStorage.setItem('uyt_slack_token', token); renderSettingsPanel(); }
-}
 
 function addJiraProject() {
   const key = document.getElementById('jira-proj-key')?.value.trim().toUpperCase();
@@ -1195,10 +1183,6 @@ function setTardis(value) {
   renderSettingsPanel();
 }
 
-function saveWorkerUrl() {
-  const url = document.getElementById('worker-url-input')?.value.trim();
-  if (url) { localStorage.setItem('uyt_digest_worker_url', url); renderSettingsPanel(); }
-}
 
 /* ============================================================
    Slack Digest — AI-powered via Anthropic API + Slack MCP
@@ -1951,12 +1935,8 @@ function selectMonthDay(key) {
   _selectedMonthDay = key;
   renderCalendar();
 }
+ // no-op, kept for safety
 
-function toggleMonthMore() {} // no-op, kept for safety
-
-function calendarChangeDay(delta) {
-  calendarNav(delta);
-}
 
 /* ============================================================
    Daily Planner
@@ -2294,10 +2274,6 @@ function setupConnectGoogle() {
   calConnect();
 }
 
-function setupSaveWorker() {
-  const url = document.getElementById('setup-worker-url')?.value.trim();
-  if (url) { localStorage.setItem('uyt_digest_worker_url', url); renderSetupStep(); }
-}
 
 function setupSaveSalesforce() {
   const url = document.getElementById('setup-sf-url')?.value.trim();
