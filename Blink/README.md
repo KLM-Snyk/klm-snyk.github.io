@@ -72,8 +72,6 @@ Log in once with Google and Slack SSO — everything loads automatically.
 - Jira connect/disconnect + project key filter
 - Salesforce & Workday URLs
 - 5 color themes + dark mode
-- 🌀 Whovian backgrounds (dark mode only): Tardis / Bigger on the inside / Tally
-  - Weeping Angel appears during refresh when Whovian background is active 👁️
 
 ---
 

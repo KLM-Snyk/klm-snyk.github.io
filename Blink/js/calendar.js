@@ -520,7 +520,7 @@ async function calFetchUpcomingEvents() {
       timeMax: end.toISOString(),
       singleEvents: 'true',
       orderBy: 'startTime',
-      maxResults: 20,
+      maxResults: 50,
     });
 
     // Fetch from both OOO and Recharge calendars in parallel
@@ -550,10 +550,11 @@ async function calFetchUpcomingEvents() {
       const data = await rechargeRes.json();
       const prefixes = ['US', 'CA', 'RO', 'AUS', 'JP', 'IN', 'PT', 'UK', 'IL'];
 
-      // Filter to only events starting with a known country code
-      const filtered = (data.items || []).filter(e =>
-        prefixes.some(p => (e.summary || '').toUpperCase().startsWith(p))
-      );
+      // Filter to events that start with OR contain a known country code
+      const filtered = (data.items || []).filter(e => {
+        const title = (e.summary || '').toUpperCase();
+        return prefixes.some(p => title.startsWith(p) || title.includes(' ' + p) || title.includes('(' + p + ')') || title.includes('-' + p));
+      });
 
       const parseDate = str => {
         // Parse YYYY-MM-DD without timezone shift
