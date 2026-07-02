@@ -719,10 +719,15 @@ function renderCases() {
       '</div>';
   }).join('') || '<div style="padding:24px;text-align:center;color:var(--text-secondary)">No cases match</div>';
 
+  const sfLinksHtml = '<div class="cases-sf-links">' +
+    '<a href="https://snyksec.lightning.force.com/lightning/r/Dashboard/01ZPU000004pbPp2AI/view?queryScope=userFolders" target="_blank" class="cases-sf-btn">📊 Case Trends &amp; Data</a>' +
+    '<a href="https://snyksec.lightning.force.com/lightning/o/Case/list?filterName=All_Unassigned_Cases" target="_blank" class="cases-sf-btn">📋 All Unassigned Cases</a>' +
+    '</div>';
+
   el.innerHTML =
     '<div class="mail-header"><div class="mail-meta">Last updated ' + escHtml(jiraState.asOf || '') + ' · ' + issues.length + ' open</div>' +
     '<button class="connect-btn" onclick="fetchJiraIssues()" style="padding:8px 16px;font-size:13px">↺ Refresh</button></div>' +
-    searchHtml + groupsHtml;
+    sfLinksHtml + searchHtml + groupsHtml;
 }
 
 

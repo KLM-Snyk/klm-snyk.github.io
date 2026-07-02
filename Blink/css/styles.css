@@ -2764,3 +2764,8 @@ button, a.setup-btn-primary, a.cal-connect-btn {
 .cases-issue-key { font-size:11px; font-weight:700; color:var(--primary); font-family:monospace; }
 .cases-issue-summary { font-size:13px; color:var(--text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .cases-issue-status { font-size:11px; color:var(--text-secondary); text-align:right; }
+
+/* Cases SF quick links */
+.cases-sf-links { display:flex; gap:8px; margin-bottom:16px; flex-wrap:wrap; }
+.cases-sf-btn { display:inline-flex; align-items:center; gap:6px; padding:7px 14px; border:1.5px solid var(--border); border-radius:99px; background:var(--surface); color:var(--text); font-size:13px; font-weight:500; text-decoration:none; transition:border-color var(--transition),color var(--transition); font-family:var(--font); }
+.cases-sf-btn:hover { border-color:var(--primary); color:var(--primary); }
