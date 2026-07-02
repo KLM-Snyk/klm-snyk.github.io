@@ -2406,10 +2406,13 @@ document.addEventListener('DOMContentLoaded', async () => {
       slackInit();
       // Fetch Gmail label breakdown lazily
     if (calIsConnected()) calFetchGmailLabelBreakdown().then(() => renderDashboard());
-    if (!slackDigestState.html) {
-        slackDigestState.loading = true;
-        renderDashboard();
-        fetchSlackDigest().then(() => { renderDashboard(); renderSlack(); });
+    // Auto-fetch digest if no cache — small delay to ensure token is ready
+      if (!slackDigestState.html && localStorage.getItem('uyt_slack_token')) {
+        setTimeout(function() {
+          slackDigestState.loading = true;
+          renderDashboard();
+          fetchSlackDigest().then(() => { renderDashboard(); renderSlack(); });
+        }, 1500);
       }
     } catch(e) { console.error('Init error:', e); }
   }
