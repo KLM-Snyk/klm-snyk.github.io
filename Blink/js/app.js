@@ -141,8 +141,14 @@ function navigate(screen) {
   if (screen === 'dashboard') renderDashboard();
   if (screen === 'calendar')  renderCalendar();
   if (screen === 'slack')     renderSlackAndAutoFetch();
-  if (screen === 'mail')      renderMail();
-  if (screen === 'cases')     renderCases();
+  if (screen === 'mail') {
+    renderMail();
+    if (!mailState.messages && !mailState.loading && calIsConnected()) fetchMailMessages();
+  }
+  if (screen === 'cases') {
+    renderCases();
+    if (!jiraState.issues && !jiraState.loading && localStorage.getItem('uyt_jira_token')) fetchJiraIssues();
+  }
   if (screen === 'drive')     renderDrive();
   if (screen === 'planner')   renderPlanner();
 }
@@ -583,6 +589,9 @@ const jiraState = {
   issues: null,
   error: null,
   asOf: null,
+  search: '',
+  searchProject: '',
+  expanded: {},
 };
 
 function getJiraProjects() {
@@ -597,7 +606,12 @@ async function fetchJiraIssues() {
   jiraState.loading = true;
   jiraState.error = null;
   renderCases();
-  const projects = getJiraProjects().map(p => p.key).join(',');
+  // Angel overlay
+  const _angel = document.getElementById('angel-overlay');
+  const _tardis = state.prefs?.tardisBackground || 'none';
+  const _dark = state.prefs?.darkMode && state.prefs?.colorScheme === 'modern';
+  if (_angel && _dark && ['tardis','interior','tally'].includes(_tardis)) _angel.classList.add('active');
+  const projects = getJiraProjects().map(function(p) { return p.key; }).join(',');
   try {
     const res = await fetch(
       'https://uyt-slack-digest.kar-marsten.workers.dev/jira/issues?t=' + encodeURIComponent(token) + '&c=' + encodeURIComponent(cloud) + (projects ? '&p=' + encodeURIComponent(projects) : ''),
@@ -616,9 +630,25 @@ async function fetchJiraIssues() {
     jiraState.error = e.message;
   } finally {
     jiraState.loading = false;
+    if (_angel) _angel.classList.remove('active');
     renderCases();
     renderDashboard();
   }
+}
+
+function casesToggle(key, val) { jiraState.expanded[key] = val; renderCases(); }
+
+function casesApplySearch(issues) {
+  let filtered = issues;
+  const kw = jiraState.search.trim().toLowerCase();
+  const proj = jiraState.searchProject.trim().toUpperCase();
+  if (kw) filtered = filtered.filter(function(i) {
+    return i.fields.summary.toLowerCase().includes(kw) || i.key.toLowerCase().includes(kw);
+  });
+  if (proj) filtered = filtered.filter(function(i) {
+    return i.fields.project.key.toUpperCase().includes(proj);
+  });
+  return filtered;
 }
 
 function renderCases() {
@@ -638,32 +668,61 @@ function renderCases() {
     return;
   }
   if (!jiraState.issues) {
-    el.innerHTML = '<div class="cal-connect-prompt"><div class="cal-connect-icon">🎫</div><h3>Ready to load</h3><p>Click refresh to load your open cases.</p><button class="connect-btn" onclick="fetchJiraIssues()">Load Cases</button></div>';
+    el.innerHTML = '<div class="cal-connect-prompt"><div class="cal-connect-icon">⏳</div><h3>Loading cases…</h3></div>';
+    fetchJiraIssues();
     return;
   }
+
+  const issues = casesApplySearch(jiraState.issues);
+
   // Group by project
   const byProject = {};
-  for (const issue of jiraState.issues) {
+  issues.forEach(function(issue) {
     const proj = issue.fields.project.key;
     if (!byProject[proj]) byProject[proj] = { name: issue.fields.project.name, issues: [] };
     byProject[proj].issues.push(issue);
-  }
-  const projectHtml = Object.entries(byProject).map(([key, proj]) =>
-    '<div class="cases-project">' +
-    '<div class="cases-project-header"><span class="cases-project-key">' + escHtml(key) + '</span><span class="cases-project-name">' + escHtml(proj.name) + '</span><span class="cases-project-count">' + proj.issues.length + '</span></div>' +
-    '<div class="cases-issue-list">' +
-    proj.issues.map(issue =>
-      '<a class="cases-issue" href="https://snyksec.atlassian.net/browse/' + escHtml(issue.key) + '" target="_blank">' +
-      '<span class="cases-issue-key">' + escHtml(issue.key) + '</span>' +
-      '<span class="cases-issue-summary">' + escHtml(issue.fields.summary) + '</span>' +
-      '<span class="cases-issue-status">' + escHtml(issue.fields.status.name) + '</span>' +
-      '</a>'
-    ).join('') +
-    '</div></div>'
-  ).join('');
+  });
 
-  el.innerHTML = '<div class="cases-header"><div class="cases-meta">Last updated ' + escHtml(jiraState.asOf || '') + ' · ' + jiraState.issues.length + ' open</div><button class="connect-btn" onclick="fetchJiraIssues()" style="padding:8px 16px;font-size:13px">↺ Refresh</button></div>' + (projectHtml || '<div class="cal-connect-prompt" style="margin-top:32px"><div class="cal-connect-icon">✅</div><h3>No open cases</h3></div>');
+  // Search bar
+  const searchHtml = '<div class="mail-search-bar">' +
+    '<input class="mail-search-input" placeholder="🔍 Keyword…" value="' + escHtml(jiraState.search) + '" oninput="jiraState.search=this.value;renderCases()">' +
+    '<input class="mail-search-input" placeholder="📁 Project (e.g. OSM)…" value="' + escHtml(jiraState.searchProject) + '" oninput="jiraState.searchProject=this.value;renderCases()">' +
+    '</div>';
+
+  const groupsHtml = Object.entries(byProject).map(function(entry) {
+    const key = entry[0], proj = entry[1];
+    const isExpanded = jiraState.expanded[key] !== false; // default expanded
+    const safeKey = key.replace(/'/g,'');
+    const toggle = isExpanded
+      ? '<button class="mail-label-toggle" onclick="casesToggle(\'' + safeKey + '\',false)">▾</button>'
+      : '<button class="mail-label-toggle" onclick="casesToggle(\'' + safeKey + '\',true)">▸</button>';
+    const colHeader = isExpanded
+      ? '<div class="cases-col-header"><span>Key</span><span>Summary</span><span>Status</span></div>'
+      : '';
+    const rows = isExpanded ? proj.issues.map(function(issue) {
+      return '<a class="cases-issue" href="https://snyksec.atlassian.net/browse/' + escHtml(issue.key) + '" target="_blank">' +
+        '<span class="cases-issue-key">' + escHtml(issue.key) + '</span>' +
+        '<span class="cases-issue-summary">' + escHtml(issue.fields.summary) + '</span>' +
+        '<span class="cases-issue-status">' + escHtml(issue.fields.status.name) + '</span>' +
+        '</a>';
+    }).join('') : '';
+    return '<div class="mail-label-group">' +
+      '<div class="mail-label-header">' + toggle +
+        '<span class="mail-label-name">' + escHtml(key) + '</span>' +
+        '<span class="mail-label-badge" style="background:var(--primary)">' + proj.issues.length + '</span>' +
+        '<span class="mail-label-total">' + escHtml(proj.name) + '</span>' +
+      '</div>' +
+      colHeader +
+      '<div class="cases-issue-list">' + rows + '</div>' +
+      '</div>';
+  }).join('') || '<div style="padding:24px;text-align:center;color:var(--text-secondary)">No cases match</div>';
+
+  el.innerHTML =
+    '<div class="mail-header"><div class="mail-meta">Last updated ' + escHtml(jiraState.asOf || '') + ' · ' + issues.length + ' open</div>' +
+    '<button class="connect-btn" onclick="fetchJiraIssues()" style="padding:8px 16px;font-size:13px">↺ Refresh</button></div>' +
+    searchHtml + groupsHtml;
 }
+
 
 /* ============================================================
    Settings Panel

@@ -2756,3 +2756,11 @@ button, a.setup-btn-primary, a.cal-connect-btn {
 .mail-page-nav { display:flex; align-items:center; justify-content:center; gap:16px; padding:10px 14px; border-top:1px solid var(--border); background:var(--surface); }
 .mail-page-btn { background:none; border:1.5px solid var(--border); border-radius:99px; padding:5px 14px; font-size:12px; cursor:pointer; color:var(--text); font-family:var(--font); transition:border-color var(--transition),color var(--transition); }
 .mail-page-btn:hover { border-color:var(--primary); color:var(--primary); }
+
+/* Cases col header */
+.cases-col-header { display:grid; grid-template-columns:90px 1fr 120px; gap:0 12px; padding:6px 14px; background:var(--bg); border-top:1px solid var(--border); border-bottom:1px solid var(--border); font-size:11px; font-weight:700; color:var(--text-secondary); text-transform:uppercase; letter-spacing:0.05em; }
+.cases-issue { display:grid; grid-template-columns:90px 1fr 120px; gap:0 12px; padding:9px 14px; text-decoration:none; border-top:1px solid var(--border); transition:background var(--transition); align-items:center; color:inherit; }
+.cases-issue:hover { background:var(--surface); }
+.cases-issue-key { font-size:11px; font-weight:700; color:var(--primary); font-family:monospace; }
+.cases-issue-summary { font-size:13px; color:var(--text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.cases-issue-status { font-size:11px; color:var(--text-secondary); text-align:right; }
