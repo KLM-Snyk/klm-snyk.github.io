@@ -452,6 +452,8 @@ function mailGetLabelName(labelId) {
   const breakdown = calState.gmailBreakdown || [];
   const found = breakdown.find(function(l) { return l.id === labelId; });
   if (found) return found.name;
+  // Hide raw Label_ IDs - return null to skip
+  if (labelId.startsWith('Label_')) return null;
   return labelId;
 }
 
@@ -550,7 +552,7 @@ function renderMail() {
 
   const excluded = getGmailExcluded();
   const groupsHtml = labelOrder.filter(function(lid) {
-    return labelMap[lid] && labelMap[lid].length > 0 && !excluded.includes(lid);
+    return labelMap[lid] && labelMap[lid].length > 0 && !excluded.includes(lid) && mailGetLabelName(lid) !== null;
   }).map(function(lid) {
     const labelMsgs = labelMap[lid].sort(function(a,b) { return b.ts - a.ts; });
     const unreadCount = labelMsgs.filter(function(m) { return m.isUnread; }).length;
