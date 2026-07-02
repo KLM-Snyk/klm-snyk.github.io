@@ -239,11 +239,14 @@ async function calFetchGmailLabelBreakdown() {
     );
     if (!res.ok) return;
     const data = await res.json();
+    // Include INBOX plus user labels; exclude system/category labels
     const labels = (data.labels || []).filter(l =>
       !['SPAM', 'TRASH', 'SENT', 'DRAFT', 'UNREAD', 'STARRED', 'IMPORTANT'].includes(l.id) &&
       !l.id.startsWith('CATEGORY_') &&
       !excluded.includes(l.id)
     );
+    // Ensure INBOX is always in the list
+    if (!labels.find(l => l.id === 'INBOX')) labels.unshift({ id: 'INBOX', name: 'Inbox' });
     // Fetch unread count per label sequentially with small delay to avoid rate limits
     const details = [];
     for (const l of labels) {
@@ -259,9 +262,15 @@ async function calFetchGmailLabelBreakdown() {
         await new Promise(function(res) { setTimeout(res, 50); });
       } catch { details.push(null); }
     }
-    const breakdown = details
-      .filter(d => d && d.unread > 0)
+    // Always include INBOX first, then sort others by unread count descending
+    const inboxDetail = details.find(d => d && d.id === 'INBOX');
+    const otherDetails = details
+      .filter(d => d && d.unread > 0 && d.id !== 'INBOX')
       .sort((a, b) => b.unread - a.unread);
+    const inboxEntry = inboxDetail
+      ? inboxDetail
+      : { id: 'INBOX', name: 'Inbox', unread: calState.unreadCount || 0 };
+    const breakdown = [inboxEntry, ...otherDetails];
     calState.gmailBreakdown = breakdown;
     localStorage.setItem('uyt_gmail_breakdown', JSON.stringify(breakdown));
   } catch (err) {
