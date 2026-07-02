@@ -2092,7 +2092,7 @@ function renderSetupStep() {
     const savedToken = escHtml(localStorage.getItem('uyt_slack_token') || '');
     content.innerHTML = '<div class="setup-icon">💬</div>' +
       '<h1 class="setup-title">Step 2: Connect Slack</h1>' +
-      '<p class="setup-desc">Blink reads your Slack channels to build a daily digest. Here\'s how to get your token:</p>' +
+      '<p class="setup-desc">Blink reads your Slack channels to build a daily digest. Click below to sign in — no passwords or tokens needed.</p>' +
       '<div class="setup-step-cta">' +
         '<p style="margin:0 0 12px;font-size:13px;color:var(--text)">Sign in with your Slack account to give Blink access to your channels. It uses your existing SSO — no passwords needed.</p>' +
         '<a href="#" onclick="triggerSlackOAuth();return false;" class="setup-btn-primary" style="display:inline-flex;align-items:center;gap:8px;text-decoration:none;margin-bottom:16px">' +
