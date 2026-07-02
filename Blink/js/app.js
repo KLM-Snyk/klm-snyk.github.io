@@ -2047,6 +2047,7 @@ const setupSteps = [
   'welcome',
   'google',
   'slack',
+  'jira',
   'tools',
   'preferences',
   'done',
@@ -2172,6 +2173,31 @@ function renderSetupStep() {
       '</div>';
   }
 
+  else if (step === 'jira') {
+    const hasJira = !!localStorage.getItem('uyt_jira_token');
+    content.innerHTML = '<div class="setup-icon">🎫</div>' +
+      '<h1 class="setup-title">Step 3: Connect Jira</h1>' +
+      '<p class="setup-desc">Sign in with Atlassian to see your open Jira cases in Blink. Uses your existing SSO — no passwords needed.</p>' +
+      (hasJira ? '<div class="setup-connected-badge">✓ Connected to Jira</div><p style="font-size:13px;color:var(--text-secondary);margin-top:8px">You are all set!</p>' :
+        '<a href="#" onclick="triggerJiraOAuth();return false;" class="setup-btn-primary" style="display:inline-flex;align-items:center;gap:8px;text-decoration:none;color:white;margin-top:8px">Sign in with Atlassian</a>' +
+        '<p style="font-size:12px;color:var(--text-secondary);margin-top:12px">Blink only reads your assigned issues — it never modifies Jira data.</p>'
+      ) +
+      '<div class="setup-actions">' +
+        '<button class="setup-btn-ghost" onclick="setupBack()">← Back</button>' +
+        '<button class="setup-btn-ghost" onclick="setupNext()">Skip for now</button>' +
+        (hasJira ? '<button class="setup-btn-primary" onclick="setupNext()">Next →</button>' : '') +
+      '</div>';
+    // Poll for Jira connection
+    if (!hasJira) {
+      const _poll = setInterval(function() {
+        if (localStorage.getItem('uyt_jira_token')) {
+          clearInterval(_poll);
+          setTimeout(function() { setupNext(); }, 800);
+        }
+      }, 500);
+    }
+  }
+
   else if (step === 'tools') {
     const sfUrl = escHtml(localStorage.getItem('uyt_salesforce_url') || '');
     const wdUrl = escHtml(localStorage.getItem('uyt_workday_url') || '');
@@ -2226,6 +2252,7 @@ function renderSetupStep() {
   }
 
   else if (step === 'done') {
+    const hasJira = !!localStorage.getItem('uyt_jira_token');
     const hasSF = !!localStorage.getItem('uyt_salesforce_url');
     const hasWD = !!localStorage.getItem('uyt_workday_url');
     const hasSlack = !!localStorage.getItem('uyt_slack_token');
@@ -2236,6 +2263,7 @@ function renderSetupStep() {
       '<div class="setup-feature-list">' +
         (conn ? '<div class="setup-feature">✅ Google — calendar, Gmail &amp; Drive</div>' : '<div class="setup-feature" style="opacity:0.5">○ Google — connect anytime from Settings</div>') +
         (hasSlack ? '<div class="setup-feature">✅ Slack — digest ready</div>' : '<div class="setup-feature" style="opacity:0.5">○ Slack — add your token in Settings</div>') +
+        (hasJira ? '<div class="setup-feature">✅ Jira connected</div>' : '<div class="setup-feature" style="opacity:0.5">○ Jira — connect anytime from Settings</div>') +
         (hasSF ? '<div class="setup-feature">✅ Salesforce linked</div>' : '<div class="setup-feature" style="opacity:0.5">○ Salesforce — add URL in Settings</div>') +
         (hasWD ? '<div class="setup-feature">✅ Workday linked</div>' : '<div class="setup-feature" style="opacity:0.5">○ Workday — add URL in Settings</div>') +
       '</div>' +
