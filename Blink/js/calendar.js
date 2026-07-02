@@ -244,18 +244,21 @@ async function calFetchGmailLabelBreakdown() {
       !l.id.startsWith('CATEGORY_') &&
       !excluded.includes(l.id)
     );
-    // Fetch unread count per label in parallel (batched)
-    const details = await Promise.all(labels.map(async l => {
+    // Fetch unread count per label sequentially with small delay to avoid rate limits
+    const details = [];
+    for (const l of labels) {
       try {
         const r = await fetch(
           'https://gmail.googleapis.com/gmail/v1/users/me/labels/' + l.id,
-          { headers: { Authorization: `Bearer ${calState.token}` } }
+          { headers: { Authorization: 'Bearer ' + calState.token } }
         );
-        if (!r.ok) return null;
+        if (!r.ok) { details.push(null); continue; }
         const d = await r.json();
-        return { id: l.id, name: l.name, unread: d.messagesUnread || 0 };
-      } catch { return null; }
-    }));
+        details.push({ id: l.id, name: l.name, unread: d.messagesUnread || 0 });
+        // Small delay to avoid 429 rate limit
+        await new Promise(function(res) { setTimeout(res, 50); });
+      } catch { details.push(null); }
+    }
     const breakdown = details
       .filter(d => d && d.unread > 0)
       .sort((a, b) => b.unread - a.unread);
