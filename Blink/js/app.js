@@ -1161,6 +1161,14 @@ function triggerSlackOAuth() {
       if (typeof renderSetupStep === 'function') renderSetupStep();
       if (typeof renderSettingsPanel === 'function') renderSettingsPanel();
       if (typeof renderDashboard === 'function') renderDashboard();
+      // Auto-fetch digest now that token is available
+      if (!slackDigestState.html) {
+        setTimeout(function() {
+          slackDigestState.loading = true;
+          renderDashboard();
+          fetchSlackDigest().then(function() { renderDashboard(); renderSlack(); });
+        }, 500);
+      }
     }
   }
   window.addEventListener('message', _handleSlackMessage);
