@@ -1317,7 +1317,8 @@ function renderDashboard() {
       </div>`;
   }
 
-  el.innerHTML = ` // NOSONAR
+  // NOSONAR
+  el.innerHTML = `
     <div class="dashboard-greeting">
       <div class="time-display" id="live-time">${formatCurrentTime()}</div>
       <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;justify-content:space-between;">
