@@ -211,17 +211,33 @@ function calConnect() {
 async function calFetchUnreadCount() {
   if (!calState.token) return;
   try {
-    // INBOX label API — inbox-only unread count
-    // Messages moved out of inbox are NOT counted even if still unread
-    const res = await fetch(
-      'https://gmail.googleapis.com/gmail/v1/users/me/labels/INBOX',
-      { headers: { Authorization: 'Bearer ' + calState.token } }
-    );
-    if (!res.ok) return;
-    const data = await res.json();
-    calState.unreadCount = typeof data.messagesUnread === 'number' ? data.messagesUnread : 0;
-    calState.unreadCountCapped = false;
-    localStorage.setItem('uyt_gmail_unread', String(calState.unreadCount));
+    // Use messages.list query to count ALL unread across all labels
+    // (not just inbox — users may have unread in other labels too)
+    const excluded = JSON.parse(localStorage.getItem('uyt_gmail_excluded_labels') || '[]');
+    const exclusionClause = excluded.length ? ' ' + excluded.map(function(id) { return '-label:' + id; }).join(' ') : '';
+    const q = 'is:unread -in:spam -in:trash' + exclusionClause;
+    let total = 0;
+    let pageToken = null;
+    const MAX_PAGES = 5;
+    let pages = 0;
+    let capped = false;
+    do {
+      const params = new URLSearchParams({ q: q, maxResults: 100 });
+      if (pageToken) params.set('pageToken', pageToken);
+      const res = await fetch(
+        'https://gmail.googleapis.com/gmail/v1/users/me/messages?' + params,
+        { headers: { Authorization: 'Bearer ' + calState.token } }
+      );
+      if (!res.ok) break;
+      const data = await res.json();
+      total += (data.messages || []).length;
+      pageToken = data.nextPageToken || null;
+      pages++;
+      if (pages >= MAX_PAGES && pageToken) { capped = true; pageToken = null; }
+    } while (pageToken);
+    calState.unreadCount = total;
+    calState.unreadCountCapped = capped;
+    localStorage.setItem('uyt_gmail_unread', String(total));
   } catch (err) {
     console.warn('Could not fetch Gmail unread count:', err);
     calState.unreadCount = null;
