@@ -697,7 +697,7 @@ function renderBacklogChart() {
     return '<div class="backlog-legend-item"><span class="backlog-legend-swatch" style="background:' + color + '"></span>' + escHtml(name) + '</div>';
   }).join('');
 
-  const colsHtml = backlogState.data.map(function(d) {
+  const colsHtml = backlogState.data.map(function(d, i) {
     const barPct = maxTotal ? (d.total / maxTotal * 100) : 0;
     const segments = backlogState.statusNames.map(function(name, idx) {
       const val = d.statuses[name] || 0;
@@ -709,8 +709,12 @@ function renderBacklogChart() {
       '<div class="backlog-col-track">' +
         '<div class="backlog-col-bar" style="height:' + barPct + '%">' + segments + '</div>' +
       '</div>' +
-      '<div class="backlog-col-name">' + escHtml(d.owner) + '</div>' +
+      '<div class="backlog-col-index">' + (i + 1) + '</div>' +
     '</div>';
+  }).join('');
+
+  const namesKeyHtml = backlogState.data.map(function(d, i) {
+    return '<span class="backlog-name-key-item"><span class="backlog-name-key-num">' + (i + 1) + '.</span>' + escHtml(d.owner) + '</span>';
   }).join('');
 
   return '<div class="backlog-chart">' +
@@ -718,11 +722,15 @@ function renderBacklogChart() {
       '<div class="backlog-chart-title">📊 Backlog by SE' +
         (backlogState.asOf ? ' <span style="font-weight:400;color:var(--text-secondary);font-size:11px">· updated ' + escHtml(backlogState.asOf) + '</span>' : '') +
       '</div>' +
-      '<div class="backlog-legend">' + legendHtml + '</div>' +
     '</div>' +
-    '<div class="backlog-cols-wrap"><div class="backlog-cols">' + colsHtml + '</div></div>' +
+    '<div class="backlog-chart-body">' +
+      '<div class="backlog-cols-wrap"><div class="backlog-cols">' + colsHtml + '</div></div>' +
+      '<div class="backlog-legend-side">' + legendHtml + '</div>' +
+    '</div>' +
+    '<div class="backlog-names-key">' + namesKeyHtml + '</div>' +
   '</div>';
 }
+
 
 
 
