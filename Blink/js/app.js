@@ -690,10 +690,15 @@ function renderBacklogChart() {
   }
   if (!backlogState.data || !backlogState.data.length) return '';
 
-  const maxTotal = Math.max.apply(null, backlogState.data.map(function(d) { return d.total; }));
+  const rawMax = Math.max.apply(null, backlogState.data.map(function(d) { return d.total; }));
+  const niceMax = Math.max(10, Math.ceil(rawMax / 10) * 10);
+  const axisTicks = [niceMax, niceMax * 0.75, niceMax * 0.5, niceMax * 0.25, 0];
+  const axisHtml = axisTicks.map(function(v) {
+    return '<div class="backlog-axis-tick">' + Math.round(v) + '</div>';
+  }).join('');
 
   const colsHtml = backlogState.data.map(function(d) {
-    const barPct = maxTotal ? (d.total / maxTotal * 100) : 0;
+    const barPct = niceMax ? (d.total / niceMax * 100) : 0;
     const breakdown = backlogState.statusNames
       .map(function(name) { return d.statuses[name] ? (name + ': ' + d.statuses[name] + ' of ' + d.total) : null; })
       .filter(Boolean).join('\n');
@@ -719,10 +724,12 @@ function renderBacklogChart() {
       '</div>' +
     '</div>' +
     '<div class="backlog-chart-body">' +
+      '<div class="backlog-axis">' + axisHtml + '</div>' +
       '<div class="backlog-cols-wrap"><div class="backlog-cols">' + colsHtml + '</div></div>' +
     '</div>' +
   '</div>';
 }
+
 
 
 
