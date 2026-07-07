@@ -12,8 +12,10 @@
   --shadow-lg: 0 8px 32px rgba(0,0,0,0.12);
 }
 
-/* Chart color aliases — derived from whichever theme is active, so charts always match */
-:root {
+/* Chart color aliases — derived from whichever theme is active, so charts always match.
+   Must be declared on body (where --primary/--secondary/--accent are actually set by
+   the data-theme attribute), not :root — var() resolves once at the declaring element. */
+body {
   --chart-1: var(--primary);
   --chart-2: var(--secondary);
   --chart-3: var(--accent);
