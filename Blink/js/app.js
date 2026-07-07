@@ -697,19 +697,20 @@ function renderBacklogChart() {
     return '<div class="backlog-legend-item"><span class="backlog-legend-swatch" style="background:' + color + '"></span>' + escHtml(name) + '</div>';
   }).join('');
 
-  const rowsHtml = backlogState.data.map(function(d) {
+  const colsHtml = backlogState.data.map(function(d) {
+    const barPct = maxTotal ? (d.total / maxTotal * 100) : 0;
     const segments = backlogState.statusNames.map(function(name, idx) {
       const val = d.statuses[name] || 0;
       if (!val) return '';
-      const pct = maxTotal ? (val / maxTotal * 100) : 0;
       const color = BACKLOG_COLORS[idx % BACKLOG_COLORS.length];
-      return '<div class="backlog-segment" style="width:' + pct + '%;background:' + color + '" title="' + escHtml(d.owner) + ' — ' + escHtml(name) + ': ' + val + '"></div>';
+      return '<div class="backlog-col-segment" style="flex:' + val + ' 0 0;background:' + color + '" title="' + escHtml(d.owner) + ' — ' + escHtml(name) + ': ' + val + '"></div>';
     }).join('');
-    return '<div class="backlog-row">' +
-      '<div class="backlog-row-name" title="' + escHtml(d.owner) + '">' + escHtml(d.owner) + '</div>' +
-      '<div class="backlog-bar">' + segments + '</div>' +
-      '<div class="backlog-row-total">' + d.total + '</div>' +
-      '</div>';
+    return '<div class="backlog-col" title="' + escHtml(d.owner) + ' — total: ' + d.total + '">' +
+      '<div class="backlog-col-track">' +
+        '<div class="backlog-col-bar" style="height:' + barPct + '%">' + segments + '</div>' +
+      '</div>' +
+      '<div class="backlog-col-name">' + escHtml(d.owner) + '</div>' +
+    '</div>';
   }).join('');
 
   return '<div class="backlog-chart">' +
@@ -719,9 +720,10 @@ function renderBacklogChart() {
       '</div>' +
       '<div class="backlog-legend">' + legendHtml + '</div>' +
     '</div>' +
-    '<div class="backlog-rows">' + rowsHtml + '</div>' +
+    '<div class="backlog-cols-wrap"><div class="backlog-cols">' + colsHtml + '</div></div>' +
   '</div>';
 }
+
 
 
 function casesApplySearch(issues) {
