@@ -697,6 +697,11 @@ function renderBacklogChart() {
     return '<div class="backlog-axis-tick">' + Math.round(v) + '</div>';
   }).join('');
 
+  const legendHtml = backlogState.statusNames.map(function(name, idx) {
+    const color = BACKLOG_COLORS[idx % BACKLOG_COLORS.length];
+    return '<div class="backlog-legend-item"><span class="backlog-legend-swatch" style="background:' + color + '"></span>' + escHtml(name) + '</div>';
+  }).join('');
+
   const colsHtml = backlogState.data.map(function(d) {
     const barPct = niceMax ? (d.total / niceMax * 100) : 0;
     const breakdown = backlogState.statusNames
@@ -726,6 +731,7 @@ function renderBacklogChart() {
     '<div class="backlog-chart-body">' +
       '<div class="backlog-axis">' + axisHtml + '</div>' +
       '<div class="backlog-cols-wrap"><div class="backlog-cols">' + colsHtml + '</div></div>' +
+      '<div class="backlog-legend-side">' + legendHtml + '</div>' +
     '</div>' +
   '</div>';
 }

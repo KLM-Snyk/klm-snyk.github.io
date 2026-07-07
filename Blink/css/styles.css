@@ -16,7 +16,7 @@
    Must be declared on body (where --primary/--secondary/--accent are actually set by
    the data-theme attribute), not :root — var() resolves once at the declaring element. */
 body {
-  --chart-1: var(--primary);
+  --chart-1: color-mix(in srgb, var(--primary) 82%, black 18%);
   --chart-2: var(--secondary);
   --chart-3: var(--accent);
   --chart-4: color-mix(in srgb, var(--primary) 55%, white 45%);
@@ -2758,6 +2758,9 @@ button, a.setup-btn-primary, a.cal-connect-btn {
 .backlog-col-segment { width:100%; transition:opacity var(--transition); }
 .backlog-col-segment:hover { opacity:0.75; }
 .backlog-col-name { position:absolute; top:100%; left:50%; margin-top:6px; font-size:10px; color:var(--text-secondary); white-space:nowrap; transform-origin:top left; transform:rotate(75deg); }
+.backlog-legend-side { display:flex; flex-direction:column; gap:8px; flex-shrink:0; min-width:150px; padding-left:16px; margin-left:8px; border-left:1px solid var(--border); }
+.backlog-legend-item { display:flex; align-items:center; gap:6px; font-size:11px; color:var(--text-secondary); }
+.backlog-legend-swatch { width:10px; height:10px; border-radius:2px; flex-shrink:0; }
 
 /* Mail screen */
 .mail-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:12px; padding-bottom:12px; border-bottom:1px solid var(--border); }
