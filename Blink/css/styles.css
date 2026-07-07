@@ -2732,6 +2732,21 @@ button, a.setup-btn-primary, a.cal-connect-btn {
 .cases-issue-summary { font-size:13px; color:var(--text); flex:1; }
 .cases-issue-status { font-size:11px; color:var(--text-secondary); flex-shrink:0; }
 
+/* Backlog chart (Cases screen) */
+.backlog-chart { margin-bottom:24px; padding:16px; background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); }
+.backlog-chart-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:14px; flex-wrap:wrap; gap:8px; }
+.backlog-chart-title { font-size:14px; font-weight:700; color:var(--text); }
+.backlog-legend { display:flex; gap:14px; flex-wrap:wrap; }
+.backlog-legend-item { display:flex; align-items:center; gap:6px; font-size:11px; color:var(--text-secondary); }
+.backlog-legend-swatch { width:10px; height:10px; border-radius:2px; flex-shrink:0; }
+.backlog-rows { display:flex; flex-direction:column; gap:6px; max-height:420px; overflow-y:auto; }
+.backlog-row { display:grid; grid-template-columns:140px 1fr 34px; align-items:center; gap:10px; }
+.backlog-row-name { font-size:12px; color:var(--text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.backlog-bar { display:flex; height:16px; border-radius:4px; overflow:hidden; background:var(--surface2); }
+.backlog-segment { height:100%; transition:opacity var(--transition); }
+.backlog-segment:hover { opacity:0.75; }
+.backlog-row-total { font-size:12px; font-weight:700; color:var(--text-secondary); text-align:right; }
+
 /* Mail screen */
 .mail-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:12px; padding-bottom:12px; border-bottom:1px solid var(--border); }
 .mail-meta { font-size:13px; color:var(--text-secondary); }

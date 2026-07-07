@@ -157,6 +157,7 @@ function navigate(screen) {
   if (screen === 'cases') {
     renderCases();
     if (!jiraState.issues && !jiraState.loading && localStorage.getItem('uyt_jira_token')) fetchJiraIssues();
+    if (!backlogState.data && !backlogState.loading) fetchBacklogData();
   }
   if (screen === 'drive')     renderDrive();
   if (screen === 'planner')   renderPlanner();
@@ -649,6 +650,80 @@ async function fetchJiraIssues() {
 
 function casesToggle(key, val) { jiraState.expanded[key] = val; renderCases(); }
 
+/* ============================================================
+   Backlog Chart (stacked bar, atop Cases screen)
+   ============================================================ */
+
+const BACKLOG_COLORS = ['#3B82F6', '#8B5CF6', '#F59E0B', '#14B8A6', '#F43F5E', '#84CC16', '#EC4899'];
+
+let backlogState = { data: null, statusNames: [], loading: false, error: null, asOf: null };
+
+async function fetchBacklogData() {
+  backlogState.loading = true;
+  backlogState.error = null;
+  renderCases();
+  try {
+    const res = await fetch('https://uyt-slack-digest.kar-marsten.workers.dev/looker/backlog');
+    const data = await res.json();
+    if (data.backlog) {
+      backlogState.data = data.backlog.slice().sort(function(a, b) { return b.total - a.total; });
+      backlogState.statusNames = data.statusNames || [];
+      backlogState.asOf = new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+    } else {
+      backlogState.error = data.error || 'Failed to load backlog';
+    }
+  } catch (e) {
+    backlogState.error = e.message;
+  } finally {
+    backlogState.loading = false;
+    renderCases();
+  }
+}
+
+function renderBacklogChart() {
+  if (backlogState.loading && !backlogState.data) {
+    return '<div class="backlog-chart"><div class="backlog-chart-title">⏳ Loading backlog…</div></div>';
+  }
+  if (backlogState.error && !backlogState.data) {
+    return '<div class="backlog-chart"><div class="backlog-chart-title">⚠️ Backlog unavailable</div>' +
+      '<div style="font-size:12px;color:var(--text-secondary);margin-top:4px">' + escHtml(backlogState.error) + '</div></div>';
+  }
+  if (!backlogState.data || !backlogState.data.length) return '';
+
+  const maxTotal = Math.max.apply(null, backlogState.data.map(function(d) { return d.total; }));
+
+  const legendHtml = backlogState.statusNames.map(function(name, idx) {
+    const color = BACKLOG_COLORS[idx % BACKLOG_COLORS.length];
+    return '<div class="backlog-legend-item"><span class="backlog-legend-swatch" style="background:' + color + '"></span>' + escHtml(name) + '</div>';
+  }).join('');
+
+  const rowsHtml = backlogState.data.map(function(d) {
+    const segments = backlogState.statusNames.map(function(name, idx) {
+      const val = d.statuses[name] || 0;
+      if (!val) return '';
+      const pct = maxTotal ? (val / maxTotal * 100) : 0;
+      const color = BACKLOG_COLORS[idx % BACKLOG_COLORS.length];
+      return '<div class="backlog-segment" style="width:' + pct + '%;background:' + color + '" title="' + escHtml(d.owner) + ' — ' + escHtml(name) + ': ' + val + '"></div>';
+    }).join('');
+    return '<div class="backlog-row">' +
+      '<div class="backlog-row-name" title="' + escHtml(d.owner) + '">' + escHtml(d.owner) + '</div>' +
+      '<div class="backlog-bar">' + segments + '</div>' +
+      '<div class="backlog-row-total">' + d.total + '</div>' +
+      '</div>';
+  }).join('');
+
+  return '<div class="backlog-chart">' +
+    '<div class="backlog-chart-header">' +
+      '<div class="backlog-chart-title">📊 Backlog by SE' +
+        (backlogState.asOf ? ' <span style="font-weight:400;color:var(--text-secondary);font-size:11px">· updated ' + escHtml(backlogState.asOf) + '</span>' : '') +
+      '</div>' +
+      '<div class="backlog-legend">' + legendHtml + '</div>' +
+    '</div>' +
+    '<div class="backlog-rows">' + rowsHtml + '</div>' +
+  '</div>';
+}
+
+
 function casesApplySearch(issues) {
   let filtered = issues;
   const kw = jiraState.search.trim().toLowerCase();
@@ -665,21 +740,22 @@ function casesApplySearch(issues) {
 function renderCases() {
   const el = document.getElementById('screen-cases-content');
   if (!el) return;
+  const backlogHtml = renderBacklogChart();
   const token = localStorage.getItem('uyt_jira_token');
   if (!token) {
-    el.innerHTML = '<div class="cal-connect-prompt"><div class="cal-connect-icon">🎫</div><h3>Connect Jira</h3><p>Sign in with Atlassian to see your open cases.</p><button class="connect-btn" onclick="triggerJiraOAuth()">Sign in with Atlassian</button></div>';
+    el.innerHTML = backlogHtml + '<div class="cal-connect-prompt"><div class="cal-connect-icon">🎫</div><h3>Connect Jira</h3><p>Sign in with Atlassian to see your open cases.</p><button class="connect-btn" onclick="triggerJiraOAuth()">Sign in with Atlassian</button></div>';
     return;
   }
   if (jiraState.loading) {
-    el.innerHTML = '<div class="cal-connect-prompt"><div class="cal-connect-icon">⏳</div><h3>Loading cases…</h3></div>';
+    el.innerHTML = backlogHtml + '<div class="cal-connect-prompt"><div class="cal-connect-icon">⏳</div><h3>Loading cases…</h3></div>';
     return;
   }
   if (jiraState.error) {
-    el.innerHTML = '<div class="cal-connect-prompt"><div class="cal-connect-icon">⚠️</div><h3>Error loading cases</h3><p>' + escHtml(jiraState.error) + '</p><button class="connect-btn" onclick="fetchJiraIssues()">Try again</button></div>';
+    el.innerHTML = backlogHtml + '<div class="cal-connect-prompt"><div class="cal-connect-icon">⚠️</div><h3>Error loading cases</h3><p>' + escHtml(jiraState.error) + '</p><button class="connect-btn" onclick="fetchJiraIssues()">Try again</button></div>';
     return;
   }
   if (!jiraState.issues) {
-    el.innerHTML = '<div class="cal-connect-prompt"><div class="cal-connect-icon">⏳</div><h3>Loading cases…</h3></div>';
+    el.innerHTML = backlogHtml + '<div class="cal-connect-prompt"><div class="cal-connect-icon">⏳</div><h3>Loading cases…</h3></div>';
     fetchJiraIssues();
     return;
   }
@@ -733,7 +809,7 @@ function renderCases() {
     '<a href="https://snyksec.lightning.force.com/lightning/o/Case/list?filterName=All_Unassigned_Cases" target="_blank" class="cases-sf-btn">📋 All Unassigned Cases</a>' +
     '</div>';
 
-  el.innerHTML =
+  el.innerHTML = backlogHtml +
     '<div class="mail-header"><div class="mail-meta">Last updated ' + escHtml(jiraState.asOf || '') + ' · ' + issues.length + ' open</div>' +
     '<button class="connect-btn" onclick="fetchJiraIssues()" style="padding:8px 16px;font-size:13px">↺ Refresh</button></div>' +
     sfLinksHtml + searchHtml + groupsHtml; // NOSONAR
