@@ -654,7 +654,7 @@ function casesToggle(key, val) { jiraState.expanded[key] = val; renderCases(); }
    Backlog Chart (stacked bar, atop Cases screen)
    ============================================================ */
 
-const BACKLOG_COLORS = ['#3B82F6', '#8B5CF6', '#F59E0B', '#14B8A6', '#F43F5E', '#84CC16', '#EC4899'];
+const BACKLOG_COLORS = ['var(--chart-1)', 'var(--chart-2)', 'var(--chart-3)', 'var(--chart-4)', 'var(--chart-5)'];
 
 let backlogState = { data: null, statusNames: [], loading: false, error: null, asOf: null };
 
@@ -692,29 +692,24 @@ function renderBacklogChart() {
 
   const maxTotal = Math.max.apply(null, backlogState.data.map(function(d) { return d.total; }));
 
-  const legendHtml = backlogState.statusNames.map(function(name, idx) {
-    const color = BACKLOG_COLORS[idx % BACKLOG_COLORS.length];
-    return '<div class="backlog-legend-item"><span class="backlog-legend-swatch" style="background:' + color + '"></span>' + escHtml(name) + '</div>';
-  }).join('');
-
-  const colsHtml = backlogState.data.map(function(d, i) {
+  const colsHtml = backlogState.data.map(function(d) {
     const barPct = maxTotal ? (d.total / maxTotal * 100) : 0;
+    const breakdown = backlogState.statusNames
+      .map(function(name) { return d.statuses[name] ? (name + ': ' + d.statuses[name] + ' of ' + d.total) : null; })
+      .filter(Boolean).join('\n');
+    const colTitle = escHtml(d.owner) + ' — Total: ' + d.total + (breakdown ? '\n' + escHtml(breakdown) : '');
     const segments = backlogState.statusNames.map(function(name, idx) {
       const val = d.statuses[name] || 0;
       if (!val) return '';
       const color = BACKLOG_COLORS[idx % BACKLOG_COLORS.length];
-      return '<div class="backlog-col-segment" style="flex:' + val + ' 0 0;background:' + color + '" title="' + escHtml(d.owner) + ' — ' + escHtml(name) + ': ' + val + '"></div>';
+      return '<div class="backlog-col-segment" style="flex:' + val + ' 0 0;background:' + color + '" title="' + escHtml(d.owner) + ' — ' + escHtml(name) + ': ' + val + ' of ' + d.total + '"></div>';
     }).join('');
-    return '<div class="backlog-col" title="' + escHtml(d.owner) + ' — total: ' + d.total + '">' +
+    return '<div class="backlog-col" title="' + colTitle + '">' +
       '<div class="backlog-col-track">' +
         '<div class="backlog-col-bar" style="height:' + barPct + '%">' + segments + '</div>' +
       '</div>' +
-      '<div class="backlog-col-index">' + (i + 1) + '</div>' +
+      '<div class="backlog-col-name">' + escHtml(d.owner) + '</div>' +
     '</div>';
-  }).join('');
-
-  const namesKeyHtml = backlogState.data.map(function(d, i) {
-    return '<span class="backlog-name-key-item"><span class="backlog-name-key-num">' + (i + 1) + '.</span>' + escHtml(d.owner) + '</span>';
   }).join('');
 
   return '<div class="backlog-chart">' +
@@ -725,11 +720,11 @@ function renderBacklogChart() {
     '</div>' +
     '<div class="backlog-chart-body">' +
       '<div class="backlog-cols-wrap"><div class="backlog-cols">' + colsHtml + '</div></div>' +
-      '<div class="backlog-legend-side">' + legendHtml + '</div>' +
     '</div>' +
-    '<div class="backlog-names-key">' + namesKeyHtml + '</div>' +
   '</div>';
 }
+
+
 
 
 

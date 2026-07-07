@@ -12,6 +12,15 @@
   --shadow-lg: 0 8px 32px rgba(0,0,0,0.12);
 }
 
+/* Chart color aliases — derived from whichever theme is active, so charts always match */
+:root {
+  --chart-1: var(--primary);
+  --chart-2: var(--secondary);
+  --chart-3: var(--accent);
+  --chart-4: color-mix(in srgb, var(--primary) 50%, var(--secondary) 50%);
+  --chart-5: color-mix(in srgb, var(--secondary) 50%, var(--accent) 50%);
+}
+
 /* Modern (default) */
 [data-theme="modern"] {
   --primary:        #6366F1;
@@ -2736,21 +2745,15 @@ button, a.setup-btn-primary, a.cal-connect-btn {
 .backlog-chart { margin-bottom:24px; padding:16px; background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); }
 .backlog-chart-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:14px; flex-wrap:wrap; gap:8px; }
 .backlog-chart-title { font-size:14px; font-weight:700; color:var(--text); }
-.backlog-chart-body { display:flex; align-items:flex-start; gap:16px; }
-.backlog-cols-wrap { flex:1; min-width:0; overflow-x:auto; overflow-y:hidden; }
-.backlog-cols { display:flex; align-items:flex-end; gap:8px; height:200px; min-width:min-content; padding-bottom:2px; }
-.backlog-col { display:flex; flex-direction:column; align-items:center; justify-content:flex-end; width:22px; height:100%; flex-shrink:0; }
-.backlog-col-track { width:18px; height:100%; display:flex; flex-direction:column-reverse; }
+.backlog-chart-body { display:flex; align-items:flex-start; }
+.backlog-cols-wrap { flex:1; min-width:0; overflow-x:auto; overflow-y:hidden; padding-bottom:130px; }
+.backlog-cols { display:flex; align-items:flex-end; gap:44px; height:180px; min-width:min-content; }
+.backlog-col { display:flex; flex-direction:column; align-items:center; width:28px; height:100%; flex-shrink:0; position:relative; }
+.backlog-col-track { width:24px; height:100%; display:flex; flex-direction:column-reverse; }
 .backlog-col-bar { width:100%; display:flex; flex-direction:column-reverse; border-radius:3px 3px 0 0; overflow:hidden; min-height:2px; }
 .backlog-col-segment { width:100%; transition:opacity var(--transition); }
 .backlog-col-segment:hover { opacity:0.75; }
-.backlog-col-index { margin-top:5px; font-size:9px; font-weight:600; color:var(--text-secondary); }
-.backlog-legend-side { display:flex; flex-direction:column; gap:8px; flex-shrink:0; min-width:150px; padding-left:16px; border-left:1px solid var(--border); }
-.backlog-legend-item { display:flex; align-items:center; gap:6px; font-size:11px; color:var(--text-secondary); }
-.backlog-legend-swatch { width:10px; height:10px; border-radius:2px; flex-shrink:0; }
-.backlog-names-key { display:flex; flex-wrap:wrap; gap:5px 16px; margin-top:14px; padding-top:12px; border-top:1px solid var(--border); }
-.backlog-name-key-item { font-size:11px; color:var(--text-secondary); white-space:nowrap; }
-.backlog-name-key-num { font-weight:700; color:var(--text); margin-right:3px; }
+.backlog-col-name { position:absolute; top:100%; left:50%; margin-top:6px; font-size:10px; color:var(--text-secondary); white-space:nowrap; transform-origin:top left; transform:rotate(55deg); }
 
 /* Mail screen */
 .mail-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:12px; padding-bottom:12px; border-bottom:1px solid var(--border); }
