@@ -19,8 +19,8 @@ body {
   --chart-1: var(--primary);
   --chart-2: var(--secondary);
   --chart-3: var(--accent);
-  --chart-4: color-mix(in srgb, var(--primary) 50%, var(--secondary) 50%);
-  --chart-5: color-mix(in srgb, var(--secondary) 50%, var(--accent) 50%);
+  --chart-4: color-mix(in srgb, var(--primary) 55%, white 45%);
+  --chart-5: color-mix(in srgb, var(--accent) 65%, black 35%);
 }
 
 /* Modern (default) */
@@ -2749,13 +2749,13 @@ button, a.setup-btn-primary, a.cal-connect-btn {
 .backlog-chart-title { font-size:14px; font-weight:700; color:var(--text); }
 .backlog-chart-body { display:flex; align-items:flex-start; }
 .backlog-cols-wrap { flex:1; min-width:0; overflow-x:auto; overflow-y:hidden; padding-bottom:130px; }
-.backlog-cols { display:flex; align-items:flex-end; gap:44px; height:180px; min-width:min-content; }
-.backlog-col { display:flex; flex-direction:column; align-items:center; width:28px; height:100%; flex-shrink:0; position:relative; }
-.backlog-col-track { width:24px; height:100%; display:flex; flex-direction:column-reverse; }
+.backlog-cols { display:flex; align-items:flex-end; gap:22px; height:180px; min-width:min-content; }
+.backlog-col { display:flex; flex-direction:column; align-items:center; width:24px; height:100%; flex-shrink:0; position:relative; }
+.backlog-col-track { width:20px; height:100%; display:flex; flex-direction:column-reverse; }
 .backlog-col-bar { width:100%; display:flex; flex-direction:column-reverse; border-radius:3px 3px 0 0; overflow:hidden; min-height:2px; }
 .backlog-col-segment { width:100%; transition:opacity var(--transition); }
 .backlog-col-segment:hover { opacity:0.75; }
-.backlog-col-name { position:absolute; top:100%; left:50%; margin-top:6px; font-size:10px; color:var(--text-secondary); white-space:nowrap; transform-origin:top left; transform:rotate(55deg); }
+.backlog-col-name { position:absolute; top:100%; left:50%; margin-top:6px; font-size:10px; color:var(--text-secondary); white-space:nowrap; transform-origin:top left; transform:rotate(68deg); }
 
 /* Mail screen */
 .mail-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:12px; padding-bottom:12px; border-bottom:1px solid var(--border); }
