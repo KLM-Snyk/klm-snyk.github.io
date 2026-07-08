@@ -211,59 +211,25 @@ function calConnect() {
 async function calFetchUnreadCount() {
   if (!calState.token) return;
   try {
-    // Use messages.list query to count ALL unread across all labels
-    // (not just inbox — users may have unread in other labels too)
+    // Uses labels.get's maintained `messagesUnread` counter per label, summed —
+    // NOT the messages.list "is:unread" search query, which reads from Gmail's
+    // search index and can lag real mailbox state by an unpredictable amount
+    // (sometimes well past a few minutes). messagesUnread is updated in real
+    // time as messages are read/unread, so it doesn't have that lag.
     const excluded = JSON.parse(localStorage.getItem('uyt_gmail_excluded_labels') || '[]');
-    const exclusionClause = excluded.length ? ' ' + excluded.map(function(id) { return '-label:' + id; }).join(' ') : '';
-    const q = 'is:unread -in:spam -in:trash' + exclusionClause;
-    let total = 0;
-    let pageToken = null;
-    const MAX_PAGES = 5;
-    let pages = 0;
-    let capped = false;
-    do {
-      const params = new URLSearchParams({ q: q, maxResults: 100 });
-      if (pageToken) params.set('pageToken', pageToken);
-      const res = await fetch(
-        'https://gmail.googleapis.com/gmail/v1/users/me/messages?' + params,
-        { headers: { Authorization: 'Bearer ' + calState.token } }
-      );
-      if (!res.ok) break;
-      const data = await res.json();
-      total += (data.messages || []).length;
-      pageToken = data.nextPageToken || null;
-      pages++;
-      if (pages >= MAX_PAGES && pageToken) { capped = true; pageToken = null; }
-    } while (pageToken);
-    calState.unreadCount = total;
-    calState.unreadCountCapped = capped;
-    localStorage.setItem('uyt_gmail_unread', String(total));
-  } catch (err) {
-    console.warn('Could not fetch Gmail unread count:', err);
-    calState.unreadCount = null;
-  }
-}
-
-async function calFetchGmailLabelBreakdown() {
-  if (!calState.token) return;
-  try {
-    const excluded = JSON.parse(localStorage.getItem('uyt_gmail_excluded_labels') || '[]');
-    // Get all labels
     const res = await fetch(
       'https://gmail.googleapis.com/gmail/v1/users/me/labels',
-      { headers: { Authorization: `Bearer ${calState.token}` } }
+      { headers: { Authorization: 'Bearer ' + calState.token } }
     );
-    if (!res.ok) return;
+    if (!res.ok) { calState.unreadCount = null; return; }
     const data = await res.json();
-    // Include INBOX plus user labels; exclude system/category labels
-    const labels = (data.labels || []).filter(l =>
-      !['SPAM', 'TRASH', 'SENT', 'DRAFT', 'UNREAD', 'STARRED', 'IMPORTANT'].includes(l.id) &&
-      !l.id.startsWith('CATEGORY_') &&
-      !excluded.includes(l.id)
-    );
-    // Ensure INBOX is always in the list
-    if (!labels.find(l => l.id === 'INBOX')) labels.unshift({ id: 'INBOX', name: 'Inbox' });
-    // Fetch unread count per label sequentially with small delay to avoid rate limits
+    const labels = (data.labels || []).filter(function(l) {
+      return !['SPAM', 'TRASH', 'SENT', 'DRAFT', 'UNREAD', 'STARRED', 'IMPORTANT'].includes(l.id) &&
+        !l.id.startsWith('CATEGORY_') &&
+        !excluded.includes(l.id);
+    });
+    if (!labels.find(function(l) { return l.id === 'INBOX'; })) labels.unshift({ id: 'INBOX', name: 'Inbox' });
+
     const details = [];
     for (const l of labels) {
       try {
@@ -274,25 +240,34 @@ async function calFetchGmailLabelBreakdown() {
         if (!r.ok) { details.push(null); continue; }
         const d = await r.json();
         details.push({ id: l.id, name: l.name, unread: d.messagesUnread || 0 });
-        // Small delay to avoid 429 rate limit
-        await new Promise(function(res) { setTimeout(res, 50); });
+        await new Promise(function(res2) { setTimeout(res2, 50); }); // avoid 429 rate limit
       } catch { details.push(null); }
     }
-    // Always include INBOX first, then sort others by unread count descending
-    const inboxDetail = details.find(d => d && d.id === 'INBOX');
+
+    const inboxDetail = details.find(function(d) { return d && d.id === 'INBOX'; });
     const otherDetails = details
-      .filter(d => d && d.unread > 0 && d.id !== 'INBOX')
-      .sort((a, b) => b.unread - a.unread);
-    const inboxEntry = inboxDetail
-      ? inboxDetail
-      : { id: 'INBOX', name: 'Inbox', unread: calState.unreadCount || 0 };
+      .filter(function(d) { return d && d.unread > 0 && d.id !== 'INBOX'; })
+      .sort(function(a, b) { return b.unread - a.unread; });
+    const inboxEntry = inboxDetail || { id: 'INBOX', name: 'Inbox', unread: 0 };
     const breakdown = [inboxEntry, ...otherDetails];
+    const total = details.reduce(function(sum, d) { return sum + (d ? d.unread : 0); }, 0);
+
+    calState.unreadCount = total;
+    calState.unreadCountCapped = false;
     calState.gmailBreakdown = breakdown;
+    localStorage.setItem('uyt_gmail_unread', String(total));
     localStorage.setItem('uyt_gmail_breakdown', JSON.stringify(breakdown));
   } catch (err) {
-    console.warn('Gmail label breakdown error:', err);
-    calState.gmailBreakdown = [];
+    console.warn('Could not fetch Gmail unread count:', err);
+    calState.unreadCount = null;
   }
+}
+
+// Kept for any existing call sites — now just delegates to calFetchUnreadCount,
+// which computes both the total and the per-label breakdown from a single,
+// consistent pass over the same reliable label data.
+async function calFetchGmailLabelBreakdown() {
+  return calFetchUnreadCount();
 }
 
 async function calFetchUserProfile() {
