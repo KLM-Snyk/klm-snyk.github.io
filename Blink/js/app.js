@@ -611,6 +611,26 @@ function getJiraProjects() {
   catch { return []; }
 }
 
+function jiraDisconnect() {
+  localStorage.removeItem('uyt_jira_token');
+  localStorage.removeItem('uyt_jira_cloud');
+  jiraState.issues = null;
+  jiraState.loading = false;
+  jiraState.error = null;
+  jiraState.asOf = null;
+  if (typeof renderSettingsPanel === 'function') renderSettingsPanel();
+  if (typeof renderCases === 'function') renderCases();
+}
+
+// Full sign-out: clears Google, Slack, and Jira together so "Sign out" actually
+// signs the person out of everything Blink is connected to, not just Google.
+function signOutAll() {
+  calDisconnect();
+  if (typeof slackDisconnect === 'function') slackDisconnect();
+  jiraDisconnect();
+}
+
+
 async function fetchJiraIssues() {
   const token = localStorage.getItem('uyt_jira_token');
   const cloud = localStorage.getItem('uyt_jira_cloud');
@@ -940,7 +960,7 @@ function renderSettingsPanel() {
       <div class="cal-connect-box">
         ${localStorage.getItem('uyt_jira_token') ? `
           <div class="setup-connected-badge">✓ Connected to Jira</div>
-          <button class="cal-connect-btn" style="margin-top:10px;background:none;border:1.5px solid var(--border);color:var(--text)" onclick="localStorage.removeItem('uyt_jira_token');localStorage.removeItem('uyt_jira_cloud');renderSettingsPanel()">Disconnect</button>
+          <button class="cal-connect-btn" style="margin-top:10px;background:none;border:1.5px solid var(--border);color:var(--text)" onclick="jiraDisconnect()">Disconnect</button>
         ` : `
           <p>Sign in with Atlassian to see your open Jira cases.</p>
           <a href="#" onclick="triggerJiraOAuth();return false;" class="cal-connect-btn" style="display:inline-flex;align-items:center;gap:8px;text-decoration:none;color:white">
@@ -1417,7 +1437,7 @@ function renderDashboard() {
       <div class="time-display" id="live-time">${formatCurrentTime()}</div>
       <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;justify-content:space-between;">
         <h3 style="margin:0;">${escHtml(greeting)}</h3>
-        <button class="connect-btn" onclick="${calIsConnected() ? 'calDisconnect()' : 'calConnect()'}">
+        <button class="connect-btn" onclick="${calIsConnected() ? 'signOutAll()' : 'calConnect()'}">
           ${calIsConnected() ? 'Sign out' : 'Connect to Google'}
         </button>
       </div>
