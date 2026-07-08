@@ -1236,13 +1236,24 @@ function triggerJiraOAuth() {
     'jira-oauth',
     'width=' + width + ',height=' + height + ',left=' + left + ',top=' + top + ',toolbar=no,menubar=no'
   );
+  let _jiraAuthHandled = false;
+
+  function _advanceJiraStep() {
+    if (setupSteps[setupStep] === 'jira') setupStep++;
+  }
+
   function _handleJiraMessage(event) {
     if (event.origin !== 'https://klm-snyk.github.io') return;
     if (event.data?.type === 'jira-token') {
+      if (_jiraAuthHandled) return;
+      _jiraAuthHandled = true;
+      clearInterval(poll);
       localStorage.setItem('uyt_jira_token', event.data.token);
       localStorage.setItem('uyt_jira_cloud', event.data.cloud || '');
       window.removeEventListener('message', _handleJiraMessage);
       if (popup && !popup.closed) popup.close();
+      _advanceJiraStep();
+      if (typeof renderSetupStep === 'function') renderSetupStep();
       if (typeof renderSettingsPanel === 'function') renderSettingsPanel();
       if (typeof renderCases === 'function') renderCases();
     }
@@ -1251,7 +1262,11 @@ function triggerJiraOAuth() {
   const poll = setInterval(function() {
     if (popup.closed) {
       clearInterval(poll);
+      if (_jiraAuthHandled) return;
       if (localStorage.getItem('uyt_jira_token')) {
+        _jiraAuthHandled = true;
+        _advanceJiraStep();
+        if (typeof renderSetupStep === 'function') renderSetupStep();
         if (typeof renderSettingsPanel === 'function') renderSettingsPanel();
         if (typeof renderCases === 'function') renderCases();
       }
@@ -1268,14 +1283,25 @@ function triggerSlackOAuth() {
     'slack-oauth',
     'width=' + width + ',height=' + height + ',left=' + left + ',top=' + top + ',toolbar=no,menubar=no'
   );
+  let _slackAuthHandled = false;
+
+  function _advanceSlackStep() {
+    // Only auto-advance if the wizard is actually sitting on the Slack step —
+    // reconnecting from Settings shouldn't move the wizard.
+    if (setupSteps[setupStep] === 'slack') setupStep++;
+  }
 
   // Listen for postMessage from popup
   function _handleSlackMessage(event) {
     if (event.origin !== 'https://klm-snyk.github.io') return;
     if (event.data?.type === 'slack-token' && event.data.token) {
+      if (_slackAuthHandled) return;
+      _slackAuthHandled = true;
+      clearInterval(poll);
       localStorage.setItem('uyt_slack_token', event.data.token);
       window.removeEventListener('message', _handleSlackMessage);
       if (popup && !popup.closed) popup.close();
+      _advanceSlackStep();
       if (typeof renderSetupStep === 'function') renderSetupStep();
       if (typeof renderSettingsPanel === 'function') renderSettingsPanel();
       if (typeof renderDashboard === 'function') renderDashboard();
@@ -1295,7 +1321,10 @@ function triggerSlackOAuth() {
   const poll = setInterval(function() {
     if (popup.closed) {
       clearInterval(poll);
+      if (_slackAuthHandled) return;
       if (localStorage.getItem('uyt_slack_token')) {
+        _slackAuthHandled = true;
+        _advanceSlackStep();
         if (typeof renderSetupStep === 'function') renderSetupStep();
         if (typeof renderSettingsPanel === 'function') renderSettingsPanel();
         if (typeof renderDashboard === 'function') renderDashboard();
