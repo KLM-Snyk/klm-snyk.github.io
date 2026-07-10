@@ -2747,6 +2747,10 @@ button, a.setup-btn-primary, a.cal-connect-btn {
 .trends-embed-block { margin-bottom:24px; background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; }
 .trends-embed-title { padding:14px 16px; font-size:14px; font-weight:700; color:var(--text); border-bottom:1px solid var(--border); }
 .trends-embed-frame { display:block; width:100%; height:700px; border:none; }
+.trends-embed-block-centered { max-width:50%; margin:0 auto 24px; }
+.trends-embed-frame-half { height:350px; }
+.trends-embed-row { display:flex; gap:24px; align-items:flex-start; }
+.trends-embed-row .trends-embed-block { flex:1; min-width:0; }
 
 /* Backlog chart (Cases screen) — vertical stacked columns */
 .backlog-chart { margin-bottom:24px; padding:16px; background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); }

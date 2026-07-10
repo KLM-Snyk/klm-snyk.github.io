@@ -684,20 +684,35 @@ const TRENDS_EMBEDS = [
   { title: 'Current Support Backlog', url: 'https://snykanalytics.eu.looker.com/embed/looks/6881' },
 ];
 
+const TRENDS_EMBEDS_ROW2 = [
+  { title: 'Cases Taken Today', url: 'https://snykanalytics.eu.looker.com/embed/looks/6884' },
+  { title: 'Cases Closed Today', url: 'https://snykanalytics.eu.looker.com/embed/looks/6883' },
+];
+
 function renderTrends() {
   const el = document.getElementById('screen-trends-content');
   if (!el) return;
-  if (!TRENDS_EMBEDS.length) {
+  if (!TRENDS_EMBEDS.length && !TRENDS_EMBEDS_ROW2.length) {
     el.innerHTML = '<div class="cal-connect-prompt"><div class="cal-connect-icon">📊</div><h3>No dashboards added yet</h3><p>Looker embeds will show up here once added.</p></div>';
     return;
   }
-  el.innerHTML = TRENDS_EMBEDS.map(function(e, i) {
-    return '<div class="trends-embed-block">' +
+  const topHtml = TRENDS_EMBEDS.map(function(e, i) {
+    return '<div class="trends-embed-block trends-embed-block-centered">' +
       '<div class="trends-embed-title">' + escHtml(e.title) + '</div>' +
-      '<iframe class="trends-embed-frame" src="' + e.url + '" title="' + escHtml(e.title) + '" id="trends-iframe-' + i + '" loading="lazy"></iframe>' +
+      '<iframe class="trends-embed-frame trends-embed-frame-half" src="' + e.url + '" title="' + escHtml(e.title) + '" id="trends-iframe-' + i + '" loading="lazy"></iframe>' +
     '</div>';
   }).join('');
+  const rowHtml = TRENDS_EMBEDS_ROW2.length
+    ? '<div class="trends-embed-row">' + TRENDS_EMBEDS_ROW2.map(function(e, i) {
+        return '<div class="trends-embed-block">' +
+          '<div class="trends-embed-title">' + escHtml(e.title) + '</div>' +
+          '<iframe class="trends-embed-frame trends-embed-frame-half" src="' + e.url + '" title="' + escHtml(e.title) + '" id="trends-iframe-row2-' + i + '" loading="lazy"></iframe>' +
+        '</div>';
+      }).join('') + '</div>'
+    : '';
+  el.innerHTML = topHtml + rowHtml;
 }
+
 
 /* ============================================================
    Backlog Chart (stacked bar, atop Cases screen)
