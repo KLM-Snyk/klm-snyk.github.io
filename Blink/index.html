@@ -70,7 +70,7 @@
       </button>
 
       <button class="nav-item" data-screen="cases">
-        <svg viewBox="0 0 24 24"><path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"/></svg>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M2 9a3 3 0 010 6v2a1 1 0 001 1h18a1 1 0 001-1v-2a3 3 0 010-6V7a1 1 0 00-1-1H3a1 1 0 00-1 1z"/><path d="M9 9v6" stroke-dasharray="2 2"/></svg>
         <span>JIRA</span>
       </button>
       <button class="nav-item" data-screen="trends">
@@ -104,7 +104,7 @@
         <button class="icon-btn" id="settings-btn" onclick="openSettings()" title="Settings">
           <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
         </button>
-        <button class="icon-btn" onclick="calIsConnected() ? calDisconnect() : calConnect()" title="Sign in/out">
+        <button class="icon-btn" onclick="calIsConnected() ? signOutAll() : calConnect()" title="Sign in/out">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
         </button>
       </div>
@@ -123,7 +123,7 @@
         <button class="icon-btn" onclick="openSettings()" title="Settings">
           <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
         </button>
-        <button class="icon-btn" onclick="calIsConnected() ? calDisconnect() : calConnect()" title="Sign in/out">
+        <button class="icon-btn" onclick="calIsConnected() ? signOutAll() : calConnect()" title="Sign in/out">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
         </button>
       </div>
@@ -198,7 +198,7 @@
         <button class="icon-btn" onclick="openSettings()" title="Settings">
           <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
         </button>
-        <button class="icon-btn" onclick="${`calIsConnected() ? calDisconnect() : calConnect()`}" title="Sign in/out" id="auth-btn-drive">
+        <button class="icon-btn" onclick="${`calIsConnected() ? signOutAll() : calConnect()`}" title="Sign in/out" id="auth-btn-drive">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
         </button>
       </div>
@@ -222,7 +222,7 @@
         <button class="icon-btn" onclick="openSettings()" title="Settings">
           <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
         </button>
-        <button class="icon-btn" onclick="calIsConnected() ? calDisconnect() : calConnect()" title="Sign in/out">
+        <button class="icon-btn" onclick="calIsConnected() ? signOutAll() : calConnect()" title="Sign in/out">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
         </button>
       </div>
@@ -259,7 +259,7 @@
       <img src="blink-icon.png" alt="Blink" style="width:56px;height:56px;border-radius:14px;margin-right:12px">
       <div>
         <div class="about-app-name">Blink</div>
-        <div class="about-version">Version 18.20</div>
+        <div class="about-version">Version 18.23</div>
       </div>
     </div>
 
@@ -275,11 +275,11 @@
       <div class="about-feature"><span>💬</span> Slack Digest — Region Handover + AI recap (Onboarding · Work Items · Escalations)</div>
       <div class="about-feature"><span>🏢</span> Workday — last 60 days of Workday notifications via Slack DM</div>
       <div class="about-feature"><span>🎫</span> JIRA — open Jira issues assigned to you, grouped by project, collapsible &amp; searchable</div>
-      <div class="about-feature"><span>📊</span> Support Case Trends &amp; Data — live embedded Looker dashboards for backlog &amp; daily case activity</div>
+      <div class="about-feature"><span>📊</span> Support Case Trends &amp; Data — live embedded Looker dashboards for backlog &amp; daily case activity, with popup SSO sign-in</div>
       <div class="about-feature"><span>📁</span> Google Drive — shared with you, @mentions &amp; created by you (last 30 days, searchable)</div>
       <div class="about-feature"><span>🗂️</span> Salesforce &amp; Workday — configurable quick links</div>
       <div class="about-feature"><span>🎨</span> 5 color themes + dark mode</div>
-      <div class="about-feature"><span>⚡</span> Setup wizard — Google + Slack + Jira SSO, up and running in 2 minutes</div>
+      <div class="about-feature"><span>⚡</span> Setup wizard — Google + Slack + Jira + Looker SSO, up and running in a couple minutes</div>
     </div>
 
     <div class="settings-section-title" style="margin-top:24px">Coming soon</div>
@@ -307,10 +307,10 @@
   <img src="angel.webp" id="angel-img" alt="" style="max-height:70vh;max-width:60vw;object-fit:contain;opacity:0;transition:opacity 0.4s">
 </div>
 
-<script src="js/preferences.js?v=18.22"></script>
-<script src="js/calendar.js?v=18.22"></script>
-<script src="js/slack.js?v=18.22"></script>
-<script src="js/app.js?v=18.22"></script>
+<script src="js/preferences.js?v=18.23"></script>
+<script src="js/calendar.js?v=18.23"></script>
+<script src="js/slack.js?v=18.23"></script>
+<script src="js/app.js?v=18.23"></script>
 
 </body>
 </html>

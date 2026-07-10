@@ -46,6 +46,7 @@ Blink is a browser-native workday dashboard for support managers. It provides a 
 ### Support Case Trends & Data
 - Live embedded Looker dashboards: Current Support Backlog, Cases Taken Today, Cases Closed Today
 - Add more by adding an entry to the `TRENDS_EMBEDS` / `TRENDS_EMBEDS_ROW2` arrays in `app.js` — just a title and embed URL, no other code changes needed
+- "Sign in to Looker" button on this screen (also in the wizard and Settings) — opens Looker in a popup so you can sign in via SSO if the dashboards appear blank. Unlike Google/Slack/Jira, Blink doesn't store a token for this; it just needs your browser to hold an active Looker session
 - Requires Looker embedding to be enabled and the domain allow-listed by a Looker admin; also depends on your SSO provider allowing itself to be iframed
 
 ### Google Drive
@@ -62,7 +63,7 @@ Blink is a browser-native workday dashboard for support managers. It provides a 
    - **Google** — Sign in with Google (one click)
    - **Slack** — Sign in with Slack (SSO popup)
    - **Jira** — Sign in with Atlassian (SSO popup)
-   - **Your Tools** — Salesforce and Workday URLs (optional)
+   - **Looker** — Sign in via popup so the Trends screen's embedded dashboards can pick up your session (optional; no token stored, just needs an active browser session with Looker)
    - **Preferences** — name and color theme
 
 ---
@@ -72,6 +73,7 @@ Blink is a browser-native workday dashboard for support managers. It provides a 
 - Gmail excluded labels (hide labels from unread count and Mail page)
 - Slack connect/disconnect + channel list
 - Jira connect/disconnect + project key filter
+- Looker sign-in (same popup as the wizard step)
 - Salesforce & Workday URLs
 - 5 color themes + dark mode
 
@@ -113,7 +115,7 @@ Add managers as Contributors on the app at developer.atlassian.com.
 - Slack API via Cloudflare Worker proxy
 - Atlassian Jira REST API via Cloudflare Worker proxy
 - Anthropic Claude API (digest categorization)
-- Cloudflare Workers (server-side proxy, paid plan)
+- Cloudflare Workers (server-side proxy)
 - GitHub Pages (hosting)
 
 ---

@@ -1649,7 +1649,7 @@ function renderDashboard() {
           <div class="dash-card" onclick="navigate('cases')" style="cursor:pointer">
             <div class="dash-card-header">
               <div class="dash-card-icon">${ICONS.cases}</div>
-              <div class="dash-card-title">Cases</div>
+              <div class="dash-card-title">JIRA</div>
             </div>
             ${jiraState.loading ? '<div class="dash-card-sub" style="margin-top:8px">⏳ Loading…</div>' :
               jiraState.issues && jiraState.issues.length > 0 ? (() => {
