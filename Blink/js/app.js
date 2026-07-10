@@ -159,6 +159,7 @@ function navigate(screen) {
     if (!jiraState.issues && !jiraState.loading && localStorage.getItem('uyt_jira_token')) fetchJiraIssues();
     if (!backlogState.data && !backlogState.loading) fetchBacklogData();
   }
+  if (screen === 'trends')    renderTrends();
   if (screen === 'drive')     renderDrive();
   if (screen === 'planner')   renderPlanner();
 }
@@ -624,10 +625,14 @@ function jiraDisconnect() {
 
 // Full sign-out: clears Google, Slack, and Jira together so "Sign out" actually
 // signs the person out of everything Blink is connected to, not just Google.
+// Also resets setup so they land back in the wizard rather than a dashboard
+// with a lone "Connect to Google" button that doesn't cover Slack/Jira too.
 function signOutAll() {
   calDisconnect();
   if (typeof slackDisconnect === 'function') slackDisconnect();
   jiraDisconnect();
+  localStorage.removeItem(SETUP_KEY);
+  startSetup();
 }
 
 
@@ -669,6 +674,31 @@ async function fetchJiraIssues() {
 }
 
 function casesToggle(key, val) { jiraState.expanded[key] = val; renderCases(); }
+
+/* ============================================================
+   Support Case Trends & Data (embedded Looker dashboards)
+   ============================================================ */
+
+// Add more entries here as additional Looker embeds are provided —
+// each just needs a title and the embed URL.
+const TRENDS_EMBEDS = [
+  { title: 'Current Support Backlog', url: 'https://snykanalytics.eu.looker.com/embed/looks/6881' },
+];
+
+function renderTrends() {
+  const el = document.getElementById('screen-trends-content');
+  if (!el) return;
+  if (!TRENDS_EMBEDS.length) {
+    el.innerHTML = '<div class="cal-connect-prompt"><div class="cal-connect-icon">📊</div><h3>No dashboards added yet</h3><p>Looker embeds will show up here once added.</p></div>';
+    return;
+  }
+  el.innerHTML = TRENDS_EMBEDS.map(function(e, i) {
+    return '<div class="trends-embed-block">' +
+      '<div class="trends-embed-title">' + escHtml(e.title) + '</div>' +
+      '<iframe class="trends-embed-frame" src="' + e.url + '" title="' + escHtml(e.title) + '" id="trends-iframe-' + i + '" loading="lazy"></iframe>' +
+    '</div>';
+  }).join('');
+}
 
 /* ============================================================
    Backlog Chart (stacked bar, atop Cases screen)
