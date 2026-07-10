@@ -157,7 +157,6 @@ function navigate(screen) {
   if (screen === 'cases') {
     renderCases();
     if (!jiraState.issues && !jiraState.loading && localStorage.getItem('uyt_jira_token')) fetchJiraIssues();
-    if (!backlogState.data && !backlogState.loading) fetchBacklogData();
   }
   if (screen === 'trends')    renderTrends();
   if (screen === 'drive')     renderDrive();
@@ -808,22 +807,21 @@ function casesApplySearch(issues) {
 function renderCases() {
   const el = document.getElementById('screen-cases-content');
   if (!el) return;
-  const backlogHtml = renderBacklogChart();
   const token = localStorage.getItem('uyt_jira_token');
   if (!token) {
-    el.innerHTML = backlogHtml + '<div class="cal-connect-prompt"><div class="cal-connect-icon">🎫</div><h3>Connect Jira</h3><p>Sign in with Atlassian to see your open cases.</p><button class="connect-btn" onclick="triggerJiraOAuth()">Sign in with Atlassian</button></div>';
+    el.innerHTML = '<div class="cal-connect-prompt"><div class="cal-connect-icon">🎫</div><h3>Connect Jira</h3><p>Sign in with Atlassian to see your open cases.</p><button class="connect-btn" onclick="triggerJiraOAuth()">Sign in with Atlassian</button></div>';
     return;
   }
   if (jiraState.loading) {
-    el.innerHTML = backlogHtml + '<div class="cal-connect-prompt"><div class="cal-connect-icon">⏳</div><h3>Loading cases…</h3></div>';
+    el.innerHTML = '<div class="cal-connect-prompt"><div class="cal-connect-icon">⏳</div><h3>Loading cases…</h3></div>';
     return;
   }
   if (jiraState.error) {
-    el.innerHTML = backlogHtml + '<div class="cal-connect-prompt"><div class="cal-connect-icon">⚠️</div><h3>Error loading cases</h3><p>' + escHtml(jiraState.error) + '</p><button class="connect-btn" onclick="fetchJiraIssues()">Try again</button></div>';
+    el.innerHTML = '<div class="cal-connect-prompt"><div class="cal-connect-icon">⚠️</div><h3>Error loading cases</h3><p>' + escHtml(jiraState.error) + '</p><button class="connect-btn" onclick="fetchJiraIssues()">Try again</button></div>';
     return;
   }
   if (!jiraState.issues) {
-    el.innerHTML = backlogHtml + '<div class="cal-connect-prompt"><div class="cal-connect-icon">⏳</div><h3>Loading cases…</h3></div>';
+    el.innerHTML = '<div class="cal-connect-prompt"><div class="cal-connect-icon">⏳</div><h3>Loading cases…</h3></div>';
     fetchJiraIssues();
     return;
   }
@@ -877,7 +875,7 @@ function renderCases() {
     '<a href="https://snyksec.lightning.force.com/lightning/o/Case/list?filterName=All_Unassigned_Cases" target="_blank" class="cases-sf-btn">📋 All Unassigned Cases</a>' +
     '</div>';
 
-  el.innerHTML = backlogHtml +
+  el.innerHTML =
     '<div class="mail-header"><div class="mail-meta">Last updated ' + escHtml(jiraState.asOf || '') + ' · ' + issues.length + ' open</div>' +
     '<button class="connect-btn" onclick="fetchJiraIssues()" style="padding:8px 16px;font-size:13px">↺ Refresh</button></div>' +
     sfLinksHtml + searchHtml + groupsHtml; // NOSONAR
