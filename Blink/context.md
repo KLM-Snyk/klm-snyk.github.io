@@ -11,7 +11,7 @@ A browser-native workday dashboard for support managers at Snyk. Built with vani
 **Repo:** https://github.com/KLM-Snyk/klm-snyk.github.io
 **Local path:** `/Users/kar/Desktop/Blink/`
 **App subfolder:** `/Users/kar/Desktop/Blink/Blink/`
-**Current version:** v18.20
+**Current version:** v18.22
 
 ---
 
@@ -40,7 +40,7 @@ git add -A && git commit -m "message" && git push
 **CRITICAL:** Always run `node --check Blink/js/app.js` (and `Blink/js/calendar.js`, `Blink/js/slack.js`, `Blink/js/preferences.js` if touched) before committing.
 **CRITICAL:** Always verify `tail -5` and `wc -l` on index.html before committing. Correct line count: ~316 lines (was ~297 before the Trends screen was added). Truncation bug has occurred multiple times — Desktop Commander times out mid-write.
 **NEVER** rewrite index.html in full — always use targeted `edit_block` or Python string replace on specific sections only.
-**Cache-busting:** every deploy that touches `app.js`, `calendar.js`, `slack.js`, or `preferences.js` should bump the `?v=X.X` query string on all four `<script>` tags at the bottom of `index.html` (currently `18.20`), or browsers may serve stale cached JS/CSS.
+**Cache-busting:** every deploy that touches `app.js`, `calendar.js`, `slack.js`, or `preferences.js` should bump the `?v=X.X` query string on all four `<script>` tags at the bottom of `index.html` (currently `18.22`), or browsers may serve stale cached JS/CSS.
 
 ---
 
@@ -121,17 +121,27 @@ git add -A && git commit -m "message" && git push
 ### Setup Wizard (7-step)
 1. Welcome
 2. Google — SSO, auto-advances after connect
-3. Slack — SSO popup, auto-triggers after Google
-4. Jira — SSO popup, polls for connection, skip option
-5. Your Tools — Salesforce + Workday URLs
+3. Slack — SSO popup, auto-advances after connect
+4. Jira — SSO popup, auto-advances after connect
+5. Looker — popup to `snykanalytics.eu.looker.com` (see "Looker SSO" note below — not a real OAuth token exchange, "success" is inferred from the popup closing)
 6. Preferences — name, theme
 7. Done — checklist
-- **Fixed this session:** steps 2 (Slack) and 3 (Jira) previously never auto-advanced after the OAuth popup completed successfully — they just re-rendered the same step. Both now correctly move to the next step, guarded so the wizard only auto-advances if it's actually sitting on that step (reconnecting from Settings won't move the wizard), and guarded against double-firing (the postMessage handler and the popup-closed polling fallback can both fire for the same login — only one now wins).
+- The old "Your Tools" (Salesforce/Workday URLs) step was **removed** — those are still configurable in Settings, just no longer a dedicated wizard step.
+- **Fixed this session:** every step title used to have a hardcoded "Step N:" prefix that drifted out of sync with the real dynamic step counter (`Step ${setupStep+1} of ${total}` shown above the content) — Jira and Tools both said "Step 3", which is the "two Step 3s" bug. All hardcoded numbers were removed from step titles; the dynamic counter is now the only source of truth for step numbering.
+- Steps 2–4 (Slack/Jira) and step 5 (Looker) all auto-advance once their popup completes, guarded against double-firing and against auto-advancing when the wizard isn't actually on that step (e.g. reconnecting from Settings).
 
-### Sign Out (`signOutAll()`, new this session)
-- Previously, the dashboard's "Sign out" button only called `calDisconnect()` — Google only. Slack and Jira stayed connected, and there was no way back in except digging through Settings.
-- `signOutAll()` now calls `calDisconnect()`, `slackDisconnect()`, and the new `jiraDisconnect()` together, then clears `uyt_setup_complete` and calls `startSetup()` — so a full sign-out drops the person back at wizard Step 1 instead of a dashboard with a Google-only reconnect button.
-- `jiraDisconnect()` is new — Jira previously had no reusable disconnect function, just an inline `localStorage.removeItem` chain on one Settings button.
+### Looker SSO (new this session, different mechanism than Slack/Google/Jira)
+- Looker's iframe embeds on the Trends screen rely on the browser's **ambient session cookie** with Looker, not a token Blink requests/stores. There is nothing to "connect" in the OAuth sense.
+- `triggerLookerSSO()` opens `https://snykanalytics.eu.looker.com/` in a real popup (`window.open()`, not an iframe — a popup is its own top-level browsing context, so SSO framing restrictions don't apply to it the way they might to an embedded iframe). The person signs in via normal SSO there.
+- There's no token to receive back, so "success" is inferred from the popup closing and recorded as a timestamp in `uyt_looker_last_signin` — purely a UX hint ("last signed in: ..."), not a real verified-connection check.
+- Entry points: wizard step 5, a "Looker" section in Settings, and a small persistent "Sign in to Looker" bar at the top of the Trends screen itself (the most useful spot, since that's where a blank dashboard would actually be noticed).
+- All three call the same `triggerLookerSSO()` function.
+
+### Sign Out (`signOutAll()`)
+- Clears Google, Slack, and Jira together (`calDisconnect()`, `slackDisconnect()`, `jiraDisconnect()`) so "Sign out" actually means sign out of everything, not just Google.
+- `jiraDisconnect()` is new this session — Jira previously had no reusable disconnect function, just an inline `localStorage.removeItem` chain on one Settings button.
+- **Does NOT** reset `uyt_setup_complete` or reopen the wizard — that was tried and then explicitly reverted per user request. Signing out just returns to a disconnected dashboard; the person reconnects via Settings.
+
 
 ### Whovian Easter Eggs (dark mode + Modern theme only)
 - `tardis1.png`, `tardis3.jpg`, `TallyMarks.jpeg`
@@ -154,6 +164,7 @@ git add -A && git commit -m "message" && git push
 - `uyt_gmail_unread`, `uyt_gmail_breakdown` — cached counts
 - `uyt_mail_messages`, `uyt_mail_asof` — cached mail
 - `uyt_jira_issues`, `uyt_jira_asof` — cached cases
+- `uyt_looker_last_signin` — timestamp (ms) of last "Sign in to Looker" popup close; UX hint only, not a verified connection check
 
 ## Default Slack Channels
 - `C0885BMRNBA` — support-leads
@@ -176,7 +187,7 @@ git add -A && git commit -m "message" && git push
 2. **Snyk workflow** — `.github/workflows/snyk.yml` disabled. Needs `SNYK_TOKEN` secret added to repo.
 3. **4 Snyk Code XSS findings** — false positives, need to be ignored via Snyk web UI (app.snyk.io under KLM-Snyk account)
 4. **index.html truncation** — Desktop Commander times out mid-write. Always verify line count before committing.
-5. **Looker embed SSO framing untested** — see Support Case Trends & Data section above. May need a Looker admin to confirm embedding is enabled/allow-listed, and whether the org's SSO blocks iframing.
+5. **Looker embed SSO framing still not fully confirmed** — the "Sign in to Looker" popup (wizard/Settings/Trends screen) mitigates this by giving the person an easy way to (re-)establish their Looker session, but it's not been verified end-to-end that the Trends iframes then render correctly. Still may need a Looker admin to confirm embedding is enabled/allow-listed for `klm-snyk.github.io`.
 6. **Dead backlog-chart code** — `backlogState`, `fetchBacklogData()`, `renderBacklogChart()`, `BACKLOG_COLORS`, `.backlog-*` CSS, and the Worker's `/looker/backlog` route are all unused now but not yet deleted.
 7. **Two copies of the Worker source on disk** — see "Cloudflare Worker source" note under Key Files. Edit `/Users/kar/Desktop/blink-worker/` going forward, not the gitignored copy inside the Blink project.
 

@@ -624,14 +624,10 @@ function jiraDisconnect() {
 
 // Full sign-out: clears Google, Slack, and Jira together so "Sign out" actually
 // signs the person out of everything Blink is connected to, not just Google.
-// Also resets setup so they land back in the wizard rather than a dashboard
-// with a lone "Connect to Google" button that doesn't cover Slack/Jira too.
 function signOutAll() {
   calDisconnect();
   if (typeof slackDisconnect === 'function') slackDisconnect();
   jiraDisconnect();
-  localStorage.removeItem(SETUP_KEY);
-  startSetup();
 }
 
 
@@ -710,7 +706,11 @@ function renderTrends() {
         '</div>';
       }).join('') + '</div>'
     : '';
-  el.innerHTML = topHtml + rowHtml;
+  const lookerBar = '<div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:16px;padding:10px 14px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);flex-wrap:wrap">' +
+    '<span style="font-size:12px;color:var(--text-secondary)">Dashboards blank? You may need to be signed in to Looker in this browser.</span>' +
+    '<a href="#" onclick="triggerLookerSSO();return false;" class="connect-btn" style="padding:6px 14px;font-size:12px;text-decoration:none">Sign in to Looker</a>' +
+  '</div>';
+  el.innerHTML = lookerBar + topHtml + rowHtml;
 }
 
 
@@ -1024,6 +1024,18 @@ function renderSettingsPanel() {
       </div>
     </div>
 
+    <!-- Looker -->
+    <div class="settings-section">
+      <div class="settings-section-title">Looker</div>
+      <div class="cal-connect-box">
+        <p style="font-size:13px;color:var(--text-secondary);margin-bottom:10px">Looker dashboards on the Support Case Trends &amp; Data screen need you to be signed in to Looker in this browser. This just opens Looker so you can sign in via SSO — Blink doesn't store a token for it.</p>
+        <a href="#" onclick="triggerLookerSSO();return false;" class="cal-connect-btn" style="display:inline-flex;align-items:center;gap:8px;text-decoration:none;color:white">
+          Sign in to Looker
+        </a>
+        ${localStorage.getItem('uyt_looker_last_signin') ? '<p style="font-size:12px;color:var(--text-secondary);margin-top:10px">Last signed in: ' + escHtml(new Date(parseInt(localStorage.getItem('uyt_looker_last_signin'), 10)).toLocaleString()) + '</p>' : ''}
+      </div>
+    </div>
+
     <!-- Tools URLs -->
     <div class="settings-section">
       <div class="settings-section-title">Your Tools</div>
@@ -1313,6 +1325,37 @@ function triggerJiraOAuth() {
         if (typeof renderSettingsPanel === 'function') renderSettingsPanel();
         if (typeof renderCases === 'function') renderCases();
       }
+    }
+  }, 500);
+}
+
+// Looker doesn't use OAuth tokens the way Slack/Jira do — the Trends screen's
+// iframes rely entirely on the browser's own ambient session cookie with
+// Looker. This popup just gives the person a normal top-level window (not an
+// iframe, so SSO framing restrictions don't apply) to sign in via SSO. There's
+// no token to receive back, so "success" is inferred from the popup closing —
+// not a guaranteed confirmation, just the best signal available.
+function triggerLookerSSO() {
+  const width = 700, height = 750;
+  const left = Math.round(window.screenX + (window.outerWidth - width) / 2);
+  const top = Math.round(window.screenY + (window.outerHeight - height) / 2);
+  const popup = window.open(
+    'https://snykanalytics.eu.looker.com/',
+    'looker-sso',
+    'width=' + width + ',height=' + height + ',left=' + left + ',top=' + top + ',toolbar=no,menubar=no'
+  );
+  let _lookerHandled = false;
+  const poll = setInterval(function() {
+    if (popup.closed) {
+      clearInterval(poll);
+      if (_lookerHandled) return;
+      _lookerHandled = true;
+      localStorage.setItem('uyt_looker_last_signin', String(Date.now()));
+      if (setupSteps[setupStep] === 'looker') setupStep++;
+      if (typeof renderSetupStep === 'function') renderSetupStep();
+      if (typeof renderSettingsPanel === 'function') renderSettingsPanel();
+      // Force the Trends iframes to reload so they pick up the fresh session cookie
+      if (typeof renderTrends === 'function' && state.screen === 'trends') renderTrends();
     }
   }, 500);
 }
@@ -2239,7 +2282,7 @@ const setupSteps = [
   'google',
   'slack',
   'jira',
-  'tools',
+  'looker',
   'preferences',
   'done',
 ];
@@ -2316,7 +2359,7 @@ function renderSetupStep() {
     const connected = calIsConnected();
     const name = escHtml(calState.userProfile?.name || 'Google User');
     content.innerHTML = '<div class="setup-icon">🔗</div>' +
-      '<h1 class="setup-title">Step 1: Connect Google</h1>' +
+      '<h1 class="setup-title">Connect Google</h1>' +
       '<p class="setup-desc">Blink needs access to your Google account to show your calendar, Gmail, and Drive files.</p>' +
       (connected
         ? '<div class="setup-connected-badge">✓ Connected as ' + name + '</div><p style="font-size:13px;color:var(--text-secondary);margin-top:8px">You\'re all set! Click Next to continue.</p>'
@@ -2342,7 +2385,7 @@ function renderSetupStep() {
     const hasToken = !!localStorage.getItem('uyt_slack_token');
     const savedToken = escHtml(localStorage.getItem('uyt_slack_token') || '');
     content.innerHTML = '<div class="setup-icon">💬</div>' +
-      '<h1 class="setup-title">Step 2: Connect Slack</h1>' +
+      '<h1 class="setup-title">Connect Slack</h1>' +
       '<p class="setup-desc">Blink reads your Slack channels to build a daily digest. Click below to sign in — no passwords or tokens needed.</p>' +
       '<div class="setup-step-cta">' +
         '<p style="margin:0 0 12px;font-size:13px;color:var(--text)">Sign in with your Slack account to give Blink access to your channels. It uses your existing SSO — no passwords needed.</p>' +
@@ -2367,7 +2410,7 @@ function renderSetupStep() {
   else if (step === 'jira') {
     const hasJira = !!localStorage.getItem('uyt_jira_token');
     content.innerHTML = '<div class="setup-icon">🎫</div>' +
-      '<h1 class="setup-title">Step 3: Connect Jira</h1>' +
+      '<h1 class="setup-title">Connect Jira</h1>' +
       '<p class="setup-desc">Sign in with Atlassian to see your open Jira cases in Blink. Uses your existing SSO — no passwords needed.</p>' +
       (hasJira ? '<div class="setup-connected-badge">✓ Connected to Jira</div><p style="font-size:13px;color:var(--text-secondary);margin-top:8px">You are all set!</p>' :
         '<a href="#" onclick="triggerJiraOAuth();return false;" class="setup-btn-primary" style="display:inline-flex;align-items:center;gap:8px;text-decoration:none;color:white;margin-top:8px">Sign in with Atlassian</a>' +
@@ -2389,23 +2432,14 @@ function renderSetupStep() {
     }
   }
 
-  else if (step === 'tools') {
-    const sfUrl = escHtml(localStorage.getItem('uyt_salesforce_url') || '');
-    const wdUrl = escHtml(localStorage.getItem('uyt_workday_url') || '');
-    content.innerHTML = '<div class="setup-icon">🔧</div>' +
-      '<h1 class="setup-title">Step 3: Your Tools</h1>' +
-      '<p class="setup-desc">Add links to Salesforce and Workday so the dashboard buttons take you straight there.</p>' +
-      '<div class="setup-field-label">Salesforce Cases URL <span style="font-weight:400;color:var(--text-secondary)">(optional)</span></div>' +
-      '<div class="cal-input-row" style="margin-bottom:16px">' +
-        '<input class="cal-client-input" id="setup-sf-url" type="text" placeholder="https://yourorg.lightning.force.com/lightning/o/Case/list" value="' + sfUrl + '">' +
-        '<button class="cal-connect-btn" onclick="setupSaveSalesforce()">Save</button>' +
-      '</div>' +
-      '<div class="setup-field-label">Workday Tasks URL <span style="font-weight:400;color:var(--text-secondary)">(optional)</span></div>' +
-      '<div class="cal-input-row" style="margin-bottom:8px">' +
-        '<input class="cal-client-input" id="setup-wd-url" type="text" placeholder="https://wd103.myworkday.com/yourorg/d/task/..." value="' + wdUrl + '">' +
-        '<button class="cal-connect-btn" onclick="setupSaveWorkday()">Save</button>' +
-      '</div>' +
-      '<p style="font-size:12px;color:var(--text-secondary);margin-top:8px">Not sure? Ask your manager or skip — you can add these later in Settings.</p>' +
+  else if (step === 'looker') {
+    const hasSignedIn = !!localStorage.getItem('uyt_looker_last_signin');
+    content.innerHTML = '<div class="setup-icon">📊</div>' +
+      '<h1 class="setup-title">Connect Looker</h1>' +
+      '<p class="setup-desc">Blink shows live Looker dashboards on the Support Case Trends &amp; Data screen. Unlike Slack/Jira, Blink doesn\'t store a token for this — it just needs your browser to have an active Looker session, the same one your regular SSO login already gives you.</p>' +
+      '<a href="#" onclick="triggerLookerSSO();return false;" class="setup-btn-primary" style="display:inline-flex;align-items:center;gap:8px;text-decoration:none;color:white;margin-top:8px">Sign in to Looker</a>' +
+      (hasSignedIn ? '<div class="setup-connected-badge" style="margin-top:12px">✓ Signed in to Looker</div>' : '') +
+      '<p style="font-size:12px;color:var(--text-secondary);margin-top:12px">A window will open — sign in via SSO, then close it (or it\'ll close automatically) to continue.</p>' +
       '<div class="setup-actions">' +
         '<button class="setup-btn-ghost" onclick="setupBack()">← Back</button>' +
         '<button class="setup-btn-ghost" onclick="setupNext()">Skip for now</button>' +
@@ -2475,16 +2509,6 @@ function setupConnectGoogle() {
   calConnect();
 }
 
-
-function setupSaveSalesforce() {
-  const url = document.getElementById('setup-sf-url')?.value.trim();
-  if (url) { localStorage.setItem('uyt_salesforce_url', url); }
-}
-
-function setupSaveWorkday() {
-  const url = document.getElementById('setup-wd-url')?.value.trim();
-  if (url) { localStorage.setItem('uyt_workday_url', url); }
-}
 
 function setupSavePrefs() {
   const name = document.getElementById('setup-name')?.value.trim();
