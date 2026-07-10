@@ -11,29 +11,36 @@ A browser-native workday dashboard for support managers at Snyk. Built with vani
 **Repo:** https://github.com/KLM-Snyk/klm-snyk.github.io
 **Local path:** `/Users/kar/Desktop/Blink/`
 **App subfolder:** `/Users/kar/Desktop/Blink/Blink/`
-**Current version:** v18.2
+**Current version:** v18.20
 
 ---
 
 ## Key Files
-- `Blink/index.html` — HTML structure, nav, screens, setup wizard (~297 lines — verify before committing)
-- `Blink/js/app.js` — main app (~114k chars)
+- `Blink/index.html` — HTML structure, nav, screens, setup wizard (~316 lines — verify before committing; grew from ~297 after adding the Trends screen)
+- `Blink/js/app.js` — main app
 - `Blink/js/calendar.js` — Google OAuth, Calendar/Gmail/Drive API calls
 - `Blink/js/slack.js` — Slack state helpers
 - `Blink/js/preferences.js` — user preferences, applyTheme, tardisBackground
 - `Blink/css/styles.css` — all styling
-- `/mnt/user-data/outputs/slack-digest-worker.js` — Cloudflare Worker (latest)
 - `.github/workflows/deploy.yml` — GitHub Actions deployment (split build/deploy jobs)
 - `.github/workflows/snyk.yml` — Snyk security scan (currently DISABLED — token auth pending)
+
+### Cloudflare Worker source — now in its own private repo
+The Worker is **no longer** written to `/mnt/user-data/outputs/`. Its source lives at:
+- **Canonical, version-controlled copy:** `/Users/kar/Desktop/blink-worker/slack-digest-worker.js`, pushed to the **private** repo `https://github.com/KLM-Snyk/blink-worker`
+- A second, gitignored local copy also exists at `/Users/kar/Desktop/Blink/worker/slack-digest-worker.js` (kept out of the public Blink repo via `.gitignore` — the Worker's source must never be committed to the public repo since it can contain internal channel IDs, spreadsheet IDs, etc.)
+- **When editing the Worker going forward, edit the `blink-worker` repo copy and treat it as the source of truth.** The two copies were in sync as of v18.20 but there is no automated sync between them — if both get edited independently they will drift.
+- To deploy: paste the file's contents into the Cloudflare dashboard's Worker editor and hit Deploy. There is no CI/CD for the Worker.
 
 ## Git Workflow
 ```bash
 cd "/Users/kar/Desktop/Blink"
 git add -A && git commit -m "message" && git push
 ```
-**CRITICAL:** Always run `node --check Blink/js/app.js` before committing.
-**CRITICAL:** Always verify `tail -5` and `wc -l` on index.html before committing. Correct line count: ~297 lines. Truncation bug has occurred multiple times — Desktop Commander times out mid-write.
+**CRITICAL:** Always run `node --check Blink/js/app.js` (and `Blink/js/calendar.js`, `Blink/js/slack.js`, `Blink/js/preferences.js` if touched) before committing.
+**CRITICAL:** Always verify `tail -5` and `wc -l` on index.html before committing. Correct line count: ~316 lines (was ~297 before the Trends screen was added). Truncation bug has occurred multiple times — Desktop Commander times out mid-write.
 **NEVER** rewrite index.html in full — always use targeted `edit_block` or Python string replace on specific sections only.
+**Cache-busting:** every deploy that touches `app.js`, `calendar.js`, `slack.js`, or `preferences.js` should bump the `?v=X.X` query string on all four `<script>` tags at the bottom of `index.html` (currently `18.20`), or browsers may serve stale cached JS/CSS.
 
 ---
 
@@ -41,8 +48,8 @@ git add -A && git commit -m "message" && git push
 
 ### Cloudflare Worker
 - URL: `https://uyt-slack-digest.kar-marsten.workers.dev`
-- Paid plan. Routes: Slack OAuth (`/oauth/start`, `/oauth/callback`), Jira OAuth (`/jira/start`, `/jira/callback`), Jira issues (`/jira/issues`), Slack digest (POST `/`), debug IMs (`/debug/ims`)
-- Env vars: `ANTHROPIC_API_KEY`, `SLACK_MCP_TOKEN`, `ALLOWED_ORIGIN`=`https://klm-snyk.github.io`, `SLACK_CLIENT_ID`, `SLACK_CLIENT_SECRET`, `JIRA_CLIENT_ID`, `JIRA_CLIENT_SECRET`
+- Paid plan. Routes: Slack OAuth (`/oauth/start`, `/oauth/callback`), Jira OAuth (`/jira/start`, `/jira/callback`), Jira issues (`/jira/issues`), Slack digest (POST `/`), debug IMs (`/debug/ims`), Google Sheets-backed backlog data (`/looker/backlog` — see "Dead code" note below, no longer used by the frontend)
+- Env vars: `ANTHROPIC_API_KEY`, `SLACK_MCP_TOKEN`, `ALLOWED_ORIGIN`=`https://klm-snyk.github.io`, `SLACK_CLIENT_ID`, `SLACK_CLIENT_SECRET`, `JIRA_CLIENT_ID`, `JIRA_CLIENT_SECRET`, `GOOGLE_SHEETS_CLIENT_EMAIL`, `GOOGLE_SHEETS_PRIVATE_KEY` (service-account creds for `/looker/backlog`, currently unused by the UI but still functional)
 - APP_URL hardcoded as `https://klm-snyk.github.io/Blink` in worker
 - Region Handover: detects `SupportGlobalHandover` bot (`U0BEK3SPCTY`) first, then falls back to text matching
 
@@ -66,13 +73,13 @@ git add -A && git commit -m "message" && git push
 
 ---
 
-## Features Implemented (v18.2)
+## Features Implemented (v18.20)
 
 ### Dashboard Cards
-- **Gmail** — INBOX-only unread count (label API), per-label breakdown (INBOX always first, top 4), clicking navigates to Mail screen
+- **Gmail** — INBOX-only unread count (label API), per-label breakdown (INBOX always first, top 4), clicking navigates to Mail screen. Fixed this session: total count previously came from a `messages.list?q=is:unread` search query, which can lag real mailbox state significantly (observed 30+ min); now uses `labels.get`'s `messagesUnread` counter (same reliable source the breakdown already used), so total and breakdown are always consistent.
 - **Slack Digest** — counts auto-fetch after OAuth (1.5s delay); cached; auto-fetches when token saved via OAuth
 - **Workday** — last 60 days Workday DM notifications (pending `im:read` approval)
-- **Cases** — open Jira issues by project; auto-fetches on load (2s delay); clicking navigates to Cases screen
+- **JIRA** — open Jira issues by project; auto-fetches on load (2s delay); clicking navigates to JIRA screen (renamed from "Cases" this session)
 - **Google Drive** — shared/mentioned/created counts
 - **Upcoming Events** — today and future only; maxResults:50; country code matching anywhere in title
 
@@ -85,13 +92,24 @@ git add -A && git commit -m "message" && git push
 - Search: keyword, sender, date (pill-style inputs)
 - Client-side only — no AI, no worker
 
-### Cases Screen
+### JIRA Screen (renamed from "Cases" this session)
 - Open Jira issues assigned to current user
 - Grouped by project, collapsible (`casesToggle` function)
 - Search by keyword + project key (pill-style inputs)
 - SF quick links bar: "📊 Case Trends & Data" + "📋 All Unassigned Cases" (hardcoded SF URLs)
 - Auto-fetches on navigate if token present
 - Weeping Angel overlay during fetch
+- **Note:** only the visible label changed to "JIRA" — the internal `data-screen`/element ID is still `"cases"` (`screen-cases`, `screen-cases-content`, `renderCases()`, `fetchJiraIssues()`, etc.). Don't go looking for a `"jira"` screen id, it doesn't exist.
+- The backlog-by-SE stacked column chart that used to sit at the top of this screen was **removed** this session (superseded by the new Trends screen's Looker embed). The chart's code (`backlogState`, `fetchBacklogData()`, `renderBacklogChart()`, `BACKLOG_COLORS`, and the `.backlog-*` CSS rules) is still in `app.js`/`styles.css` but is **dead code — nothing calls it anymore**. Candidate for full removal if reused nowhere else.
+
+### Support Case Trends & Data Screen (new this session)
+- New nav item + screen (`data-screen="trends"`, `screen-trends-content`), added right after JIRA in the nav
+- Embeds live Looker dashboards directly via `<iframe>` — no backend data pipeline needed
+- Config lives in `app.js`: `TRENDS_EMBEDS` (array of `{title, url}`, rendered as a single half-width block centered at the top) and `TRENDS_EMBEDS_ROW2` (array of `{title, url}`, rendered side-by-side below it). To add more dashboards, just add entries — no other code changes needed.
+- Current entries: "Current Support Backlog" (`.../embed/looks/6881`), "Cases Taken Today" (`.../embed/looks/6884`), "Cases Closed Today" (`.../embed/looks/6883`) — all on `snykanalytics.eu.looker.com`
+- **Important:** Looker embed URLs must use the `/embed/looks/{id}` path, not the plain `/looks/{id}` path — the latter renders Looker's full app chrome or may not render at all
+- **Open question, untested as of v18.20:** whether the org's SSO provider allows itself to be iframed. If the person isn't already logged into Looker in that browser, the embed may render blank rather than showing a login prompt inline. This needs a Looker admin to (a) enable embedding and (b) allow-list `klm-snyk.github.io`, neither of which has been confirmed done yet.
+- No theming: cross-origin iframe content can't be restyled from Blink's CSS (browser security boundary). Looker does support server-side embed theming via its own Admin settings, but that's a Looker-side config task, not something Blink's code can touch.
 
 ### Settings
 - Gmail excluded labels (denylist, `toggleGmailExclude`)
@@ -108,6 +126,12 @@ git add -A && git commit -m "message" && git push
 5. Your Tools — Salesforce + Workday URLs
 6. Preferences — name, theme
 7. Done — checklist
+- **Fixed this session:** steps 2 (Slack) and 3 (Jira) previously never auto-advanced after the OAuth popup completed successfully — they just re-rendered the same step. Both now correctly move to the next step, guarded so the wizard only auto-advances if it's actually sitting on that step (reconnecting from Settings won't move the wizard), and guarded against double-firing (the postMessage handler and the popup-closed polling fallback can both fire for the same login — only one now wins).
+
+### Sign Out (`signOutAll()`, new this session)
+- Previously, the dashboard's "Sign out" button only called `calDisconnect()` — Google only. Slack and Jira stayed connected, and there was no way back in except digging through Settings.
+- `signOutAll()` now calls `calDisconnect()`, `slackDisconnect()`, and the new `jiraDisconnect()` together, then clears `uyt_setup_complete` and calls `startSetup()` — so a full sign-out drops the person back at wizard Step 1 instead of a dashboard with a Google-only reconnect button.
+- `jiraDisconnect()` is new — Jira previously had no reusable disconnect function, just an inline `localStorage.removeItem` chain on one Settings button.
 
 ### Whovian Easter Eggs (dark mode + Modern theme only)
 - `tardis1.png`, `tardis3.jpg`, `TallyMarks.jpeg`
@@ -152,9 +176,12 @@ git add -A && git commit -m "message" && git push
 2. **Snyk workflow** — `.github/workflows/snyk.yml` disabled. Needs `SNYK_TOKEN` secret added to repo.
 3. **4 Snyk Code XSS findings** — false positives, need to be ignored via Snyk web UI (app.snyk.io under KLM-Snyk account)
 4. **index.html truncation** — Desktop Commander times out mid-write. Always verify line count before committing.
+5. **Looker embed SSO framing untested** — see Support Case Trends & Data section above. May need a Looker admin to confirm embedding is enabled/allow-listed, and whether the org's SSO blocks iframing.
+6. **Dead backlog-chart code** — `backlogState`, `fetchBacklogData()`, `renderBacklogChart()`, `BACKLOG_COLORS`, `.backlog-*` CSS, and the Worker's `/looker/backlog` route are all unused now but not yet deleted.
+7. **Two copies of the Worker source on disk** — see "Cloudflare Worker source" note under Key Files. Edit `/Users/kar/Desktop/blink-worker/` going forward, not the gitignored copy inside the Blink project.
 
 ## Upcoming Features
-- Salesforce case trends, opened/closed today
-- Escalations view on Cases screen
+- Escalations view on JIRA screen
 - Status page information
 - Workday tasks (direct Workday API)
+- Possible: configurable Trends embeds UI in Settings (currently hardcoded arrays in `app.js` by design — user chose hardcode-for-now over building an add/remove UI)

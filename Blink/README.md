@@ -14,7 +14,7 @@ Blink is a browser-native workday dashboard for support managers. It provides a 
 - **Gmail** — inbox-only unread count with per-label breakdown; click to open Mail screen
 - **Slack Digest** — Onboarding · Work Items · Escalations counts; auto-fetches on load
 - **Workday** — last 60 days of Workday Slack DM notifications
-- **Cases** — open Jira issues assigned to you, grouped by project; auto-fetches on load
+- **JIRA** — open Jira issues assigned to you, grouped by project; auto-fetches on load
 - **Google Drive** — files shared with you, @mentions & created by you (last 30 days)
 - **Upcoming Events** — next meetings from Google Calendar
 
@@ -37,11 +37,16 @@ Blink is a browser-native workday dashboard for support managers. It provides a 
 - Auto-fetches on page load; cached for instant display on return visits
 - Configurable channel list per user
 
-### Cases Screen
+### JIRA Screen
 - Open Jira issues assigned to you, grouped by project
 - Collapsible project groups with keyword and project search
 - Configurable project filter in Settings
 - Each issue links directly to Jira
+
+### Support Case Trends & Data
+- Live embedded Looker dashboards: Current Support Backlog, Cases Taken Today, Cases Closed Today
+- Add more by adding an entry to the `TRENDS_EMBEDS` / `TRENDS_EMBEDS_ROW2` arrays in `app.js` — just a title and embed URL, no other code changes needed
+- Requires Looker embedding to be enabled and the domain allow-listed by a Looker admin; also depends on your SSO provider allowing itself to be iframed
 
 ### Google Drive
 - Files shared with you, @mentioned in comments, and created by you (last 30 days)
@@ -80,6 +85,7 @@ Authorized origin: `https://klm-snyk.github.io`
 
 ### Cloudflare Worker
 URL: `https://uyt-slack-digest.kar-marsten.workers.dev`
+Source: private repo `KLM-Snyk/blink-worker` (kept out of this public repo — see `.gitignore`)
 
 Handles: Slack OAuth, Jira OAuth, Slack API calls, Workday DM fetch, Anthropic digest categorization.
 
@@ -113,6 +119,5 @@ Add managers as Contributors on the app at developer.atlassian.com.
 ---
 
 ## Coming Soon
-- Salesforce case trends, opened & closed today
 - Status page information
 - Workday tasks (direct Workday API)
