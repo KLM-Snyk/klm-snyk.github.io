@@ -99,7 +99,7 @@ function getGreeting() {
    ============================================================ */
 
 const ICONS = {
-  cases:    `<svg viewBox="0 0 24 24"><path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"/></svg>`,
+  cases:    `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M2 9a3 3 0 010 6v2a1 1 0 001 1h18a1 1 0 001-1v-2a3 3 0 010-6V7a1 1 0 00-1-1H3a1 1 0 00-1 1z"/><path d="M9 9v6" stroke-dasharray="2 2"/></svg>`,
   quote:    `<svg viewBox="0 0 24 24"><path d="M3 21c3 0 7-1 7-8V5c0-1.25-.756-2.017-2-2H4c-1.25 0-2 .75-2 1.972V11c0 1.25.75 2 2 2 1 0 1 0 1 1v1c0 1-1 2-2 2s-1 .008-1 1.031V20c0 1 0 1 1 1z"/><path d="M15 21c3 0 7-1 7-8V5c0-1.25-.757-2.017-2-2h-4c-1.25 0-2 .75-2 1.972V11c0 1.25.75 2 2 2h.75c0 2.25.25 4-2.75 4v3c0 1 0 1 1 1z"/></svg>`,
   calendar: `<svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>`,
   arrowRight: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>`,
@@ -1552,8 +1552,8 @@ function renderDashboard() {
       <div class="time-display" id="live-time">${formatCurrentTime()}</div>
       <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;justify-content:space-between;">
         <h3 style="margin:0;">${escHtml(greeting)}</h3>
-        <button class="connect-btn" onclick="${calIsConnected() ? 'signOutAll()' : 'calConnect()'}">
-          ${calIsConnected() ? 'Sign out' : 'Connect to Google'}
+        <button class="connect-btn" onclick="${calIsConnected() ? 'signOutAll()' : 'startSetup()'}">
+          ${calIsConnected() ? 'Sign out' : 'Connect'}
         </button>
       </div>
       <div class="date-display">${formatDate(now)}</div>
