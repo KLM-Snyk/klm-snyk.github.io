@@ -1431,6 +1431,19 @@ function setTardis(value) {
    Slack Digest — AI-powered via Anthropic API + Slack MCP
    ============================================================ */
 
+// Heuristic only — Workday DMs aren't structured data, so this infers "needs
+// action" from the leading emoji Workday tends to use: ✅/✔️ = confirmation
+// (already done), ✨ = informational update, anything else = likely needs
+// action. Not a real task-status check; will misclassify if Workday's
+// phrasing/emoji usage varies from what this was designed around.
+function countWorkdayTasks(items) {
+  if (!items || !items.length) return 0;
+  return items.filter(function(w) {
+    const t = (w.text || '').trim();
+    return !t.startsWith('✅') && !t.startsWith('✔️') && !t.startsWith('✨');
+  }).length;
+}
+
 const slackDigestState = {
   loading: false,
   error: null,
@@ -1626,7 +1639,11 @@ function renderDashboard() {
               </div>
               <div class="dash-card-title">Workday</div>
             </div>
-            ${slackDigestState.workday && slackDigestState.workday.length > 0 ? `
+            ${slackDigestState.workday && slackDigestState.workday.length > 0 ? (() => {
+              const taskCount = countWorkdayTasks(slackDigestState.workday);
+              return `
+              <div class="dash-card-value">${taskCount}</div>
+              <div class="dash-card-sub" style="font-size:11px" title="Estimated from message wording — not a real Workday task-status check">possible task${taskCount === 1 ? '' : 's'} needing action</div>
               <div style="margin-top:6px;display:flex;flex-direction:column;gap:4px;max-height:120px;overflow-y:auto">
                 ${slackDigestState.workday.slice(0,5).map(w => `
                   <div style="font-size:12px;display:flex;gap:6px;align-items:baseline">
@@ -1636,7 +1653,7 @@ function renderDashboard() {
                 `).join('')}
               </div>
               <div class="dash-card-action" style="margin-top:6px">Open in Workday ${ICONS.arrowRight}</div>
-            ` : slackDigestState.workday && slackDigestState.workday.length === 0 ? `
+            `; })() : slackDigestState.workday && slackDigestState.workday.length === 0 ? `
               <div class="dash-card-sub" style="margin-top:6px;font-size:11px">No recent Workday notifications</div>
               <div class="dash-card-action">Open in Workday ${ICONS.arrowRight}</div>
             ` : `
