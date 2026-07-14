@@ -1436,6 +1436,16 @@ function setTardis(value) {
 // (already done), ✨ = informational update, anything else = likely needs
 // action. Not a real task-status check; will misclassify if Workday's
 // phrasing/emoji usage varies from what this was designed around.
+// Defense in depth: even though the Worker only ever forwards URLs Slack's own
+// API returned, re-validate before rendering anything as a clickable link.
+function isSafeWorkdayUrl(url) {
+  if (!url || typeof url !== 'string') return false;
+  try {
+    const u = new URL(url);
+    return u.protocol === 'https:' && u.hostname.endsWith('myworkday.com');
+  } catch { return false; }
+}
+
 function countWorkdayTasks(items) {
   if (!items || !items.length) return 0;
   return items.filter(function(w) {
@@ -1645,12 +1655,15 @@ function renderDashboard() {
               <div class="dash-card-value">${taskCount}</div>
               <div class="dash-card-sub" style="font-size:11px" title="Estimated from message wording — not a real Workday task-status check">possible task${taskCount === 1 ? '' : 's'} needing action</div>
               <div style="margin-top:6px;display:flex;flex-direction:column;gap:4px;max-height:120px;overflow-y:auto">
-                ${slackDigestState.workday.slice(0,5).map(w => `
-                  <div style="font-size:12px;display:flex;gap:6px;align-items:baseline">
+                ${slackDigestState.workday.slice(0,5).map(w => {
+                  const safeUrl = isSafeWorkdayUrl(w.actionUrl) ? w.actionUrl.replace(/'/g, '%27') : null;
+                  const rowClick = safeUrl ? `onclick="event.stopPropagation();window.open('${safeUrl}','_blank')" style="cursor:pointer"` : '';
+                  return `
+                  <div style="font-size:12px;display:flex;gap:6px;align-items:baseline" ${rowClick}>
                     <span style="color:var(--text-secondary);flex-shrink:0">${escHtml(w.time)}</span>
-                    <span style="color:var(--text)">${renderSlackText(w.text.slice(0,80))}${w.text.length>80?'…':''}</span>
+                    <span style="color:var(--text);${safeUrl ? 'text-decoration:underline' : ''}">${renderSlackText(w.text.slice(0,80))}${w.text.length>80?'…':''}</span>
                   </div>
-                `).join('')}
+                `; }).join('')}
               </div>
               <div class="dash-card-action" style="margin-top:6px">Open in Workday ${ICONS.arrowRight}</div>
             `; })() : slackDigestState.workday && slackDigestState.workday.length === 0 ? `
