@@ -1622,7 +1622,7 @@ function renderDashboard() {
             </div>
             ${slackDigestState.loading ? `
               <div class="dash-card-sub" style="margin-top:8px">⏳ Loading digest…</div>
-            ` : slackDigestState.html ? `
+            ` : (slackIsConnected() && slackDigestState.html) ? `
               <div class="sf-tier-row" style="margin-top:8px">
                 <span class="sf-tier-label" style="background:#DBEAFE;color:#1E40AF;font-size:10px">👥 Onboarding</span>
                 <span class="sf-tier-stat">${slackDigestState.counts?.people || 0} item${(slackDigestState.counts?.people || 0) === 1 ? '' : 's'}</span>
@@ -1649,7 +1649,7 @@ function renderDashboard() {
               </div>
               <div class="dash-card-title">Workday</div>
             </div>
-            ${slackDigestState.workday && slackDigestState.workday.length > 0 ? (() => {
+            ${(slackIsConnected() && slackDigestState.workday && slackDigestState.workday.length > 0) ? (() => {
               const taskCount = countWorkdayTasks(slackDigestState.workday);
               return `
               <div class="dash-card-value">${taskCount}</div>
@@ -1666,7 +1666,7 @@ function renderDashboard() {
                 `; }).join('')}
               </div>
               <div class="dash-card-action" style="margin-top:6px">Open in Workday ${ICONS.arrowRight}</div>
-            `; })() : slackDigestState.workday && slackDigestState.workday.length === 0 ? `
+            `; })() : (slackIsConnected() && slackDigestState.workday && slackDigestState.workday.length === 0) ? `
               <div class="dash-card-sub" style="margin-top:6px;font-size:11px">No recent Workday notifications</div>
               <div class="dash-card-action">Open in Workday ${ICONS.arrowRight}</div>
             ` : `
