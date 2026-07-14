@@ -44,6 +44,23 @@ function slackDisconnect() {
   slackState.threadCount = null;
   slackState.fetchError  = null;
   localStorage.removeItem(SLACK_TOKEN_KEY);
+  // Also clear cached digest data — otherwise stale Slack digest/Workday
+  // content keeps showing on the dashboard even though nothing's connected,
+  // since slackDigestState is initialized straight from these localStorage
+  // keys regardless of current connection state.
+  localStorage.removeItem('uyt_digest_html');
+  localStorage.removeItem('uyt_digest_asof');
+  localStorage.removeItem('uyt_digest_counts');
+  localStorage.removeItem('uyt_digest_handover');
+  localStorage.removeItem('uyt_digest_workday');
+  if (typeof slackDigestState !== 'undefined') {
+    slackDigestState.html = null;
+    slackDigestState.asOf = null;
+    slackDigestState.counts = { people: 0, work: 0, incidents: 0 };
+    slackDigestState.handover = null;
+    slackDigestState.workday = null;
+    slackDigestState.error = null;
+  }
   if (typeof renderSettingsPanel === 'function') renderSettingsPanel();
   if (typeof renderDashboard     === 'function') renderDashboard();
 }
