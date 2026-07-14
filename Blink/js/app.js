@@ -297,6 +297,10 @@ function renderSlack() {
   if (!el) return;
   const workerUrl = 'https://uyt-slack-digest.kar-marsten.workers.dev';
   const channels = getSlackChannels();
+  if (!slackIsConnected()) {
+    el.innerHTML = `<div class="cal-connect-prompt"><div class="cal-connect-icon">💬</div><h3>Connect Slack</h3><p>Sign in with Slack to see your digest and region handover.</p><button class="connect-btn" onclick="triggerSlackOAuth()">Sign in with Slack</button></div>`;
+    return;
+  }
   if (!workerUrl) {
     el.innerHTML = `<div class="cal-connect-prompt"><div class="cal-connect-icon">💬</div><h3>Set up Slack Digest</h3><p>Add your Cloudflare Worker URL in Settings to enable the push-button Slack digest.</p><button class="connect-btn" onclick="openSettings()">Open Settings</button></div>`;
     return;
@@ -347,7 +351,7 @@ async function fetchSlackDigestFull() {
 function renderSlackAndAutoFetch() {
   renderSlack();
   // Auto-fetch if no digest loaded yet and worker is configured
-  if (!slackDigestState.html && !slackDigestState.loading && 'https://uyt-slack-digest.kar-marsten.workers.dev') {
+  if (slackIsConnected() && !slackDigestState.html && !slackDigestState.loading && 'https://uyt-slack-digest.kar-marsten.workers.dev') {
     fetchSlackDigestFull();
   }
 }
