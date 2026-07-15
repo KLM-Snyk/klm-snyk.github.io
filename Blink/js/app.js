@@ -2752,7 +2752,6 @@ function renderSetupStep() {
 
   else if (step === 'done') {
     const hasJira = !!localStorage.getItem('uyt_jira_token');
-    const hasSF = !!localStorage.getItem('uyt_salesforce_url');
     const hasWD = !!localStorage.getItem('uyt_workday_last_signin');
     const hasLooker = !!localStorage.getItem('uyt_looker_last_signin');
     const hasSlack = !!localStorage.getItem('uyt_slack_token');
@@ -2766,7 +2765,6 @@ function renderSetupStep() {
         (hasJira ? '<div class="setup-feature">✅ Jira connected</div>' : '<div class="setup-feature" style="opacity:0.5">○ Jira — connect anytime from Settings</div>') +
         (hasLooker ? '<div class="setup-feature">✅ Looker — signed in</div>' : '<div class="setup-feature" style="opacity:0.5">○ Looker — sign in anytime from Settings</div>') +
         (hasWD ? '<div class="setup-feature">✅ Workday — signed in</div>' : '<div class="setup-feature" style="opacity:0.5">○ Workday — sign in anytime from Settings</div>') +
-        (hasSF ? '<div class="setup-feature">✅ Salesforce linked</div>' : '<div class="setup-feature" style="opacity:0.5">○ Salesforce — add URL in Settings</div>') +
       '</div>' +
       '<p style="font-size:13px;color:var(--text-secondary);margin-top:8px">Change anything later — just click the ⚙️ gear icon in the top right.</p>' +
       '<div class="setup-actions">' +
