@@ -1450,12 +1450,22 @@ function isSafeWorkdayUrl(url) {
   } catch { return false; }
 }
 
-function countWorkdayTasks(items) {
-  if (!items || !items.length) return 0;
-  return items.filter(function(w) {
+// Heuristic only — Workday DMs aren't structured data, so this groups messages
+// by the leading emoji Workday tends to use: ✨ = informational update
+// ("Your time off request has been approved"), ✅/✔️ = confirmation of an
+// action you already took ("You approved X's time off request"), anything
+// else (no leading emoji, typically a rich card with Approve/Deny buttons) =
+// pending, needs your action. Not a real task-status check; will misclassify
+// if Workday's phrasing/emoji usage varies from what this was designed around.
+function categorizeWorkdayItems(items) {
+  const result = { pending: [], confirmations: [], updates: [] };
+  (items || []).forEach(function(w) {
     const t = (w.text || '').trim();
-    return !t.startsWith('✅') && !t.startsWith('✔️') && !t.startsWith('✨');
-  }).length;
+    if (t.startsWith('✅') || t.startsWith('✔️')) result.confirmations.push(w);
+    else if (t.startsWith('✨')) result.updates.push(w);
+    else result.pending.push(w);
+  });
+  return result;
 }
 
 const slackDigestState = {
@@ -1654,20 +1664,32 @@ function renderDashboard() {
               <div class="dash-card-title">Workday</div>
             </div>
             ${(slackIsConnected() && slackDigestState.workday && slackDigestState.workday.length > 0) ? (() => {
-              const taskCount = countWorkdayTasks(slackDigestState.workday);
-              return `
-              <div class="dash-card-value">${taskCount}</div>
-              <div class="dash-card-sub" style="font-size:11px" title="Estimated from message wording — not a real Workday task-status check">possible task${taskCount === 1 ? '' : 's'} needing action</div>
-              <div style="margin-top:6px;display:flex;flex-direction:column;gap:4px;max-height:120px;overflow-y:auto">
-                ${slackDigestState.workday.slice(0,5).map(w => {
-                  const safeUrl = isSafeWorkdayUrl(w.actionUrl) ? w.actionUrl.replace(/'/g, '%27') : null;
-                  const rowClick = safeUrl ? `onclick="event.stopPropagation();window.open('${safeUrl}','_blank')" style="cursor:pointer"` : '';
-                  return `
+              const cats = categorizeWorkdayItems(slackDigestState.workday);
+              const rowsHtml = slackDigestState.workday.slice(0,5).map(w => {
+                const safeUrl = isSafeWorkdayUrl(w.actionUrl) ? w.actionUrl.replace(/'/g, '%27') : null;
+                const rowClick = safeUrl ? `onclick="event.stopPropagation();window.open('${safeUrl}','_blank')" style="cursor:pointer"` : '';
+                return `
                   <div style="font-size:12px;display:flex;gap:6px;align-items:baseline" ${rowClick}>
                     <span style="color:var(--text-secondary);flex-shrink:0">${escHtml(w.time)}</span>
                     <span style="color:var(--text);${safeUrl ? 'text-decoration:underline' : ''}">${renderSlackText(w.text.slice(0,80))}${w.text.length>80?'…':''}</span>
                   </div>
-                `; }).join('')}
+                `;
+              }).join('');
+              return `
+              <div class="sf-tier-row" style="margin-top:8px" title="Estimated from message wording — not a real Workday task-status check">
+                <span class="sf-tier-label" style="background:#FEE2E2;color:#991B1B;font-size:10px">📝 Pending</span>
+                <span class="sf-tier-stat">${cats.pending.length}</span>
+              </div>
+              <div class="sf-tier-row">
+                <span class="sf-tier-label" style="background:#D1FAE5;color:#065F46;font-size:10px">✔️ Approved</span>
+                <span class="sf-tier-stat">${cats.confirmations.length}</span>
+              </div>
+              <div class="sf-tier-row">
+                <span class="sf-tier-label" style="background:#DBEAFE;color:#1E40AF;font-size:10px">✨ Updates</span>
+                <span class="sf-tier-stat">${cats.updates.length}</span>
+              </div>
+              <div style="margin-top:6px;display:flex;flex-direction:column;gap:4px;max-height:120px;overflow-y:auto">
+                ${rowsHtml}
               </div>
               <div class="dash-card-action" style="margin-top:6px">Open in Workday ${ICONS.arrowRight}</div>
             `; })() : (slackIsConnected() && slackDigestState.workday && slackDigestState.workday.length === 0) ? `
