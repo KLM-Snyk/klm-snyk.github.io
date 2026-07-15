@@ -754,8 +754,16 @@ function calUpcomingEvents() {
   const todayStr = now.toISOString().slice(0, 10);
   return calState.events.filter(e => {
     const start = (e.start || '').slice(0, 10);
-    // Include today and future events only
-    return start >= todayStr;
+    if (e.allDay) {
+      // All-day events don't have a meaningful start time to compare
+      // against `now` — keep them if today or later, by date alone.
+      return start >= todayStr;
+    }
+    // Timed events: only genuinely upcoming ones — this used to compare
+    // dates only, so events from earlier today (already passed) were
+    // incorrectly included, crowding out real upcoming events once the
+    // dashboard capped the list length.
+    return new Date(e.start) >= now;
   });
 }
 
