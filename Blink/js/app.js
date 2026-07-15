@@ -1040,23 +1040,35 @@ function renderSettingsPanel() {
       </div>
     </div>
 
-    <!-- Tools URLs -->
+    <!-- Workday -->
     <div class="settings-section">
-      <div class="settings-section-title">Your Tools</div>
+      <div class="settings-section-title">Workday</div>
       <div class="cal-connect-box">
-        <div class="settings-label" style="margin-bottom:6px">Salesforce Cases URL</div>
-        <div class="cal-input-row" style="margin-bottom:12px">
-          <input class="cal-client-input" id="sf-url-input" type="text"
-            placeholder="https://yourorg.lightning.force.com/lightning/o/Case/list"
-            value="${escHtml(localStorage.getItem('uyt_salesforce_url') || '')}">
-          <button class="cal-connect-btn" onclick="saveToolUrl('uyt_salesforce_url','sf-url-input')">Save</button>
-        </div>
-        <div class="settings-label" style="margin-bottom:6px">Workday Tasks URL</div>
+        <p style="font-size:13px;color:var(--text-secondary);margin-bottom:10px">Your Workday notifications actually flow through Slack, so there's no separate token stored here either — this just opens Workday so your browser has an active session, and lets you save your Tasks page link for the dashboard tile.</p>
+        <a href="#" onclick="triggerWorkdaySSO();return false;" class="cal-connect-btn" style="display:inline-flex;align-items:center;gap:8px;text-decoration:none;color:white">
+          Sign in to Workday
+        </a>
+        ${localStorage.getItem('uyt_workday_last_signin') ? '<p style="font-size:12px;color:var(--text-secondary);margin-top:10px">Last signed in: ' + escHtml(new Date(parseInt(localStorage.getItem('uyt_workday_last_signin'), 10)).toLocaleString()) + '</p>' : ''}
+        <div class="settings-label" style="margin-top:12px;margin-bottom:6px">Workday Tasks URL</div>
         <div class="cal-input-row">
           <input class="cal-client-input" id="wd-url-input" type="text"
             placeholder="https://wd103.myworkday.com/yourorg/d/task/..."
             value="${escHtml(localStorage.getItem('uyt_workday_url') || '')}">
           <button class="cal-connect-btn" onclick="saveToolUrl('uyt_workday_url','wd-url-input')">Save</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tools URLs -->
+    <div class="settings-section">
+      <div class="settings-section-title">Your Tools</div>
+      <div class="cal-connect-box">
+        <div class="settings-label" style="margin-bottom:6px">Salesforce Cases URL</div>
+        <div class="cal-input-row">
+          <input class="cal-client-input" id="sf-url-input" type="text"
+            placeholder="https://yourorg.lightning.force.com/lightning/o/Case/list"
+            value="${escHtml(localStorage.getItem('uyt_salesforce_url') || '')}">
+          <button class="cal-connect-btn" onclick="saveToolUrl('uyt_salesforce_url','sf-url-input')">Save</button>
         </div>
       </div>
     </div>
@@ -1360,6 +1372,36 @@ function triggerLookerSSO() {
       if (typeof renderSettingsPanel === 'function') renderSettingsPanel();
       // Force the Trends iframes to reload so they pick up the fresh session cookie
       if (typeof renderTrends === 'function' && state.screen === 'trends') renderTrends();
+    }
+  }, 500);
+}
+
+// Same shape as triggerLookerSSO — Blink's actual Workday data comes via the
+// Slack bot DM (see categorizeWorkdayItems), not a direct Workday API
+// integration, so there's no token to store here either. This popup just
+// gives the person's browser an active Workday session so the "Open in
+// Workday" bookmark link actually works, and gives new users an obvious
+// first step instead of silently expecting them to already know a URL to paste.
+function triggerWorkdaySSO() {
+  const width = 700, height = 750;
+  const left = Math.round(window.screenX + (window.outerWidth - width) / 2);
+  const top = Math.round(window.screenY + (window.outerHeight - height) / 2);
+  const popup = window.open(
+    'https://wd103.myworkday.com/snyk',
+    'workday-sso',
+    'width=' + width + ',height=' + height + ',left=' + left + ',top=' + top + ',toolbar=no,menubar=no'
+  );
+  let _workdayHandled = false;
+  const poll = setInterval(function() {
+    if (popup.closed) {
+      clearInterval(poll);
+      if (_workdayHandled) return;
+      _workdayHandled = true;
+      localStorage.setItem('uyt_workday_last_signin', String(Date.now()));
+      if (setupSteps[setupStep] === 'workday') setupStep++;
+      if (typeof renderSetupStep === 'function') renderSetupStep();
+      if (typeof renderSettingsPanel === 'function') renderSettingsPanel();
+      if (typeof renderDashboard === 'function') renderDashboard();
     }
   }, 500);
 }
@@ -2349,6 +2391,7 @@ const setupSteps = [
   'slack',
   'jira',
   'looker',
+  'workday',
   'preferences',
   'done',
 ];
@@ -2506,6 +2549,27 @@ function renderSetupStep() {
       '<a href="#" onclick="triggerLookerSSO();return false;" class="setup-btn-primary" style="display:inline-flex;align-items:center;gap:8px;text-decoration:none;color:white;margin-top:8px">Sign in to Looker</a>' +
       (hasSignedIn ? '<div class="setup-connected-badge" style="margin-top:12px">✓ Signed in to Looker</div>' : '') +
       '<p style="font-size:12px;color:var(--text-secondary);margin-top:12px">A window will open — sign in via SSO, then close it (or it\'ll close automatically) to continue.</p>' +
+      '<div class="setup-actions">' +
+        '<button class="setup-btn-ghost" onclick="setupBack()">← Back</button>' +
+        '<button class="setup-btn-ghost" onclick="setupNext()">Skip for now</button>' +
+        '<button class="setup-btn-primary" onclick="setupNext()">Next →</button>' +
+      '</div>';
+  }
+
+  else if (step === 'workday') {
+    const hasSignedIn = !!localStorage.getItem('uyt_workday_last_signin');
+    const wdUrl = escHtml(localStorage.getItem('uyt_workday_url') || '');
+    content.innerHTML = '<div class="setup-icon">🏢</div>' +
+      '<h1 class="setup-title">Connect Workday</h1>' +
+      '<p class="setup-desc">Your Workday notifications actually flow through Slack (that\'s already connected), so there\'s no separate token to store here either. This just opens Workday so your browser has an active session, and gives you a spot to save your Tasks page link for the dashboard tile.</p>' +
+      '<a href="#" onclick="triggerWorkdaySSO();return false;" class="setup-btn-primary" style="display:inline-flex;align-items:center;gap:8px;text-decoration:none;color:white;margin-top:8px">Sign in to Workday</a>' +
+      (hasSignedIn ? '<div class="setup-connected-badge" style="margin-top:12px">✓ Signed in to Workday</div>' : '') +
+      '<div class="setup-field-label" style="margin-top:16px">Workday Tasks URL <span style="font-weight:400;color:var(--text-secondary)">(optional)</span></div>' +
+      '<div class="cal-input-row" style="margin-bottom:8px">' +
+        '<input class="cal-client-input" id="setup-wd-url" type="text" placeholder="https://wd103.myworkday.com/yourorg/d/task/..." value="' + wdUrl + '">' +
+        '<button class="cal-connect-btn" onclick="saveToolUrl(\'uyt_workday_url\',\'setup-wd-url\')">Save</button>' +
+      '</div>' +
+      '<p style="font-size:12px;color:var(--text-secondary);margin-top:8px">Once signed in, navigate to your Tasks page in Workday and paste that URL above — you can always add this later in Settings.</p>' +
       '<div class="setup-actions">' +
         '<button class="setup-btn-ghost" onclick="setupBack()">← Back</button>' +
         '<button class="setup-btn-ghost" onclick="setupNext()">Skip for now</button>' +
