@@ -1591,6 +1591,46 @@ function categorizeWorkdayItems(items) {
   return result;
 }
 
+// Cache of resolved Slack user IDs -> display names, so <@ID> mentions in
+// Workday text can show the real name instead of a generic placeholder.
+// Slack's raw message text only ever contains the ID, never the name.
+const SLACK_USER_NAME_CACHE_KEY = 'uyt_slack_user_names';
+
+function getSlackUserNameCache() {
+  try { return JSON.parse(localStorage.getItem(SLACK_USER_NAME_CACHE_KEY) || '{}'); }
+  catch { return {}; }
+}
+
+function extractMentionIds(items) {
+  const ids = new Set();
+  (items || []).forEach(function(w) {
+    const matches = (w.text || '').match(/<@[A-Z0-9]+>/g) || [];
+    matches.forEach(function(m) { ids.add(m.slice(2, -1)); });
+  });
+  return Array.from(ids);
+}
+
+// Fetches any not-yet-cached names via the Worker (which calls Slack's
+// users.info — users:read is already part of the requested scope list, so
+// no reconnect needed). Returns true if any new names were resolved, so the
+// caller knows whether a re-render is worthwhile.
+async function resolveSlackUserNames(items) {
+  const cache = getSlackUserNameCache();
+  const missing = extractMentionIds(items).filter(function(id) { return !cache[id]; });
+  if (!missing.length) return false;
+  try {
+    const token = localStorage.getItem('uyt_slack_token') || '';
+    const res = await fetch('https://uyt-slack-digest.kar-marsten.workers.dev/slack/user-names?ids=' + missing.join(',') + '&t=' + encodeURIComponent(token));
+    const data = await res.json();
+    if (data.ok && data.names) {
+      Object.assign(cache, data.names);
+      localStorage.setItem(SLACK_USER_NAME_CACHE_KEY, JSON.stringify(cache));
+      return true;
+    }
+  } catch (e) { console.warn('Could not resolve Slack user names:', e); }
+  return false;
+}
+
 // Slack's raw message text uses its own "mrkdwn" link syntax — <url|display text>
 // (or bare <url> with no display text) — rather than real HTML links. Workday's
 // messages often bury the actual date range inside one of these, e.g.
@@ -1601,12 +1641,13 @@ function categorizeWorkdayItems(items) {
 function parseWorkdaySlackText(rawText) {
   const links = [];
   // Slack user mentions (<@U03PYB6ERR6>) only ever carry the raw ID in the
-  // API's text field — never the display name — so treating them like a
-  // link (as the generic <...> regex below would) strips the name out
-  // entirely and leaves broken grammar like "It looks like 's request...".
-  // Replace with a generic stand-in instead, since resolving the real name
-  // would need an extra Slack API lookup we don't have here.
-  let summary = (rawText || '').replace(/<@[A-Z0-9]+>/g, 'this employee');
+  // API's text field — never the display name — so we resolve real names
+  // via resolveSlackUserNames() (cached, called after each digest fetch) and
+  // fall back to a generic stand-in only if a name hasn't been resolved yet.
+  const nameCache = getSlackUserNameCache();
+  let summary = (rawText || '').replace(/<@([A-Z0-9]+)>/g, function(match, id) {
+    return nameCache[id] || 'this employee';
+  });
   const LINK_RE = /<([^|<>]+)(?:\|([^<>]+))?>/g;
   summary = summary.replace(LINK_RE, function(match, url, text) {
     // Strip trailing/embedded emoji shortcodes (e.g. ":arrow_upper_right:")
@@ -1667,6 +1708,14 @@ async function fetchSlackDigest() {
     slackDigestState.handover = data.handover || null;
     slackDigestState.workday = data.workday || null;
     localStorage.setItem('uyt_digest_workday', JSON.stringify(slackDigestState.workday));
+    if (slackDigestState.workday && slackDigestState.workday.length) {
+      resolveSlackUserNames(slackDigestState.workday).then(function(changed) {
+        if (changed) {
+          renderDashboard();
+          if (state.screen === 'workday') renderWorkday();
+        }
+      });
+    }
     slackDigestState.html = digestHtml || '<div class="digest-empty">No results</div>';
     slackDigestState.error = null;
     slackDigestState.asOf = new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
