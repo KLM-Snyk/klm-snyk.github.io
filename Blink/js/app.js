@@ -158,6 +158,10 @@ function navigate(screen) {
     renderCases();
     if (!jiraState.issues && !jiraState.loading && localStorage.getItem('uyt_jira_token')) fetchJiraIssues();
   }
+  if (screen === 'workday') {
+    renderWorkday();
+    if (slackIsConnected() && !slackDigestState.workday && !slackDigestState.loading) fetchSlackDigest().then(renderWorkday);
+  }
   if (screen === 'trends')    renderTrends();
   if (screen === 'drive')     renderDrive();
   if (screen === 'planner')   renderPlanner();
@@ -717,6 +721,71 @@ function renderTrends() {
   el.innerHTML = lookerBar + topHtml + rowHtml;
 }
 
+/* ============================================================
+   Workday screen — full detail, moved off the dashboard tile
+   ============================================================ */
+
+const WORKDAY_QUICK_ACTIONS = ['My Tasks', 'Take time off', 'View time off balance', 'Lookup a coworker'];
+
+function renderWorkday() {
+  const el = document.getElementById('screen-workday-content');
+  if (!el) return;
+
+  const quickActionsHtml = '<div class="workday-quick-actions">' +
+    WORKDAY_QUICK_ACTIONS.map(function(label) {
+      return '<a href="' + WORKDAY_HOME_URL + '" target="_blank" class="workday-quick-action-btn">' + escHtml(label) + '</a>';
+    }).join('') +
+  '</div>';
+
+  if (!slackIsConnected()) {
+    el.innerHTML = quickActionsHtml + '<div class="cal-connect-prompt"><div class="cal-connect-icon">🏢</div><h3>Connect Slack</h3><p>Workday notifications flow through Slack — sign in to see them here.</p><button class="connect-btn" onclick="triggerSlackOAuth()">Sign in with Slack</button></div>';
+    return;
+  }
+  if (slackDigestState.loading && !slackDigestState.workday) {
+    el.innerHTML = quickActionsHtml + '<div class="cal-connect-prompt"><div class="cal-connect-icon">⏳</div><h3>Loading Workday notifications…</h3></div>';
+    return;
+  }
+  if (!slackDigestState.workday || slackDigestState.workday.length === 0) {
+    el.innerHTML = quickActionsHtml + '<div class="cal-connect-prompt"><div class="cal-connect-icon">🏢</div><h3>No recent Workday notifications</h3><p>Nothing from the last 30 days.</p></div>';
+    return;
+  }
+
+  const cats = categorizeWorkdayItems(slackDigestState.workday);
+  const summaryHtml = '<div class="workday-summary-row">' +
+    '<div class="sf-tier-row" title="Estimated from message wording — not a real Workday task-status check">' +
+      '<span class="sf-tier-label" style="background:#FEE2E2;color:#991B1B;font-size:11px">📝 Pending</span>' +
+      '<span class="sf-tier-stat">' + cats.pending.length + '</span>' +
+    '</div>' +
+    '<div class="sf-tier-row">' +
+      '<span class="sf-tier-label" style="background:#D1FAE5;color:#065F46;font-size:11px">✔️ Approved</span>' +
+      '<span class="sf-tier-stat">' + cats.confirmations.length + '</span>' +
+    '</div>' +
+    '<div class="sf-tier-row">' +
+      '<span class="sf-tier-label" style="background:#DBEAFE;color:#1E40AF;font-size:11px">✨ Updates</span>' +
+      '<span class="sf-tier-stat">' + cats.updates.length + '</span>' +
+    '</div>' +
+  '</div>';
+
+  function renderGroup(title, items) {
+    if (!items.length) return '';
+    const rows = items.map(function(w) {
+      const safeUrl = isSafeWorkdayUrl(w.actionUrl) ? w.actionUrl.replace(/'/g, '%27') : null;
+      const rowClick = safeUrl ? 'onclick="window.open(\'' + safeUrl + '\',\'_blank\')" style="cursor:pointer"' : '';
+      return '<div class="workday-item-row" ' + rowClick + '>' +
+        '<span class="workday-item-time">' + escHtml(w.time) + '</span>' +
+        '<span class="workday-item-text' + (safeUrl ? ' workday-item-linked' : '') + '">' + renderSlackText(w.text) + '</span>' +
+      '</div>';
+    }).join('');
+    return '<div class="workday-group"><div class="workday-group-title">' + title + '</div>' + rows + '</div>';
+  }
+
+  const groupsHtml = renderGroup('📝 Pending', cats.pending) + renderGroup('✔️ Approved', cats.confirmations) + renderGroup('✨ Updates', cats.updates);
+
+  el.innerHTML = quickActionsHtml +
+    '<div class="mail-header"><div class="mail-meta">' + slackDigestState.workday.length + ' notification' + (slackDigestState.workday.length === 1 ? '' : 's') + ' · last 30 days</div></div>' +
+    summaryHtml + groupsHtml;
+}
+
 
 /* ============================================================
    Backlog Chart (stacked bar, atop Cases screen)
@@ -1044,18 +1113,11 @@ function renderSettingsPanel() {
     <div class="settings-section">
       <div class="settings-section-title">Workday</div>
       <div class="cal-connect-box">
-        <p style="font-size:13px;color:var(--text-secondary);margin-bottom:10px">Your Workday notifications actually flow through Slack, so there's no separate token stored here either — this just opens Workday so your browser has an active session, and lets you save your Tasks page link for the dashboard tile.</p>
+        <p style="font-size:13px;color:var(--text-secondary);margin-bottom:10px">Your Workday notifications actually flow through Slack, so there's no separate token stored here either — this just opens Workday so your browser has an active session for the "Open in Workday" link on the dashboard.</p>
         <a href="#" onclick="triggerWorkdaySSO();return false;" class="cal-connect-btn" style="display:inline-flex;align-items:center;gap:8px;text-decoration:none;color:white">
           Sign in to Workday
         </a>
         ${localStorage.getItem('uyt_workday_last_signin') ? '<p style="font-size:12px;color:var(--text-secondary);margin-top:10px">Last signed in: ' + escHtml(new Date(parseInt(localStorage.getItem('uyt_workday_last_signin'), 10)).toLocaleString()) + '</p>' : ''}
-        <div class="settings-label" style="margin-top:12px;margin-bottom:6px">Workday Tasks URL</div>
-        <div class="cal-input-row">
-          <input class="cal-client-input" id="wd-url-input" type="text"
-            placeholder="https://wd103.myworkday.com/yourorg/d/task/..."
-            value="${escHtml(localStorage.getItem('uyt_workday_url') || '')}">
-          <button class="cal-connect-btn" onclick="saveToolUrl('uyt_workday_url','wd-url-input')">Save</button>
-        </div>
       </div>
     </div>
 
@@ -1380,8 +1442,9 @@ function triggerLookerSSO() {
 // Slack bot DM (see categorizeWorkdayItems), not a direct Workday API
 // integration, so there's no token to store here either. This popup just
 // gives the person's browser an active Workday session so the "Open in
-// Workday" bookmark link actually works, and gives new users an obvious
-// first step instead of silently expecting them to already know a URL to paste.
+// Workday" link actually works, and gives new users an obvious first step.
+const WORKDAY_HOME_URL = 'https://wd103.myworkday.com/snyk/d/pex/home.htmld';
+
 function triggerWorkdaySSO() {
   const width = 700, height = 750;
   const left = Math.round(window.screenX + (window.outerWidth - width) / 2);
@@ -1704,7 +1767,7 @@ function renderDashboard() {
             `}
           </div>
 
-          <div class="dash-card" onclick="localStorage.getItem('uyt_workday_url') ? window.open(localStorage.getItem('uyt_workday_url'),'_blank') : openSettings()">
+          <div class="dash-card" onclick="navigate('workday')" style="cursor:pointer">
             <div class="dash-card-header">
               <div class="dash-card-icon">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v2"/><line x1="12" y1="12" x2="12" y2="16"/><line x1="10" y1="14" x2="14" y2="14"/></svg>
@@ -1712,44 +1775,19 @@ function renderDashboard() {
               <div class="dash-card-title">Workday</div>
             </div>
             ${(() => {
-              const wdConfigured = !!localStorage.getItem('uyt_workday_url');
-              const wdActionLabel = wdConfigured ? `Open in Workday ${ICONS.arrowRight}` : `Set up Workday link ${ICONS.arrowRight}`;
               if (slackIsConnected() && slackDigestState.workday && slackDigestState.workday.length > 0) {
-              const cats = categorizeWorkdayItems(slackDigestState.workday);
-              const rowsHtml = slackDigestState.workday.slice(0,5).map(w => {
-                const safeUrl = isSafeWorkdayUrl(w.actionUrl) ? w.actionUrl.replace(/'/g, '%27') : null;
-                const rowClick = safeUrl ? `onclick="event.stopPropagation();window.open('${safeUrl}','_blank')" style="cursor:pointer"` : '';
+                const cats = categorizeWorkdayItems(slackDigestState.workday);
                 return `
-                  <div style="font-size:12px;display:flex;gap:6px;align-items:baseline" ${rowClick}>
-                    <span style="color:var(--text-secondary);flex-shrink:0">${escHtml(w.time)}</span>
-                    <span style="color:var(--text);${safeUrl ? 'text-decoration:underline' : ''}">${renderSlackText(w.text.slice(0,80))}${w.text.length>80?'…':''}</span>
-                  </div>
-                `;
-              }).join('');
-              return `
-              <div class="sf-tier-row" style="margin-top:8px" title="Estimated from message wording — not a real Workday task-status check">
-                <span class="sf-tier-label" style="background:#FEE2E2;color:#991B1B;font-size:10px">📝 Pending</span>
-                <span class="sf-tier-stat">${cats.pending.length}</span>
-              </div>
-              <div class="sf-tier-row">
-                <span class="sf-tier-label" style="background:#D1FAE5;color:#065F46;font-size:10px">✔️ Approved</span>
-                <span class="sf-tier-stat">${cats.confirmations.length}</span>
-              </div>
-              <div class="sf-tier-row">
-                <span class="sf-tier-label" style="background:#DBEAFE;color:#1E40AF;font-size:10px">✨ Updates</span>
-                <span class="sf-tier-stat">${cats.updates.length}</span>
-              </div>
-              <div style="margin-top:6px;display:flex;flex-direction:column;gap:4px;max-height:120px;overflow-y:auto">
-                ${rowsHtml}
-              </div>
-              <div class="dash-card-action" style="margin-top:6px">${wdActionLabel}</div>
+              <div class="dash-card-value" style="font-size:28px;font-weight:700" title="Estimated from message wording — not a real Workday task-status check">${cats.pending.length}</div>
+              <div class="dash-card-sub">pending${cats.pending.length === 1 ? '' : ''} · ${cats.confirmations.length} approved · ${cats.updates.length} update${cats.updates.length === 1 ? '' : 's'}</div>
+              <div class="dash-card-action" style="margin-top:6px">View Workday ${ICONS.arrowRight}</div>
             `; } else if (slackIsConnected() && slackDigestState.workday && slackDigestState.workday.length === 0) { return `
               <div class="dash-card-sub" style="margin-top:6px;font-size:11px">No recent Workday notifications</div>
-              <div class="dash-card-action">${wdActionLabel}</div>
+              <div class="dash-card-action">View Workday ${ICONS.arrowRight}</div>
             `; } else { return `
               <div class="dash-card-value">—</div>
-              <div class="dash-card-sub">${wdConfigured ? 'Tasks &amp; actions' : 'Add your Workday link in Settings'}</div>
-              <div class="dash-card-action">${wdActionLabel}</div>
+              <div class="dash-card-sub">Tasks &amp; actions</div>
+              <div class="dash-card-action">View Workday ${ICONS.arrowRight}</div>
             `; }
             })()}
           </div>
@@ -2558,18 +2596,12 @@ function renderSetupStep() {
 
   else if (step === 'workday') {
     const hasSignedIn = !!localStorage.getItem('uyt_workday_last_signin');
-    const wdUrl = escHtml(localStorage.getItem('uyt_workday_url') || '');
     content.innerHTML = '<div class="setup-icon">🏢</div>' +
       '<h1 class="setup-title">Connect Workday</h1>' +
-      '<p class="setup-desc">Your Workday notifications actually flow through Slack (that\'s already connected), so there\'s no separate token to store here either. This just opens Workday so your browser has an active session, and gives you a spot to save your Tasks page link for the dashboard tile.</p>' +
+      '<p class="setup-desc">Your Workday notifications actually flow through Slack (that\'s already connected), so there\'s no separate token to store here either. This just opens Workday so your browser has an active session for the "Open in Workday" link on the dashboard.</p>' +
       '<a href="#" onclick="triggerWorkdaySSO();return false;" class="setup-btn-primary" style="display:inline-flex;align-items:center;gap:8px;text-decoration:none;color:white;margin-top:8px">Sign in to Workday</a>' +
       (hasSignedIn ? '<div class="setup-connected-badge" style="margin-top:12px">✓ Signed in to Workday</div>' : '') +
-      '<div class="setup-field-label" style="margin-top:16px">Workday Tasks URL <span style="font-weight:400;color:var(--text-secondary)">(optional)</span></div>' +
-      '<div class="cal-input-row" style="margin-bottom:8px">' +
-        '<input class="cal-client-input" id="setup-wd-url" type="text" placeholder="https://wd103.myworkday.com/yourorg/d/task/..." value="' + wdUrl + '">' +
-        '<button class="cal-connect-btn" onclick="saveToolUrl(\'uyt_workday_url\',\'setup-wd-url\')">Save</button>' +
-      '</div>' +
-      '<p style="font-size:12px;color:var(--text-secondary);margin-top:8px">Once signed in, navigate to your Tasks page in Workday and paste that URL above — you can always add this later in Settings.</p>' +
+      '<p style="font-size:12px;color:var(--text-secondary);margin-top:12px">A window will open — sign in via SSO, then close it (or it\'ll close automatically) to continue.</p>' +
       '<div class="setup-actions">' +
         '<button class="setup-btn-ghost" onclick="setupBack()">← Back</button>' +
         '<button class="setup-btn-ghost" onclick="setupNext()">Skip for now</button>' +
@@ -2609,7 +2641,8 @@ function renderSetupStep() {
   else if (step === 'done') {
     const hasJira = !!localStorage.getItem('uyt_jira_token');
     const hasSF = !!localStorage.getItem('uyt_salesforce_url');
-    const hasWD = !!localStorage.getItem('uyt_workday_url');
+    const hasWD = !!localStorage.getItem('uyt_workday_last_signin');
+    const hasLooker = !!localStorage.getItem('uyt_looker_last_signin');
     const hasSlack = !!localStorage.getItem('uyt_slack_token');
     const conn = calIsConnected();
     content.innerHTML = '<div class="setup-icon">🎉</div>' +
@@ -2619,8 +2652,9 @@ function renderSetupStep() {
         (conn ? '<div class="setup-feature">✅ Google — calendar, Gmail &amp; Drive</div>' : '<div class="setup-feature" style="opacity:0.5">○ Google — connect anytime from Settings</div>') +
         (hasSlack ? '<div class="setup-feature">✅ Slack — digest ready</div>' : '<div class="setup-feature" style="opacity:0.5">○ Slack — add your token in Settings</div>') +
         (hasJira ? '<div class="setup-feature">✅ Jira connected</div>' : '<div class="setup-feature" style="opacity:0.5">○ Jira — connect anytime from Settings</div>') +
+        (hasLooker ? '<div class="setup-feature">✅ Looker — signed in</div>' : '<div class="setup-feature" style="opacity:0.5">○ Looker — sign in anytime from Settings</div>') +
+        (hasWD ? '<div class="setup-feature">✅ Workday — signed in</div>' : '<div class="setup-feature" style="opacity:0.5">○ Workday — sign in anytime from Settings</div>') +
         (hasSF ? '<div class="setup-feature">✅ Salesforce linked</div>' : '<div class="setup-feature" style="opacity:0.5">○ Salesforce — add URL in Settings</div>') +
-        (hasWD ? '<div class="setup-feature">✅ Workday linked</div>' : '<div class="setup-feature" style="opacity:0.5">○ Workday — add URL in Settings</div>') +
       '</div>' +
       '<p style="font-size:13px;color:var(--text-secondary);margin-top:8px">Change anything later — just click the ⚙️ gear icon in the top right.</p>' +
       '<div class="setup-actions">' +

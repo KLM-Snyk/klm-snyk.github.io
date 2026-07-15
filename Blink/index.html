@@ -73,6 +73,10 @@
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M2 9a3 3 0 010 6v2a1 1 0 001 1h18a1 1 0 001-1v-2a3 3 0 010-6V7a1 1 0 00-1-1H3a1 1 0 00-1 1z"/><path d="M9 9v6" stroke-dasharray="2 2"/></svg>
         <span>JIRA</span>
       </button>
+      <button class="nav-item" data-screen="workday">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v2"/><line x1="12" y1="12" x2="12" y2="16"/><line x1="10" y1="14" x2="14" y2="14"/></svg>
+        <span>Workday</span>
+      </button>
       <button class="nav-item" data-screen="trends">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/></svg>
         <span>Support Case Trends &amp; Data</span>
@@ -163,6 +167,24 @@
     </div>
   </div>
 
+  <!-- Workday -->
+  <div id="screen-workday" class="screen">
+    <div class="screen-header">
+      <h2>Workday</h2>
+      <div class="header-actions">
+        <button class="icon-btn" onclick="renderWorkday()" title="Refresh">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/></svg>
+        </button>
+        <button class="icon-btn" onclick="openSettings()" title="Settings">
+          <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
+        </button>
+      </div>
+    </div>
+    <div class="screen-body">
+      <div id="screen-workday-content"></div>
+    </div>
+  </div>
+
   <!-- Support Case Trends & Data -->
   <div id="screen-trends" class="screen">
     <div class="screen-header">
@@ -247,7 +269,7 @@
       <img src="blink-icon.png" alt="Blink" style="width:56px;height:56px;border-radius:14px;margin-right:12px">
       <div>
         <div class="about-app-name">Blink</div>
-        <div class="about-version">Version 18.33</div>
+        <div class="about-version">Version 18.35</div>
       </div>
     </div>
 
@@ -261,11 +283,11 @@
       <div class="about-feature"><span>📬</span> Gmail — inbox unread count with per-label breakdown</div>
       <div class="about-feature"><span>✉️</span> Mail — 30-day unread by label, collapsible, searchable by keyword/sender/date</div>
       <div class="about-feature"><span>💬</span> Slack Digest — Region Handover + AI recap (Onboarding · Work Items · Escalations)</div>
-      <div class="about-feature"><span>🏢</span> Workday — last 60 days of Workday notifications via Slack DM</div>
+      <div class="about-feature"><span>🏢</span> Workday — dedicated screen with quick actions, grouped notifications (pending/approved/updates) from Slack, last 30 days</div>
       <div class="about-feature"><span>🎫</span> JIRA — open Jira issues assigned to you, grouped by project, collapsible &amp; searchable</div>
       <div class="about-feature"><span>📊</span> Support Case Trends &amp; Data — live embedded Looker dashboards for backlog &amp; daily case activity, with popup SSO sign-in</div>
       <div class="about-feature"><span>📁</span> Google Drive — shared with you, @mentions &amp; created by you (last 30 days, searchable)</div>
-      <div class="about-feature"><span>🗂️</span> Salesforce &amp; Workday — configurable quick links</div>
+      <div class="about-feature"><span>🗂️</span> Salesforce — configurable quick link</div>
       <div class="about-feature"><span>🎨</span> 5 color themes + dark mode</div>
       <div class="about-feature"><span>⚡</span> Setup wizard — Google + Slack + Jira + Looker SSO, up and running in a couple minutes</div>
     </div>
@@ -295,10 +317,10 @@
   <img src="angel.webp" id="angel-img" alt="" style="max-height:70vh;max-width:60vw;object-fit:contain;opacity:0;transition:opacity 0.4s">
 </div>
 
-<script src="js/preferences.js?v=18.33"></script>
-<script src="js/calendar.js?v=18.33"></script>
-<script src="js/slack.js?v=18.33"></script>
-<script src="js/app.js?v=18.33"></script>
+<script src="js/preferences.js?v=18.35"></script>
+<script src="js/calendar.js?v=18.35"></script>
+<script src="js/slack.js?v=18.35"></script>
+<script src="js/app.js?v=18.35"></script>
 
 </body>
 </html>

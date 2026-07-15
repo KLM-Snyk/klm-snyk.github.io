@@ -2743,6 +2743,18 @@ button, a.setup-btn-primary, a.cal-connect-btn {
 .cases-issue-summary { font-size:13px; color:var(--text); flex:1; }
 .cases-issue-status { font-size:11px; color:var(--text-secondary); flex-shrink:0; }
 
+/* Workday screen */
+.workday-quick-actions { display:flex; gap:10px; flex-wrap:wrap; margin-bottom:20px; }
+.workday-quick-action-btn { padding:10px 16px; background:var(--surface); border:1.5px solid var(--border); border-radius:var(--radius-sm); font-size:13px; font-weight:600; color:var(--text); text-decoration:none; transition:var(--transition); }
+.workday-quick-action-btn:hover { border-color:var(--primary); color:var(--primary); }
+.workday-summary-row { display:flex; gap:16px; flex-wrap:wrap; margin-bottom:20px; padding:14px 16px; background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); }
+.workday-group { margin-bottom:20px; }
+.workday-group-title { font-size:13px; font-weight:700; color:var(--text); margin-bottom:8px; }
+.workday-item-row { display:flex; gap:10px; align-items:baseline; padding:8px 12px; font-size:13px; background:var(--surface); border:1px solid var(--border); border-radius:var(--radius-sm); margin-bottom:6px; }
+.workday-item-time { color:var(--text-secondary); flex-shrink:0; font-size:12px; }
+.workday-item-text { color:var(--text); }
+.workday-item-linked { text-decoration:underline; cursor:pointer; }
+
 /* Support Case Trends & Data (Looker embeds) */
 .trends-embed-block { margin-bottom:24px; background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; }
 .trends-embed-title { padding:14px 16px; font-size:14px; font-weight:700; color:var(--text); border-bottom:1px solid var(--border); }
