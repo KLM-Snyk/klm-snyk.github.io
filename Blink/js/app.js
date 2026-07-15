@@ -742,7 +742,7 @@ function renderWorkday() {
   '</div>';
 
   if (!slackIsConnected()) {
-    el.innerHTML = quickActionsHtml + '<div class="cal-connect-prompt"><div class="cal-connect-icon">🏢</div><h3>Connect Slack</h3><p>Workday notifications flow through Slack — sign in to see them here.</p><button class="connect-btn" onclick="triggerSlackOAuth()">Sign in with Slack</button></div>';
+    el.innerHTML = quickActionsHtml + '<div class="cal-connect-prompt"><div class="cal-connect-icon">🏢</div><h3>Sign in required</h3><p>Sign in to see your Workday notifications here.</p><button class="connect-btn" onclick="triggerSlackOAuth()">Sign in</button></div>';
     return;
   }
   if (slackDigestState.loading && !slackDigestState.workday) {
@@ -768,6 +768,10 @@ function renderWorkday() {
       '<span class="sf-tier-label" style="background:#DBEAFE;color:#1E40AF;font-size:11px">✨ Updates</span>' +
       '<span class="sf-tier-stat">' + cats.updates.length + '</span>' +
     '</div>' +
+    '<div class="sf-tier-row">' +
+      '<span class="sf-tier-label" style="background:var(--surface2);color:var(--text-secondary);font-size:11px">ℹ️ Other</span>' +
+      '<span class="sf-tier-stat">' + cats.other.length + '</span>' +
+    '</div>' +
   '</div>';
 
   function renderGroup(title, items) {
@@ -792,10 +796,15 @@ function renderWorkday() {
       '</div>' : '';
       return summaryHtml + detailHtml;
     }).join('');
-    return '<div class="workday-group"><div class="workday-group-title">' + title + '</div>' + rows + '</div>';
+    return '<div class="workday-group">' +
+      '<div class="workday-group-title" onclick="toggleWorkdayGroup(this)" style="cursor:pointer">' +
+        '<span class="workday-group-caret">▸</span> ' + title + ' <span class="workday-group-count">(' + items.length + ')</span>' +
+      '</div>' +
+      '<div class="workday-group-items" style="display:none">' + rows + '</div>' +
+    '</div>';
   }
 
-  const groupsHtml = renderGroup('📝 Pending', cats.pending) + renderGroup('✔️ Approved', cats.confirmations) + renderGroup('✨ Updates', cats.updates);
+  const groupsHtml = renderGroup('📝 Pending', cats.pending) + renderGroup('✔️ Approved', cats.confirmations) + renderGroup('✨ Updates', cats.updates) + renderGroup('ℹ️ Other', cats.other);
 
   el.innerHTML = quickActionsHtml +
     '<div class="mail-header"><div class="mail-meta">' + slackDigestState.workday.length + ' notification' + (slackDigestState.workday.length === 1 ? '' : 's') + ' · last 30 days</div></div>' +
@@ -1580,12 +1589,17 @@ function isSafeWorkdayUrl(url) {
 function categorizeWorkdayItems(items) {
   const CONFIRM_PREFIXES = ['✅', '✔️', ':heavy_check_mark:', ':white_check_mark:', ':ballot_box_with_check:'];
   const UPDATE_PREFIXES = ['✨', ':sparkles:'];
-  const result = { pending: [], confirmations: [], updates: [] };
+  // "Pending" means an actual actionable request (an Approve/Deny card),
+  // not just "anything without a recognized prefix" — that fallback bucket
+  // was catching plain FYI messages (e.g. "Welcome Steven") and mislabeling
+  // them as needing action.
+  const result = { pending: [], confirmations: [], updates: [], other: [] };
   (items || []).forEach(function(w) {
     const t = (w.text || '').trim();
     if (CONFIRM_PREFIXES.some(function(p) { return t.startsWith(p); })) result.confirmations.push(w);
     else if (UPDATE_PREFIXES.some(function(p) { return t.startsWith(p); })) result.updates.push(w);
-    else result.pending.push(w);
+    else if (/\bapprove\b/i.test(t) && /\bdeny\b/i.test(t)) result.pending.push(w);
+    else result.other.push(w);
   });
   return result;
 }
@@ -1661,6 +1675,14 @@ function parseWorkdaySlackText(rawText) {
     .replace(/\s+\./g, '.')
     .replace(/\s{2,}/g, ' ')
     .trim();
+  // Strip Slack's own auto-generated accessibility description for messages
+  // with interactive elements (e.g. "Approve button Deny button, with
+  // interactive elements") — this describes the buttons for screen readers,
+  // it isn't real message content, and showing it verbatim just reads as noise.
+  summary = summary
+    .replace(/(?:\b[\w-]+\s+button\b[,\s]*)+with interactive elements\.?/gi, '')
+    .replace(/\s{2,}/g, ' ')
+    .trim();
   return { summary: summary, links: links };
 }
 
@@ -1670,6 +1692,14 @@ function toggleWorkdayItem(rowEl) {
   const isOpen = detail.style.display !== 'none';
   detail.style.display = isOpen ? 'none' : 'block';
   rowEl.classList.toggle('workday-item-row--expanded', !isOpen);
+}
+
+function toggleWorkdayGroup(headerEl) {
+  const body = headerEl.nextElementSibling;
+  if (!body) return;
+  const isOpen = body.style.display !== 'none';
+  body.style.display = isOpen ? 'none' : 'block';
+  headerEl.classList.toggle('workday-group-title--expanded', !isOpen);
 }
 
 const slackDigestState = {
@@ -2707,11 +2737,11 @@ function renderSetupStep() {
 
   else if (step === 'workday') {
     const hasSignedIn = !!localStorage.getItem('uyt_workday_last_signin');
+    if (hasSignedIn) { setupStep++; return renderSetupStep(); }
     content.innerHTML = '<div class="setup-icon">🏢</div>' +
       '<h1 class="setup-title">Connect Workday</h1>' +
-      '<p class="setup-desc">Your Workday notifications actually flow through Slack (that\'s already connected), so there\'s no separate token to store here either. This just opens Workday so your browser has an active session for the "Open in Workday" link on the dashboard.</p>' +
+      '<p class="setup-desc">This opens Workday so your browser has an active session for the "Open in Workday" link on the dashboard. No separate token is stored.</p>' +
       '<a href="#" onclick="triggerWorkdaySSO();return false;" class="setup-btn-primary" style="display:inline-flex;align-items:center;gap:8px;text-decoration:none;color:white;margin-top:8px">Sign in to Workday</a>' +
-      (hasSignedIn ? '<div class="setup-connected-badge" style="margin-top:12px">✓ Signed in to Workday</div>' : '') +
       '<p style="font-size:12px;color:var(--text-secondary);margin-top:12px">A window will open — sign in via SSO, then close it (or it\'ll close automatically) to continue.</p>' +
       '<div class="setup-actions">' +
         '<button class="setup-btn-ghost" onclick="setupBack()">← Back</button>' +

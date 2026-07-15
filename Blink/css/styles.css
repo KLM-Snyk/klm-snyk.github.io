@@ -2749,7 +2749,10 @@ button, a.setup-btn-primary, a.cal-connect-btn {
 .workday-quick-action-btn:hover { border-color:var(--primary); color:var(--primary); }
 .workday-summary-row { display:flex; gap:16px; flex-wrap:wrap; margin-bottom:20px; padding:14px 16px; background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); }
 .workday-group { margin-bottom:20px; }
-.workday-group-title { font-size:13px; font-weight:700; color:var(--text); margin-bottom:8px; }
+.workday-group-title { font-size:13px; font-weight:700; color:var(--text); margin-bottom:8px; display:flex; align-items:center; gap:6px; user-select:none; }
+.workday-group-caret { color:var(--text-secondary); font-size:11px; display:inline-block; transition:transform var(--transition); }
+.workday-group-title--expanded .workday-group-caret { transform:rotate(90deg); }
+.workday-group-count { font-weight:400; color:var(--text-secondary); font-size:12px; }
 .workday-item-row { display:flex; gap:10px; align-items:center; padding:8px 12px; font-size:13px; background:var(--surface); border:1px solid var(--border); border-radius:var(--radius-sm); margin-bottom:6px; }
 .workday-item-time { color:var(--text-secondary); flex-shrink:0; font-size:12px; }
 .workday-item-text { color:var(--text); flex:1; }
