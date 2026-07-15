@@ -1600,9 +1600,19 @@ function categorizeWorkdayItems(items) {
 // than showing the raw <url|text> syntax inline.
 function parseWorkdaySlackText(rawText) {
   const links = [];
+  // Slack user mentions (<@U03PYB6ERR6>) only ever carry the raw ID in the
+  // API's text field — never the display name — so treating them like a
+  // link (as the generic <...> regex below would) strips the name out
+  // entirely and leaves broken grammar like "It looks like 's request...".
+  // Replace with a generic stand-in instead, since resolving the real name
+  // would need an extra Slack API lookup we don't have here.
+  let summary = (rawText || '').replace(/<@[A-Z0-9]+>/g, 'this employee');
   const LINK_RE = /<([^|<>]+)(?:\|([^<>]+))?>/g;
-  let summary = (rawText || '').replace(LINK_RE, function(match, url, text) {
-    links.push({ url: url, text: (text || url).trim() });
+  summary = summary.replace(LINK_RE, function(match, url, text) {
+    // Strip trailing/embedded emoji shortcodes (e.g. ":arrow_upper_right:")
+    // from the link's display text — Workday often tacks one onto the end.
+    const cleanText = (text || url).replace(/\s*:[a-z0-9_+-]+:\s*/gi, ' ').trim();
+    links.push({ url: url, text: cleanText });
     return '';
   });
   // Clean up leftover punctuation/whitespace where the link used to sit
