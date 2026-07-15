@@ -718,7 +718,11 @@ function renderTrends() {
     '<span style="font-size:12px;color:var(--text-secondary)">Dashboards blank? You may need to be signed in to Looker in this browser.</span>' +
     '<a href="#" onclick="triggerLookerSSO();return false;" class="connect-btn" style="padding:6px 14px;font-size:12px;text-decoration:none">Sign in to Looker</a>' +
   '</div>';
-  el.innerHTML = lookerBar + topHtml + rowHtml;
+  const sfLinksHtml = '<div class="cases-sf-links">' +
+    '<a href="https://snyksec.lightning.force.com/lightning/r/Dashboard/01ZPU000004pbPp2AI/view?queryScope=userFolders" target="_blank" class="cases-sf-btn">📊 Case Trends &amp; Data</a>' +
+    '<a href="https://snyksec.lightning.force.com/lightning/o/Case/list?filterName=All_Unassigned_Cases" target="_blank" class="cases-sf-btn">📋 All Unassigned Cases</a>' +
+    '</div>';
+  el.innerHTML = lookerBar + sfLinksHtml + topHtml + rowHtml;
 }
 
 /* ============================================================
@@ -970,15 +974,10 @@ function renderCases() {
       '</div>';
   }).join('') || '<div style="padding:24px;text-align:center;color:var(--text-secondary)">No cases match</div>';
 
-  const sfLinksHtml = '<div class="cases-sf-links">' +
-    '<a href="https://snyksec.lightning.force.com/lightning/r/Dashboard/01ZPU000004pbPp2AI/view?queryScope=userFolders" target="_blank" class="cases-sf-btn">📊 Case Trends &amp; Data</a>' +
-    '<a href="https://snyksec.lightning.force.com/lightning/o/Case/list?filterName=All_Unassigned_Cases" target="_blank" class="cases-sf-btn">📋 All Unassigned Cases</a>' +
-    '</div>';
-
   el.innerHTML =
     '<div class="mail-header"><div class="mail-meta">Last updated ' + escHtml(jiraState.asOf || '') + ' · ' + issues.length + ' open</div>' +
     '<button class="connect-btn" onclick="fetchJiraIssues()" style="padding:8px 16px;font-size:13px">↺ Refresh</button></div>' +
-    sfLinksHtml + searchHtml + groupsHtml; // NOSONAR
+    searchHtml + groupsHtml; // NOSONAR
 }
 
 
@@ -2068,7 +2067,7 @@ function renderDrive() {
         <a class="drive-item" href="${escHtml(f.link)}" target="_blank"
            data-type="${f.type}" data-category="${f.category}"
            data-name="${escHtml(f.name.toLowerCase())}">
-          <span class="drive-item-icon">${f.type === 'sheet' ? '📊' : '📄'}</span>
+          <span class="drive-item-icon">${f.type === 'sheet' ? '📊' : f.type === 'slides' ? '📽️' : '📄'}</span>
           <div class="drive-item-details">
             <div class="drive-item-name">${escHtml(f.name)}</div>
             <div class="drive-item-meta">
@@ -2104,7 +2103,7 @@ function setDriveFilter(btn, filter) {
 
 function filterDrive() {
   const search = (document.getElementById('drive-search')?.value || '').toLowerCase();
-  const typeFilters     = ['sheet', 'doc'].filter(f => _driveFilters.has(f));
+  const typeFilters     = ['sheet', 'doc', 'slides'].filter(f => _driveFilters.has(f));
   const categoryFilters = ['shared', 'mentioned', 'created'].filter(f => _driveFilters.has(f));
 
   document.querySelectorAll('.drive-item').forEach(item => {
