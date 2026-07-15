@@ -140,3 +140,4 @@ Add managers as Contributors on the app at developer.atlassian.com.
 ## Coming Soon
 - Status page information
 - Per-action Workday quick-link URLs (currently all point to the home page)
+- More dashboards on Support Case Trends & Data — this screen will keep growing
