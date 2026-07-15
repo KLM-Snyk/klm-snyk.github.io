@@ -806,14 +806,12 @@ function renderTrends() {
   }
   const topHtml = TRENDS_EMBEDS.map(function(e, i) {
     return '<div class="trends-embed-block trends-embed-block-centered">' +
-      '<div class="trends-embed-title">' + escHtml(e.title) + '</div>' +
       '<iframe class="trends-embed-frame trends-embed-frame-half" src="' + e.url + '" title="' + escHtml(e.title) + '" id="trends-iframe-' + i + '" loading="lazy"></iframe>' +
     '</div>';
   }).join('');
   const rowHtml = TRENDS_EMBEDS_ROW2.length
     ? '<div class="trends-embed-row">' + TRENDS_EMBEDS_ROW2.map(function(e, i) {
         return '<div class="trends-embed-block">' +
-          '<div class="trends-embed-title">' + escHtml(e.title) + '</div>' +
           '<iframe class="trends-embed-frame trends-embed-frame-half" src="' + e.url + '" title="' + escHtml(e.title) + '" id="trends-iframe-row2-' + i + '" loading="lazy"></iframe>' +
         '</div>';
       }).join('') + '</div>'
