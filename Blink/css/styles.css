@@ -2750,10 +2750,13 @@ button, a.setup-btn-primary, a.cal-connect-btn {
 .workday-summary-row { display:flex; gap:16px; flex-wrap:wrap; margin-bottom:20px; padding:14px 16px; background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); }
 .workday-group { margin-bottom:20px; }
 .workday-group-title { font-size:13px; font-weight:700; color:var(--text); margin-bottom:8px; }
-.workday-item-row { display:flex; gap:10px; align-items:baseline; padding:8px 12px; font-size:13px; background:var(--surface); border:1px solid var(--border); border-radius:var(--radius-sm); margin-bottom:6px; }
+.workday-item-row { display:flex; gap:10px; align-items:center; padding:8px 12px; font-size:13px; background:var(--surface); border:1px solid var(--border); border-radius:var(--radius-sm); margin-bottom:6px; }
 .workday-item-time { color:var(--text-secondary); flex-shrink:0; font-size:12px; }
-.workday-item-text { color:var(--text); }
-.workday-item-linked { text-decoration:underline; cursor:pointer; }
+.workday-item-text { color:var(--text); flex:1; }
+.workday-item-caret { color:var(--text-secondary); font-size:11px; flex-shrink:0; transition:transform var(--transition); display:inline-block; }
+.workday-item-row--expanded .workday-item-caret { transform:rotate(90deg); }
+.workday-item-detail { margin:-2px 0 6px 22px; padding:8px 12px; background:var(--surface2); border-radius:var(--radius-sm); font-size:12px; display:flex; flex-direction:column; gap:4px; }
+.workday-item-detail-link { color:var(--primary); text-decoration:underline; }
 
 /* Support Case Trends & Data (Looker embeds) */
 .trends-embed-block { margin-bottom:24px; background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; }

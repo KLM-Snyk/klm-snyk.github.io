@@ -769,12 +769,24 @@ function renderWorkday() {
   function renderGroup(title, items) {
     if (!items.length) return '';
     const rows = items.map(function(w) {
-      const safeUrl = isSafeWorkdayUrl(w.actionUrl) ? w.actionUrl.replace(/'/g, '%27') : null;
-      const rowClick = safeUrl ? 'onclick="window.open(\'' + safeUrl + '\',\'_blank\')" style="cursor:pointer"' : '';
-      return '<div class="workday-item-row" ' + rowClick + '>' +
+      const parsed = parseWorkdaySlackText(w.text);
+      const hasDetail = parsed.links.length > 0;
+      const caretHtml = hasDetail ? '<span class="workday-item-caret">▸</span>' : '';
+      const rowOnclick = hasDetail ? 'onclick="toggleWorkdayItem(this)" style="cursor:pointer"' : '';
+      const summaryHtml = '<div class="workday-item-row" ' + rowOnclick + '>' +
         '<span class="workday-item-time">' + escHtml(w.time) + '</span>' +
-        '<span class="workday-item-text' + (safeUrl ? ' workday-item-linked' : '') + '">' + renderSlackText(w.text) + '</span>' +
+        '<span class="workday-item-text">' + renderSlackText(parsed.summary) + '</span>' +
+        caretHtml +
       '</div>';
+      const detailHtml = hasDetail ? '<div class="workday-item-detail" style="display:none">' +
+        parsed.links.map(function(l) {
+          const safeUrl = isSafeWorkdayUrl(l.url) ? l.url.replace(/'/g, '%27') : null;
+          return safeUrl
+            ? '<a href="' + safeUrl + '" target="_blank" class="workday-item-detail-link">' + escHtml(l.text) + '</a>'
+            : '<span>' + escHtml(l.text) + '</span>';
+        }).join('') +
+      '</div>' : '';
+      return summaryHtml + detailHtml;
     }).join('');
     return '<div class="workday-group"><div class="workday-group-title">' + title + '</div>' + rows + '</div>';
   }
@@ -1579,6 +1591,37 @@ function categorizeWorkdayItems(items) {
   return result;
 }
 
+// Slack's raw message text uses its own "mrkdwn" link syntax — <url|display text>
+// (or bare <url> with no display text) — rather than real HTML links. Workday's
+// messages often bury the actual date range inside one of these, e.g.
+// "...request, <https://.../redirect=abc|Mon, Nov 9 - Tue, Nov 10 (8 Hours)>."
+// This pulls those links out into a separate array so the summary line can stay
+// short and the dates/details can go in an expandable section instead, rather
+// than showing the raw <url|text> syntax inline.
+function parseWorkdaySlackText(rawText) {
+  const links = [];
+  const LINK_RE = /<([^|<>]+)(?:\|([^<>]+))?>/g;
+  let summary = (rawText || '').replace(LINK_RE, function(match, url, text) {
+    links.push({ url: url, text: (text || url).trim() });
+    return '';
+  });
+  // Clean up leftover punctuation/whitespace where the link used to sit
+  summary = summary
+    .replace(/\s*,\s*\./g, '.')
+    .replace(/\s+\./g, '.')
+    .replace(/\s{2,}/g, ' ')
+    .trim();
+  return { summary: summary, links: links };
+}
+
+function toggleWorkdayItem(rowEl) {
+  const detail = rowEl.nextElementSibling;
+  if (!detail) return;
+  const isOpen = detail.style.display !== 'none';
+  detail.style.display = isOpen ? 'none' : 'block';
+  rowEl.classList.toggle('workday-item-row--expanded', !isOpen);
+}
+
 const slackDigestState = {
   loading: false,
   error: null,
@@ -1778,9 +1821,19 @@ function renderDashboard() {
               if (slackIsConnected() && slackDigestState.workday && slackDigestState.workday.length > 0) {
                 const cats = categorizeWorkdayItems(slackDigestState.workday);
                 return `
-              <div class="dash-card-value" style="font-size:28px;font-weight:700" title="Estimated from message wording — not a real Workday task-status check">${cats.pending.length}</div>
-              <div class="dash-card-sub">pending${cats.pending.length === 1 ? '' : ''} · ${cats.confirmations.length} approved · ${cats.updates.length} update${cats.updates.length === 1 ? '' : 's'}</div>
-              <div class="dash-card-action" style="margin-top:6px">View Workday ${ICONS.arrowRight}</div>
+              <div class="sf-tier-row" style="margin-top:8px" title="Estimated from message wording — not a real Workday task-status check">
+                <span class="sf-tier-label" style="background:#FEE2E2;color:#991B1B;font-size:10px">📝 Pending</span>
+                <span class="sf-tier-stat">${cats.pending.length}</span>
+              </div>
+              <div class="sf-tier-row">
+                <span class="sf-tier-label" style="background:#D1FAE5;color:#065F46;font-size:10px">✔️ Approved</span>
+                <span class="sf-tier-stat">${cats.confirmations.length}</span>
+              </div>
+              <div class="sf-tier-row">
+                <span class="sf-tier-label" style="background:#DBEAFE;color:#1E40AF;font-size:10px">✨ Updates</span>
+                <span class="sf-tier-stat">${cats.updates.length}</span>
+              </div>
+              <div class="dash-card-action" style="margin-top:8px">View Workday ${ICONS.arrowRight}</div>
             `; } else if (slackIsConnected() && slackDigestState.workday && slackDigestState.workday.length === 0) { return `
               <div class="dash-card-sub" style="margin-top:6px;font-size:11px">No recent Workday notifications</div>
               <div class="dash-card-action">View Workday ${ICONS.arrowRight}</div>
