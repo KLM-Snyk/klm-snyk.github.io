@@ -25,7 +25,103 @@ const ZEN_QUOTES = [
   { text: "Simplicity is the ultimate sophistication.", author: "Leonardo da Vinci" },
   { text: "Today's accomplishments were yesterday's impossibilities.", author: "Robert H. Schuller" },
   { text: "Don't watch the clock; do what it does. Keep going.", author: "Sam Levenson" },
+  { text: "Whether you think you can or you think you can't, you're right.", author: "Henry Ford" },
+  { text: "If you always do what you've always done, you'll always get what you've always gotten.", author: "Henry Ford" },
+  { text: "You can't build a reputation on what you are going to do.", author: "Henry Ford" },
+  { text: "Genius is one percent inspiration and ninety-nine percent perspiration.", author: "Thomas Edison" },
+  { text: "I have not failed. I've just found 10,000 ways that won't work.", author: "Thomas Edison" },
+  { text: "A journey of a thousand miles begins with a single step.", author: "Lao Tzu" },
+  { text: "The best way to predict the future is to create it.", author: "Peter Drucker" },
+  { text: "What gets measured gets managed.", author: "Peter Drucker" },
+  { text: "Efficiency is doing things right; effectiveness is doing the right things.", author: "Peter Drucker" },
+  { text: "The only place where success comes before work is in the dictionary.", author: "Vince Lombardi" },
+  { text: "Perfection is not attainable, but if we chase perfection we can catch excellence.", author: "Vince Lombardi" },
+  { text: "Nothing will work unless you do.", author: "Maya Angelou" },
+  { text: "Do what you can, with what you have, where you are.", author: "Theodore Roosevelt" },
+  { text: "Believe you can and you're halfway there.", author: "Theodore Roosevelt" },
+  { text: "The pessimist sees difficulty in every opportunity. The optimist sees opportunity in every difficulty.", author: "Winston Churchill" },
+  { text: "Success is not final, failure is not fatal: it is the courage to continue that counts.", author: "Winston Churchill" },
+  { text: "Continuous effort — not strength or intelligence — is the key to unlocking our potential.", author: "Winston Churchill" },
+  { text: "Start where you are. Use what you have. Do what you can.", author: "Arthur Ashe" },
+  { text: "Well done is better than well said.", author: "Benjamin Franklin" },
+  { text: "By failing to prepare, you are preparing to fail.", author: "Benjamin Franklin" },
+  { text: "Lost time is never found again.", author: "Benjamin Franklin" },
+  { text: "An investment in knowledge pays the best interest.", author: "Benjamin Franklin" },
+  { text: "It does not matter how slowly you go as long as you do not stop.", author: "Confucius" },
+  { text: "Our greatest glory is not in never falling, but in rising every time we fall.", author: "Confucius" },
+  { text: "Do not let what you cannot do interfere with what you can do.", author: "John Wooden" },
+  { text: "It's what you learn after you know it all that counts.", author: "John Wooden" },
+  { text: "A dream doesn't become reality through magic; it takes sweat, determination, and hard work.", author: "Colin Powell" },
+  { text: "The future belongs to those who believe in the beauty of their dreams.", author: "Eleanor Roosevelt" },
+  { text: "If you want to lift yourself up, lift up someone else.", author: "Booker T. Washington" },
+  { text: "Whatever the mind can conceive and believe, it can achieve.", author: "Napoleon Hill" },
+  { text: "Most of the important things in the world have been accomplished by people who have kept on trying when there seemed to be no hope at all.", author: "Dale Carnegie" },
 ];
+
+// Original quotes in the spirit of the Whovian easter egg (time, wonder,
+// curiosity, courage) — NOT reproductions of actual scripted dialogue from
+// the show, which is copyrighted. Shown instead of ZEN_QUOTES when dark mode
+// + a tardis-style background are active. Same "pick once per page load"
+// behavior as the regular quotes.
+const DR_WHO_QUOTES = [
+  { text: "Every moment is a doorway, if you're brave enough to step through.", author: "The Doctor" },
+  { text: "Time is not a line to walk, it's a universe to explore.", author: "The Doctor" },
+  { text: "Wonder is the beginning of wisdom, and curiosity is how we keep it.", author: "The Doctor" },
+  { text: "The bravest thing you can do today is simply show up.", author: "The Doctor" },
+  { text: "Some days call for running. Most days call for kindness.", author: "The Doctor" },
+  { text: "A good day is one where you learn something you didn't know when it started.", author: "The Doctor" },
+  { text: "Hope is a technology all its own.", author: "The Doctor" },
+  { text: "Never underestimate the difference you can make before lunch.", author: "The Doctor" },
+  { text: "The universe is big, but so is your capacity to help.", author: "The Doctor" },
+  { text: "Change isn't the end of who you are, it's the next chapter.", author: "The Doctor" },
+  { text: "Every ending is just a regeneration in disguise.", author: "The Doctor" },
+  { text: "Stars burn brightest when they've got somewhere to be.", author: "The Doctor" },
+  { text: "Adventure isn't a place, it's a decision you make each morning.", author: "The Doctor" },
+  { text: "The best companions are the ones who ask 'what if' and mean it.", author: "The Doctor" },
+  { text: "Time travels forward whether you're ready or not — best to be ready.", author: "The Doctor" },
+  { text: "Small kindnesses ripple across bigger timelines than you'd think.", author: "The Doctor" },
+  { text: "Curiosity is a compass; let it point you somewhere new today.", author: "The Doctor" },
+  { text: "You don't need a time machine to make today matter.", author: "The Doctor" },
+  { text: "Every companion starts as a stranger who said yes to something bigger.", author: "The Doctor" },
+  { text: "The most important journeys start with an open door and a nervous smile.", author: "The Doctor" },
+  { text: "Even in the dark, the console lights are still blinking — keep going.", author: "The Doctor" },
+  { text: "Wisdom is just curiosity that's been paying attention.", author: "The Doctor" },
+  { text: "You are allowed to be a whole new version of yourself today.", author: "The Doctor" },
+  { text: "Somewhere, some when, this exact effort is exactly what's needed.", author: "The Doctor" },
+  { text: "The TARDIS doesn't care what day it is — neither should your ambition.", author: "The Doctor" },
+  { text: "A universe of possibility fits inside one ordinary Tuesday.", author: "The Doctor" },
+  { text: "Fear is just excitement that hasn't found its story yet.", author: "The Doctor" },
+  { text: "Every companion becomes a hero eventually — usually on a Wednesday.", author: "The Doctor" },
+  { text: "The console room is loudest right before something wonderful happens.", author: "The Doctor" },
+  { text: "Time is kind to those who use it kindly.", author: "The Doctor" },
+  { text: "You've survived every difficult day so far — that's a perfect record.", author: "The Doctor" },
+  { text: "Somewhere out there, a version of you is already proud of today's effort.", author: "The Doctor" },
+  { text: "The unknown is just the familiar, not yet met.", author: "The Doctor" },
+  { text: "Great adventures usually begin with someone saying 'well, that's odd.'", author: "The Doctor" },
+  { text: "Bravery is just curiosity that kept walking.", author: "The Doctor" },
+  { text: "A single spark of hope can outshine an entire dark timeline.", author: "The Doctor" },
+  { text: "The best stories always have room for one more chapter.", author: "The Doctor" },
+  { text: "Today's small victory is tomorrow's favorite memory.", author: "The Doctor" },
+  { text: "You don't need two hearts to have double the courage.", author: "The Doctor" },
+  { text: "Every clock ticks toward something worth waiting for.", author: "The Doctor" },
+  { text: "The stars don't mind if you take the scenic route.", author: "The Doctor" },
+  { text: "New days are just old universes wearing a fresh coat of stardust.", author: "The Doctor" },
+  { text: "Somewhere in all of time and space, today counts.", author: "The Doctor" },
+  { text: "The best companions bring snacks and better questions.", author: "The Doctor" },
+  { text: "A little wonder goes a long way across a long day.", author: "The Doctor" },
+  { text: "Every great journey needs someone willing to press the first button.", author: "The Doctor" },
+  { text: "Kindness is the only universal language that needs no translation circuit.", author: "The Doctor" },
+  { text: "The future is unwritten — which is exactly why it's worth showing up for.", author: "The Doctor" },
+  { text: "Even paradoxes resolve themselves if you just keep being decent.", author: "The Doctor" },
+  { text: "Some days you're the hero. Some days you're just the reason someone else got to be.", author: "The Doctor" },
+  { text: "However strange today feels, the TARDIS has seen stranger — and it still flies.", author: "The Doctor" },
+  { text: "One good decision can rewrite an entire timeline. Make it today's.", author: "The Doctor" },
+];
+
+function isWhovianActive() {
+  return !!(state.prefs && state.prefs.darkMode && state.prefs.colorScheme === 'modern' &&
+    ['tardis', 'interior', 'tally'].includes(state.prefs.tardisBackground));
+}
 
 function sanitizeHtml(html) {
   return (html || '')
@@ -36,10 +132,18 @@ function sanitizeHtml(html) {
 }
 
 
+let _cachedDailyQuote = null;
+
 function getDailyQuote() {
-  const now = new Date();
-  const dayOfYear = Math.floor((now - new Date(now.getFullYear(), 0, 0)) / 86400000);
-  return ZEN_QUOTES[dayOfYear % ZEN_QUOTES.length];
+  // Picked once (lazily, on first call — by which point state.prefs is
+  // definitely loaded) so it stays the same for the rest of the session but
+  // shows a fresh one every time the page actually reloads. Pool depends on
+  // whether the Whovian easter egg (dark mode + tardis background) is active.
+  if (!_cachedDailyQuote) {
+    const pool = isWhovianActive() ? DR_WHO_QUOTES : ZEN_QUOTES;
+    _cachedDailyQuote = pool[Math.floor(Math.random() * pool.length)];
+  }
+  return _cachedDailyQuote;
 }
 
 /* ============================================================
