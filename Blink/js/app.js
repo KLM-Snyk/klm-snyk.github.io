@@ -1451,18 +1451,24 @@ function isSafeWorkdayUrl(url) {
 }
 
 // Heuristic only — Workday DMs aren't structured data, so this groups messages
-// by the leading emoji Workday tends to use: ✨ = informational update
-// ("Your time off request has been approved"), ✅/✔️ = confirmation of an
-// action you already took ("You approved X's time off request"), anything
-// else (no leading emoji, typically a rich card with Approve/Deny buttons) =
-// pending, needs your action. Not a real task-status check; will misclassify
-// if Workday's phrasing/emoji usage varies from what this was designed around.
+// by the leading emoji Workday tends to use: ✨/:sparkles: = informational
+// update ("Your time off request has been approved"), ✅/✔️/:heavy_check_mark:/
+// :white_check_mark: = confirmation of an action you already took ("You
+// approved X's time off request"), anything else (no leading emoji, typically
+// a rich card with Approve/Deny buttons) = pending, needs your action.
+// Slack's raw message text uses shortcode strings like ":heavy_check_mark:",
+// not the literal unicode glyph, even though Slack's own UI renders it as one
+// — so both forms need checking. Not a real task-status check; will
+// misclassify if Workday's phrasing/emoji usage varies from what this was
+// designed around.
 function categorizeWorkdayItems(items) {
+  const CONFIRM_PREFIXES = ['✅', '✔️', ':heavy_check_mark:', ':white_check_mark:', ':ballot_box_with_check:'];
+  const UPDATE_PREFIXES = ['✨', ':sparkles:'];
   const result = { pending: [], confirmations: [], updates: [] };
   (items || []).forEach(function(w) {
     const t = (w.text || '').trim();
-    if (t.startsWith('✅') || t.startsWith('✔️')) result.confirmations.push(w);
-    else if (t.startsWith('✨')) result.updates.push(w);
+    if (CONFIRM_PREFIXES.some(function(p) { return t.startsWith(p); })) result.confirmations.push(w);
+    else if (UPDATE_PREFIXES.some(function(p) { return t.startsWith(p); })) result.updates.push(w);
     else result.pending.push(w);
   });
   return result;
@@ -1656,14 +1662,17 @@ function renderDashboard() {
             `}
           </div>
 
-          <div class="dash-card" onclick="window.open(localStorage.getItem('uyt_workday_url') || 'https://wd103.myworkday.com','_blank')">
+          <div class="dash-card" onclick="localStorage.getItem('uyt_workday_url') ? window.open(localStorage.getItem('uyt_workday_url'),'_blank') : openSettings()">
             <div class="dash-card-header">
               <div class="dash-card-icon">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v2"/><line x1="12" y1="12" x2="12" y2="16"/><line x1="10" y1="14" x2="14" y2="14"/></svg>
               </div>
               <div class="dash-card-title">Workday</div>
             </div>
-            ${(slackIsConnected() && slackDigestState.workday && slackDigestState.workday.length > 0) ? (() => {
+            ${(() => {
+              const wdConfigured = !!localStorage.getItem('uyt_workday_url');
+              const wdActionLabel = wdConfigured ? `Open in Workday ${ICONS.arrowRight}` : `Set up Workday link ${ICONS.arrowRight}`;
+              if (slackIsConnected() && slackDigestState.workday && slackDigestState.workday.length > 0) {
               const cats = categorizeWorkdayItems(slackDigestState.workday);
               const rowsHtml = slackDigestState.workday.slice(0,5).map(w => {
                 const safeUrl = isSafeWorkdayUrl(w.actionUrl) ? w.actionUrl.replace(/'/g, '%27') : null;
@@ -1691,15 +1700,16 @@ function renderDashboard() {
               <div style="margin-top:6px;display:flex;flex-direction:column;gap:4px;max-height:120px;overflow-y:auto">
                 ${rowsHtml}
               </div>
-              <div class="dash-card-action" style="margin-top:6px">Open in Workday ${ICONS.arrowRight}</div>
-            `; })() : (slackIsConnected() && slackDigestState.workday && slackDigestState.workday.length === 0) ? `
+              <div class="dash-card-action" style="margin-top:6px">${wdActionLabel}</div>
+            `; } else if (slackIsConnected() && slackDigestState.workday && slackDigestState.workday.length === 0) { return `
               <div class="dash-card-sub" style="margin-top:6px;font-size:11px">No recent Workday notifications</div>
-              <div class="dash-card-action">Open in Workday ${ICONS.arrowRight}</div>
-            ` : `
+              <div class="dash-card-action">${wdActionLabel}</div>
+            `; } else { return `
               <div class="dash-card-value">—</div>
-              <div class="dash-card-sub">Tasks &amp; actions</div>
-              <div class="dash-card-action">Open in Workday ${ICONS.arrowRight}</div>
-            `}
+              <div class="dash-card-sub">${wdConfigured ? 'Tasks &amp; actions' : 'Add your Workday link in Settings'}</div>
+              <div class="dash-card-action">${wdActionLabel}</div>
+            `; }
+            })()}
           </div>
 
           <div class="dash-card" onclick="navigate('cases')" style="cursor:pointer">
