@@ -2708,8 +2708,24 @@ button, a.setup-btn-primary, a.cal-connect-btn {
   display: flex !important;
 }
 
-#angel-overlay.active #angel-img {
+#angel-overlay.active.whovian #angel-img {
+  display: block;
   animation: angelFade 3s ease-in-out infinite;
+}
+#angel-overlay.active.whovian #generic-spinner {
+  display: none;
+}
+#angel-overlay.active:not(.whovian) #angel-img {
+  display: none;
+}
+#angel-overlay.active:not(.whovian) #generic-spinner {
+  display: block;
+  width: 56px;
+  height: 56px;
+  border: 5px solid var(--border);
+  border-top-color: var(--primary);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
 }
 
 /* Refresh button spin */

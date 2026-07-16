@@ -271,15 +271,23 @@ function navigate(screen) {
   if (screen === 'planner')   renderPlanner();
 }
 
+// Shows the Weeping Angel (Whovian theme) or a plain spinner (every other
+// theme) in the same full-screen overlay slot during longer fetches.
+function toggleLoadingOverlay(show) {
+  const overlay = document.getElementById('angel-overlay');
+  if (!overlay) return;
+  const tardis = state.prefs?.tardisBackground || 'none';
+  const isDark = state.prefs?.darkMode && state.prefs?.colorScheme === 'modern';
+  const isWhovian = isDark && ['tardis', 'interior', 'tally'].includes(tardis);
+  overlay.classList.toggle('whovian', isWhovian);
+  overlay.classList.toggle('active', show);
+}
+
 async function refreshApp() {
   if (!calIsConnected()) return;
-  // Show spinning state on refresh buttons + Weeping Angel overlay
+  // Show spinning state on refresh buttons + full-screen loading overlay
   document.querySelectorAll('.icon-btn[onclick*="refreshApp"]').forEach(b => b.classList.add('refreshing'));
-  const angelOverlay = document.getElementById('angel-overlay');
-  const _tardis = state.prefs?.tardisBackground || 'none';
-  const _isDark = state.prefs?.darkMode && state.prefs?.colorScheme === 'modern';
-  const isWhovian = _isDark && ['tardis', 'interior', 'tally'].includes(_tardis);
-  if (angelOverlay && isWhovian) angelOverlay.classList.add('active');
+  toggleLoadingOverlay(true);
   calState.driveLoading = true;
   renderDashboard();
   if (state.screen === 'calendar') renderCalendar();
@@ -297,7 +305,7 @@ async function refreshApp() {
   await calFetchDriveMentions();
   calState.driveLoading = false;
   document.querySelectorAll('.icon-btn[onclick*="refreshApp"]').forEach(b => b.classList.remove('refreshing'));
-  if (angelOverlay) angelOverlay.classList.remove('active');
+  toggleLoadingOverlay(false);
 
   renderDashboard();
   if (state.screen === 'calendar') renderCalendar();
@@ -444,15 +452,7 @@ function renderSlack() {
 async function fetchSlackDigestFull() {
   slackDigestState.loading = true;
   renderSlack();
-  // Show angel overlay if Whovian background is active
-  const _angelOverlay = document.getElementById('angel-overlay');
-  const _tardis = state.prefs?.tardisBackground || 'none';
-  const _isDark = state.prefs?.darkMode && state.prefs?.colorScheme === 'modern';
-  if (_angelOverlay && _isDark && ['tardis', 'interior', 'tally'].includes(_tardis)) {
-    _angelOverlay.classList.add('active');
-  }
   await fetchSlackDigest();
-  if (_angelOverlay) _angelOverlay.classList.remove('active');
   renderSlack();
 }
 
@@ -493,11 +493,7 @@ async function fetchMailMessages() {
   mailState.loading = true;
   mailState.error = null;
   renderMail();
-  // Show Weeping Angel if Whovian background active
-  const _mailAngel = document.getElementById('angel-overlay');
-  const _mailTardis = state.prefs?.tardisBackground || 'none';
-  const _mailDark = state.prefs?.darkMode && state.prefs?.colorScheme === 'modern';
-  if (_mailAngel && _mailDark && ['tardis','interior','tally'].includes(_mailTardis)) _mailAngel.classList.add('active');
+  toggleLoadingOverlay(true);
   try {
     const excluded = getGmailExcluded();
     const exclusionClause = excluded.length ? ' ' + excluded.map(id => '-label:' + id).join(' ') : '';
@@ -561,7 +557,7 @@ async function fetchMailMessages() {
     mailState.error = e.message;
   } finally {
     mailState.loading = false;
-    if (_mailAngel) _mailAngel.classList.remove('active');
+    toggleLoadingOverlay(false);
     renderMail();
   }
 }
@@ -750,11 +746,7 @@ async function fetchJiraIssues() {
   jiraState.loading = true;
   jiraState.error = null;
   renderCases();
-  // Angel overlay
-  const _angel = document.getElementById('angel-overlay');
-  const _tardis = state.prefs?.tardisBackground || 'none';
-  const _dark = state.prefs?.darkMode && state.prefs?.colorScheme === 'modern';
-  if (_angel && _dark && ['tardis','interior','tally'].includes(_tardis)) _angel.classList.add('active');
+  toggleLoadingOverlay(true);
   const projects = getJiraProjects().map(function(p) { return p.key; }).join(',');
   try {
     const res = await fetch(
@@ -774,7 +766,7 @@ async function fetchJiraIssues() {
     jiraState.error = e.message;
   } finally {
     jiraState.loading = false;
-    if (_angel) _angel.classList.remove('active');
+    toggleLoadingOverlay(false);
     renderCases();
     renderDashboard();
   }
@@ -1243,19 +1235,6 @@ function renderSettingsPanel() {
       </div>
     </div>
 
-    <!-- Tools URLs -->
-    <div class="settings-section">
-      <div class="settings-section-title">Your Tools</div>
-      <div class="cal-connect-box">
-        <div class="settings-label" style="margin-bottom:6px">Salesforce Cases URL</div>
-        <div class="cal-input-row">
-          <input class="cal-client-input" id="sf-url-input" type="text"
-            placeholder="https://yourorg.lightning.force.com/lightning/o/Case/list"
-            value="${escHtml(localStorage.getItem('uyt_salesforce_url') || '')}">
-          <button class="cal-connect-btn" onclick="saveToolUrl('uyt_salesforce_url','sf-url-input')">Save</button>
-        </div>
-      </div>
-    </div>
 
     <!-- Slack Token -->
     <div class="settings-section">
@@ -1826,6 +1805,7 @@ async function fetchSlackDigest() {
   slackDigestState.loading = true;
   slackDigestState.error = null;
   renderDashboard();
+  toggleLoadingOverlay(true);
 
   try {
     const channels = getSlackChannels();
@@ -1874,6 +1854,7 @@ async function fetchSlackDigest() {
     slackDigestState.html = null;
   } finally {
     slackDigestState.loading = false;
+    toggleLoadingOverlay(false);
     renderDashboard();
   }
 }
@@ -2027,6 +2008,8 @@ function renderDashboard() {
             `; } else if (slackIsConnected() && slackDigestState.workday && slackDigestState.workday.length === 0) { return `
               <div class="dash-card-sub" style="margin-top:6px;font-size:11px">No recent Workday notifications</div>
               <div class="dash-card-action">View Workday ${ICONS.arrowRight}</div>
+            `; } else if (slackDigestState.loading) { return `
+              <div class="dash-card-sub" style="margin-top:8px">⏳ Loading Workday notifications…</div>
             `; } else { return `
               <div class="dash-card-value">—</div>
               <div class="dash-card-sub">Tasks &amp; actions</div>
@@ -2839,11 +2822,11 @@ function renderSetupStep() {
 
   else if (step === 'workday') {
     const hasSignedIn = !!localStorage.getItem('uyt_workday_last_signin');
-    if (hasSignedIn) { setupStep++; return renderSetupStep(); }
     content.innerHTML = '<div class="setup-icon">🏢</div>' +
       '<h1 class="setup-title">Connect Workday</h1>' +
       '<p class="setup-desc">This opens Workday so your browser has an active session for the "Open in Workday" link on the dashboard. No separate token is stored.</p>' +
       '<a href="#" onclick="triggerWorkdaySSO();return false;" class="setup-btn-primary" style="display:inline-flex;align-items:center;gap:8px;text-decoration:none;color:white;margin-top:8px">Sign in to Workday</a>' +
+      (hasSignedIn ? '<div class="setup-connected-badge" style="margin-top:12px">✓ Signed in to Workday</div>' : '') +
       '<p style="font-size:12px;color:var(--text-secondary);margin-top:12px">A window will open — sign in via SSO, then close it (or it\'ll close automatically) to continue.</p>' +
       '<div class="setup-actions">' +
         '<button class="setup-btn-ghost" onclick="setupBack()">← Back</button>' +
