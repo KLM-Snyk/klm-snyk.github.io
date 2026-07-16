@@ -2999,6 +2999,31 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   } else {
     document.querySelector('.app').style.display = 'flex';
+    // Set loading flags for anything about to be fetched BEFORE the first
+    // render, so the dashboard shows "Loading…" immediately instead of
+    // blank/empty tiles — previously these were only set inside setTimeout
+    // delays (added to give tokens time to be ready) or deep inside calInit,
+    // both of which fire after this first render already painted an empty state.
+    if (localStorage.getItem('uyt_jira_token') && !jiraState.issues) jiraState.loading = true;
+    const _validSlackToken = localStorage.getItem(SLACK_TOKEN_KEY);
+    if (_validSlackToken) {
+      // Same reasoning as calState.token below — slackIsConnected() checks
+      // this directly, and slackInit() wouldn't set it until after this
+      // first render otherwise, so the Workday/Slack Digest tiles would
+      // fail their connected-check and never get a chance to show loading.
+      slackState.token = _validSlackToken;
+      if (!slackDigestState.html) slackDigestState.loading = true;
+    }
+    const _validCalToken = localStorage.getItem(CAL_TOKEN_KEY);
+    const _hasValidCalToken = _validCalToken && Date.now() < Number(localStorage.getItem(CAL_EXPIRY_KEY) || 0);
+    if (_hasValidCalToken) {
+      // Set calState.token now (calIsConnected() checks this directly, and
+      // calInit() otherwise wouldn't set it until partway through its own
+      // async work) so the Drive tile's connected-check passes immediately
+      // and its driveLoading flag actually has a chance to show.
+      calState.token = _validCalToken;
+      calState.driveLoading = true;
+    }
     navigate('dashboard');
     try {
       await calInit();
@@ -3012,8 +3037,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Auto-fetch digest if no cache — small delay to ensure token is ready
       if (!slackDigestState.html && localStorage.getItem('uyt_slack_token')) {
         setTimeout(function() {
-          slackDigestState.loading = true;
-          renderDashboard();
           fetchSlackDigest().then(() => { renderDashboard(); renderSlack(); });
         }, 1500);
       }
