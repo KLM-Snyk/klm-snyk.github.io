@@ -2840,7 +2840,7 @@ function renderSetupStep() {
     ).join('');
     const nameVal = escHtml(calState.userProfile?.name || p.userName);
     content.innerHTML = '<div class="setup-icon">🎨</div>' +
-      '<h1 class="setup-title">Step 4: Make it yours</h1>' +
+      '<h1 class="setup-title">Make it yours</h1>' +
       '<p class="setup-desc">Almost done! Just a couple of quick preferences.</p>' +
       '<div class="setup-field-label">What\'s your name?</div>' +
       '<input class="cal-client-input" id="setup-name" type="text" placeholder="e.g. Alex" value="' + nameVal + '" style="margin-bottom:20px;width:100%;box-sizing:border-box">' +

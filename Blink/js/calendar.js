@@ -521,7 +521,9 @@ async function calFetchOOO() {
     calState.ooo = (data.items || [])
       .filter(e => {
         const t = (e.summary || '').toLowerCase();
-        return t.includes('ooo') || t.includes('out of office') || t.includes('leave') || t.includes('vacation');
+        return t.includes('ooo') || t.includes('out of office') || t.includes('leave') ||
+          t.includes('vacation') || t.includes('away') || t.includes('pto') ||
+          t.includes('holiday') || t.includes('sick') || t.includes('unavailable');
       })
       .map(e => e.summary || 'Unknown');
   } catch (e) {
