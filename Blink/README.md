@@ -63,6 +63,11 @@ Blink is a browser-native workday dashboard for support managers. It provides a 
 - Filter by: Sheets / Docs / Slides / Shared / Mentions / Created
 - Keyword search
 
+### Snyk Status Banner
+- Checks `status.snyk.io`'s public Statuspage API (`/api/v2/status.json`) on load and every 5 minutes
+- If the aggregate indicator isn't "none" (i.e. not "All Systems Operational"), shows a banner at the top of the Dashboard with the exact status description, linking to the status page
+- No auth required — runs for every user regardless of what they've connected, including during the setup wizard
+
 ---
 
 ## Setup (for new users)
@@ -138,6 +143,5 @@ Add managers as Contributors on the app at developer.atlassian.com.
 ---
 
 ## Coming Soon
-- Status page information
 - Per-action Workday quick-link URLs (currently all point to the home page)
 - More dashboards on Support Case Trends & Data — this screen will keep growing

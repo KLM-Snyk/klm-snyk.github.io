@@ -1850,6 +1850,28 @@ async function fetchSlackDigest() {
    Dashboard
    ============================================================ */
 
+// Snyk's status page (status.snyk.io) is hosted on Atlassian Statuspage,
+// which exposes a public, CORS-enabled JSON API built specifically for
+// third parties to embed a live status badge — no scraping needed, and no
+// auth required, so this works even for a user who hasn't connected
+// anything else in Blink yet.
+let snykStatusInfo = null;
+
+async function checkSnykStatus() {
+  try {
+    const res = await fetch('https://status.snyk.io/api/v2/status.json');
+    if (!res.ok) { snykStatusInfo = null; return; }
+    const data = await res.json();
+    snykStatusInfo = data.status || null;
+  } catch (e) {
+    // Fail silently — a status-check failure shouldn't be treated as an
+    // outage, and shouldn't block or clutter the rest of the dashboard.
+    snykStatusInfo = null;
+  } finally {
+    renderDashboard();
+  }
+}
+
 function renderDashboard() {
   const el = document.getElementById('dash-content');
   const p  = state.prefs;
@@ -1897,7 +1919,13 @@ function renderDashboard() {
   }
 
   // NOSONAR
+  const snykStatusHtml = (snykStatusInfo && snykStatusInfo.indicator !== 'none') ? `
+    <a href="https://status.snyk.io/" target="_blank" class="snyk-status-banner">
+      ⚠️ ${escHtml(snykStatusInfo.description)} — view status page ${ICONS.arrowRight}
+    </a>
+  ` : '';
   el.innerHTML = `
+    ${snykStatusHtml}
     <div class="dashboard-greeting">
       <div class="time-display" id="live-time">${formatCurrentTime()}</div>
       <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;justify-content:space-between;">
@@ -2902,6 +2930,14 @@ function setupSelectTheme(id) {
 document.addEventListener('DOMContentLoaded', async () => {
   applyTheme(state.prefs);
 
+  // Snyk status check — runs unconditionally, no auth needed, so the outage
+  // banner shows even during the setup wizard or for a brand-new user.
+  // Re-checked periodically (not tied to refreshApp(), which requires a
+  // Google connection and would otherwise never run for people who haven't
+  // connected anything).
+  checkSnykStatus();
+  setInterval(checkSnykStatus, 5 * 60 * 1000);
+
   // Nav
   document.querySelectorAll('.nav-item[data-screen]').forEach(el => {
     el.addEventListener('click', () => navigate(el.dataset.screen));
@@ -2980,9 +3016,11 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   if (!isSetupComplete()) {
     startSetup();
-    // If returning from Slack OAuth, jump to tools step
+    // If returning from a failed Slack OAuth (full-page redirect variant),
+    // jump past it to the next step — 'tools' was removed a while back, so
+    // this now points at 'jira' instead of resolving to indexOf's -1.
     if (_returnedFromSlackOAuth) {
-      setupStep = setupSteps.indexOf('tools');
+      setupStep = setupSteps.indexOf('jira');
       renderSetupStep();
     }
   } else {
