@@ -2058,7 +2058,7 @@ function renderDashboard() {
 
           <div class="dash-card" onclick="navigate('drive')">
             <div class="dash-card-header">
-              <div class="dash-card-icon">${ICONS.cases}</div>
+              <div class="dash-card-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"/></svg></div>
               <div class="dash-card-title">Google Drive</div>
             </div>
             ${!calIsConnected() ? `
