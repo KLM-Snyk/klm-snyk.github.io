@@ -1323,18 +1323,6 @@ function renderSettingsPanel() {
         </div>
       `}
     </div>
-
-    <!-- Coming Soon -->
-    <div class="settings-section">
-      <div class="settings-section-title">Coming Soon</div>
-      <div class="settings-row">
-        <div class="settings-label">
-          Cases
-          <span class="settings-sublabel">JIRA or Salesforce caseload</span>
-        </div>
-        <span style="font-size:11px;color:var(--text-secondary);font-weight:600;background:var(--surface);padding:3px 8px;border-radius:99px">Soon</span>
-      </div>
-    </div>
   `;
 
   bindSettingEvents();
@@ -3014,6 +3002,12 @@ document.addEventListener('DOMContentLoaded', async () => {
       slackState.token = _validSlackToken;
       if (!slackDigestState.html) slackDigestState.loading = true;
     }
+    console.log('[DEBUG loading-flags]', {
+      _validSlackToken_present: !!_validSlackToken,
+      slackDigestState_html_present: !!slackDigestState.html,
+      slackDigestState_loading: slackDigestState.loading,
+      slackIsConnected_now: (typeof slackIsConnected === 'function') ? slackIsConnected() : 'n/a',
+    });
     const _validCalToken = localStorage.getItem(CAL_TOKEN_KEY);
     const _hasValidCalToken = _validCalToken && Date.now() < Number(localStorage.getItem(CAL_EXPIRY_KEY) || 0);
     if (_hasValidCalToken) {
