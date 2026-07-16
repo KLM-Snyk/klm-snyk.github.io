@@ -231,12 +231,29 @@ async function calFetchUnreadCount() {
     if (!labels.find(function(l) { return l.id === 'INBOX'; })) labels.unshift({ id: 'INBOX', name: 'Inbox' });
 
     const details = [];
+    let authFailures = 0;
     for (const l of labels) {
       try {
         const r = await fetch(
           'https://gmail.googleapis.com/gmail/v1/users/me/labels/' + l.id,
           { headers: { Authorization: 'Bearer ' + calState.token } }
         );
+        if (r.status === 401) {
+          authFailures++;
+          // Fail fast rather than grinding through dozens more calls that
+          // will almost certainly also fail — this account can have 80+
+          // labels, and that's 80+ wasted requests plus a flooded console
+          // for what's very likely one underlying auth problem, not 80
+          // separate ones. Bail out entirely rather than silently computing
+          // an incorrect "0 unread" from an all-null details array.
+          if (authFailures >= 2) {
+            console.warn('Gmail label lookups returning 401 — aborting unread count fetch (token likely needs refresh) instead of reporting a false zero.');
+            calState.unreadCount = null;
+            return;
+          }
+          details.push(null);
+          continue;
+        }
         if (!r.ok) { details.push(null); continue; }
         const d = await r.json();
         details.push({ id: l.id, name: l.name, unread: d.messagesUnread || 0 });

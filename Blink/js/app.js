@@ -3002,12 +3002,6 @@ document.addEventListener('DOMContentLoaded', async () => {
       slackState.token = _validSlackToken;
       if (!slackDigestState.html) slackDigestState.loading = true;
     }
-    console.log('[DEBUG loading-flags]', {
-      _validSlackToken_present: !!_validSlackToken,
-      slackDigestState_html_present: !!slackDigestState.html,
-      slackDigestState_loading: slackDigestState.loading,
-      slackIsConnected_now: (typeof slackIsConnected === 'function') ? slackIsConnected() : 'n/a',
-    });
     const _validCalToken = localStorage.getItem(CAL_TOKEN_KEY);
     const _hasValidCalToken = _validCalToken && Date.now() < Number(localStorage.getItem(CAL_EXPIRY_KEY) || 0);
     if (_hasValidCalToken) {
