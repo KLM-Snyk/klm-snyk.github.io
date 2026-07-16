@@ -58,11 +58,11 @@ const ZEN_QUOTES = [
   { text: "Most of the important things in the world have been accomplished by people who have kept on trying when there seemed to be no hope at all.", author: "Dale Carnegie" },
 ];
 
-// Original quotes in the spirit of the Whovian easter egg (time, wonder,
-// curiosity, courage) — NOT reproductions of actual scripted dialogue from
-// the show, which is copyrighted. Shown instead of ZEN_QUOTES when dark mode
-// + a tardis-style background are active. Same "pick once per page load"
-// behavior as the regular quotes.
+// Original quotes in a different reflective spirit (time, wonder, curiosity,
+// courage) — NOT reproductions of any existing scripted dialogue, which
+// would be copyrighted. Shown instead of ZEN_QUOTES when a particular theme
+// combination is active. Same "pick once per page load" behavior as the
+// regular quotes.
 const DR_WHO_QUOTES = [
   { text: "Every moment is a doorway, if you're brave enough to step through.", author: "The Doctor" },
   { text: "Time is not a line to walk, it's a universe to explore.", author: "The Doctor" },
@@ -134,14 +134,20 @@ function sanitizeHtml(html) {
 
 let _cachedDailyQuote = null;
 
+let _cachedQuoteWasWhovian = null;
+
 function getDailyQuote() {
-  // Picked once (lazily, on first call — by which point state.prefs is
-  // definitely loaded) so it stays the same for the rest of the session but
-  // shows a fresh one every time the page actually reloads. Pool depends on
-  // whether the Whovian easter egg (dark mode + tardis background) is active.
-  if (!_cachedDailyQuote) {
-    const pool = isWhovianActive() ? DR_WHO_QUOTES : ZEN_QUOTES;
+  // Picked once per active quote pool (lazily, on first call — by which
+  // point state.prefs is definitely loaded) so it stays the same across
+  // re-renders within a session but shows a fresh one on page reload.
+  // Previously this was cached unconditionally for the whole session, so
+  // switching themes mid-session (no reload) left a stale quote from the
+  // wrong pool showing — now it re-picks whenever the active pool changes.
+  const isWhovian = isWhovianActive();
+  if (_cachedDailyQuote === null || _cachedQuoteWasWhovian !== isWhovian) {
+    const pool = isWhovian ? DR_WHO_QUOTES : ZEN_QUOTES;
     _cachedDailyQuote = pool[Math.floor(Math.random() * pool.length)];
+    _cachedQuoteWasWhovian = isWhovian;
   }
   return _cachedDailyQuote;
 }
