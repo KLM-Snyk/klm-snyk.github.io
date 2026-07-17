@@ -2682,6 +2682,7 @@ const setupSteps = [
 ];
 
 let setupStep = 0;
+let _jiraSetupPoll = null;
 
 function isSetupComplete() {
   return !!localStorage.getItem(SETUP_KEY);
@@ -2764,11 +2765,14 @@ function renderSetupStep() {
         '<button class="setup-btn-ghost" onclick="setupNext()">Skip for now</button>' +
         (connected ? '<button class="setup-btn-primary" onclick="setupNext()">Next →</button>' : '') +
       '</div>';
-    // Poll until Google connects then auto-advance
+    // Poll until Google connects then auto-advance — clear any previous
+    // poll first, for the same reason as the Jira step's poll below.
+    if (_googleSetupPoll) { clearInterval(_googleSetupPoll); _googleSetupPoll = null; }
     if (!calIsConnected()) {
-      const _poll = setInterval(function() {
+      _googleSetupPoll = setInterval(function() {
         if (calIsConnected()) {
-          clearInterval(_poll);
+          clearInterval(_googleSetupPoll);
+          _googleSetupPoll = null;
           setTimeout(function() { setupNext(); }, 800);
         }
       }, 500);
@@ -2815,11 +2819,17 @@ function renderSetupStep() {
         '<button class="setup-btn-ghost" onclick="setupNext()">Skip for now</button>' +
         (hasJira ? '<button class="setup-btn-primary" onclick="setupNext()">Next →</button>' : '') +
       '</div>';
-    // Poll for Jira connection
+    // Poll for Jira connection — clear any previous poll first, since this
+    // branch re-runs every time the wizard re-renders while parked on this
+    // step. Without that, multiple overlapping intervals could each detect
+    // the same token and each call setupNext() independently, double-
+    // incrementing setupStep and silently skipping the next wizard step.
+    if (_jiraSetupPoll) { clearInterval(_jiraSetupPoll); _jiraSetupPoll = null; }
     if (!hasJira) {
-      const _poll = setInterval(function() {
+      _jiraSetupPoll = setInterval(function() {
         if (localStorage.getItem('uyt_jira_token')) {
-          clearInterval(_poll);
+          clearInterval(_jiraSetupPoll);
+          _jiraSetupPoll = null;
           setTimeout(function() { setupNext(); }, 800);
         }
       }, 500);
