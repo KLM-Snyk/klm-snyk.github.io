@@ -1881,7 +1881,12 @@ function renderDashboard() {
   const el = document.getElementById('dash-content');
   const p  = state.prefs;
   const now = new Date();
-  const profileName = calState.userProfile?.name || p.userName;
+  // Prefer the person's explicitly-typed name over their Google account
+  // name — previously this was reversed, so the "What's your name?"
+  // preference had no visible effect for anyone with Google connected
+  // (essentially everyone who completes the wizard), since the Google
+  // profile name always won regardless of what was typed in Preferences.
+  const profileName = p.userName || calState.userProfile?.name;
   const greeting = `${getGreeting()}${profileName ? `, ${profileName}` : ''}`;
   const quote = getDailyQuote();
   const events = calUpcomingEvents();
@@ -2703,6 +2708,19 @@ function completeSetup() {
   navigate('dashboard');
   calInit();
   slackInit();
+  // The normal page-load bootstrap only fires once, before any wizard steps
+  // have run — at that point no tokens exist yet, so its auto-fetch checks
+  // all correctly skip. Finishing the wizard doesn't trigger a fresh page
+  // load, so without explicitly kicking these off here, a freshly-connected
+  // Slack/Jira would never actually get fetched — the dashboard tiles would
+  // sit in their default "nothing fetched yet" state indefinitely, looking
+  // like nothing is connected even though the tokens are saved correctly.
+  if (localStorage.getItem('uyt_slack_token') && !slackDigestState.html) {
+    fetchSlackDigest().then(renderDashboard);
+  }
+  if (localStorage.getItem('uyt_jira_token') && !jiraState.issues) {
+    fetchJiraIssues();
+  }
 }
 
 function setupNext() {
@@ -2856,7 +2874,7 @@ function renderSetupStep() {
       '<p class="setup-desc">Blink shows live Looker dashboards on the Support Case Trends &amp; Data screen. Unlike Slack/Jira, Blink doesn\'t store a token for this — it just needs your browser to have an active Looker session, the same one your regular SSO login already gives you.</p>' +
       '<a href="#" onclick="triggerLookerSSO();return false;" class="setup-btn-primary" style="display:inline-flex;align-items:center;gap:8px;text-decoration:none;color:white;margin-top:8px">Sign in to Looker</a>' +
       (hasSignedIn ? '<div class="setup-connected-badge" style="margin-top:12px">✓ Signed in to Looker</div>' : '') +
-      '<p style="font-size:12px;color:var(--text-secondary);margin-top:12px">A window will open — sign in via SSO, then close it (or it\'ll close automatically) to continue.</p>' +
+      '<p style="font-size:12px;color:var(--text-secondary);margin-top:12px">A window will open — sign in via SSO, then close it yourself to come back here (this window won\'t close on its own, since it\'s a real page on their own site, not something Blink can control).</p>' +
       '<div class="setup-actions">' +
         '<button class="setup-btn-ghost" onclick="setupBack()">← Back</button>' +
         '<button class="setup-btn-ghost" onclick="setupNext()">Skip for now</button>' +
@@ -2871,7 +2889,7 @@ function renderSetupStep() {
       '<p class="setup-desc">This opens Workday so your browser has an active session for the "Open in Workday" link on the dashboard. No separate token is stored.</p>' +
       '<a href="#" onclick="triggerWorkdaySSO();return false;" class="setup-btn-primary" style="display:inline-flex;align-items:center;gap:8px;text-decoration:none;color:white;margin-top:8px">Sign in to Workday</a>' +
       (hasSignedIn ? '<div class="setup-connected-badge" style="margin-top:12px">✓ Signed in to Workday</div>' : '') +
-      '<p style="font-size:12px;color:var(--text-secondary);margin-top:12px">A window will open — sign in via SSO, then close it (or it\'ll close automatically) to continue.</p>' +
+      '<p style="font-size:12px;color:var(--text-secondary);margin-top:12px">A window will open — sign in via SSO, then close it yourself to come back here (this window won\'t close on its own, since it\'s a real page on their own site, not something Blink can control).</p>' +
       '<div class="setup-actions">' +
         '<button class="setup-btn-ghost" onclick="setupBack()">← Back</button>' +
         '<button class="setup-btn-ghost" onclick="setupNext()">Skip for now</button>' +
