@@ -493,6 +493,27 @@ function getGmailExcluded() {
   catch { return []; }
 }
 
+// Was called from the Settings panel's X/re-include buttons but never
+// actually defined anywhere — clicking those buttons just silently threw a
+// ReferenceError in the console, which is why they appeared to do nothing.
+function toggleGmailExclude(labelId) {
+  const excluded = getGmailExcluded();
+  const idx = excluded.indexOf(labelId);
+  if (idx === -1) excluded.push(labelId); else excluded.splice(idx, 1);
+  localStorage.setItem('uyt_gmail_excluded_labels', JSON.stringify(excluded));
+  renderSettingsPanel();
+  // Excluded labels are filtered out before they're ever fetched, so
+  // re-fetching is what actually applies the new exclusion list (or brings
+  // a re-included label back into range) rather than just updating a flag
+  // on already-cached data.
+  if (typeof calFetchUnreadCount === 'function') {
+    calFetchUnreadCount().then(function() {
+      renderSettingsPanel();
+      renderDashboard();
+    });
+  }
+}
+
 async function fetchMailMessages() {
   if (!calState.token) return;
   mailState.loading = true;
@@ -1284,15 +1305,22 @@ function renderSettingsPanel() {
     <div class="settings-section">
       <div class="settings-section-title">Gmail</div>
       <div class="cal-connect-box">
-        <p>Labels to exclude from your unread count and Mail page. Only labels with unread mail appear here.</p>
+        <p>Labels to exclude from your unread count and Mail page.</p>
         ${calState.gmailBreakdown && calState.gmailBreakdown.length > 0 ? `
           <div style="display:flex;flex-direction:column;gap:4px;margin-bottom:10px">
             ${calState.gmailBreakdown.map(l => {
-              const excluded = getGmailExcluded().includes(l.id);
-              return '<div class="slack-channel-row"><span class="slack-channel-name">' + escHtml(l.name) + '</span><span class="slack-channel-id">' + l.unread + ' unread</span><button class="slack-channel-remove" onclick="toggleGmailExclude(' + JSON.stringify(l.id) + ')" title="' + (excluded ? 'Re-include' : 'Exclude') + '" style="color:' + (excluded ? 'var(--primary)' : 'var(--text-secondary)') + '">' + (excluded ? '↩' : '✕') + '</button></div>';
+              return '<div class="slack-channel-row"><span class="slack-channel-name">' + escHtml(l.name) + '</span><button class="slack-channel-remove" onclick="toggleGmailExclude(' + JSON.stringify(l.id) + ')" title="Exclude">✕</button></div>';
             }).join('')}
           </div>
-        ` : '<p style="font-size:12px;color:var(--text-secondary)">Load mail to see label breakdown here.</p>'}
+        ` : '<p style="font-size:12px;color:var(--text-secondary)">Load mail to see your labels here.</p>'}
+        ${getGmailExcluded().length > 0 ? `
+          <p style="font-size:12px;color:var(--text-secondary);margin-top:12px;margin-bottom:6px">Currently excluded:</p>
+          <div style="display:flex;flex-direction:column;gap:4px">
+            ${getGmailExcluded().map(function(id) {
+              return '<div class="slack-channel-row"><span class="slack-channel-name" style="opacity:0.6">' + escHtml(id) + '</span><button class="slack-channel-remove" onclick="toggleGmailExclude(' + JSON.stringify(id) + ')" title="Re-include" style="color:var(--primary)">↩</button></div>';
+            }).join('')}
+          </div>
+        ` : ''}
       </div>
     </div>
 

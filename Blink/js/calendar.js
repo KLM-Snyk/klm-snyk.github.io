@@ -267,7 +267,14 @@ async function calFetchUnreadCount() {
       .sort(function(a, b) { return b.unread - a.unread; });
     const inboxEntry = inboxDetail || { id: 'INBOX', name: 'Inbox', unread: 0 };
     const breakdown = [inboxEntry, ...otherDetails];
-    const total = details.reduce(function(sum, d) { return sum + (d ? d.unread : 0); }, 0);
+    // The dashboard's "total unread" should mean "how many are in my Inbox" —
+    // NOT a sum across every label. Gmail lets one message carry multiple
+    // labels at once (INBOX + a custom label + a nested label, all
+    // simultaneously), so summing messagesUnread across labels was counting
+    // the same messages repeatedly. With dozens of overlapping custom labels,
+    // that inflated the total to a wildly wrong number (e.g. 8,951 instead
+    // of the real 88 actually sitting in the Inbox).
+    const total = inboxEntry.unread;
 
     calState.unreadCount = total;
     calState.unreadCountCapped = false;
