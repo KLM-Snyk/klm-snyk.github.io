@@ -478,7 +478,9 @@ function renderSlackAndAutoFetch() {
 
 const mailState = {
   loading: false,
+  loadingMore: false,
   messages: JSON.parse(localStorage.getItem('uyt_mail_messages') || 'null'),
+  nextPageToken: localStorage.getItem('uyt_mail_next_page_token') || null,
   asOf: localStorage.getItem('uyt_mail_asof') || null,
   error: null,
   search: '',
@@ -530,6 +532,66 @@ function toggleGmailExclude(labelId) {
   }
 }
 
+// Fetches one page of unread messages (up to 100) starting at pageToken
+// (null for the first page). No date restriction — "unread" means unread,
+// regardless of age; that's applied consistently everywhere mail is fetched.
+async function fetchMailPage(pageToken) {
+  const excluded = getGmailExcluded();
+  const exclusionClause = excluded.length ? ' ' + excluded.map(id => '-label:' + id).join(' ') : '';
+  const q = 'is:unread -in:spam -in:trash' + exclusionClause;
+  const params = new URLSearchParams({ q, maxResults: 100 });
+  if (pageToken) params.set('pageToken', pageToken);
+  const listRes = await fetch(
+    'https://gmail.googleapis.com/gmail/v1/users/me/messages?' + params,
+    { headers: { Authorization: 'Bearer ' + calState.token } }
+  );
+  if (!listRes.ok) throw new Error('Failed to list messages');
+  const listData = await listRes.json();
+  const ids = (listData.messages || []).map(function(m) { return m.id; });
+  const messages = (await Promise.all(ids.map(async function(id) {
+    try {
+      const r = await fetch(
+        'https://gmail.googleapis.com/gmail/v1/users/me/messages/' + id + '?format=metadata&metadataHeaders=From&metadataHeaders=Subject&metadataHeaders=Date',
+        { headers: { Authorization: 'Bearer ' + calState.token } }
+      );
+      if (!r.ok) return null;
+      const d = await r.json();
+      const headers = d.payload ? d.payload.headers || [] : [];
+      const getH = function(name) { return (headers.find(function(h) { return h.name === name; }) || {}).value || ''; };
+      const from = getH('From');
+      const senderMatch = from.match(/^"?(.+?)"?\s*</) || from.match(/^(.+)$/);
+      const senderName = senderMatch ? senderMatch[1].replace(/"/g, '').trim() : from;
+      const senderEmail = (from.match(/<(.+?)>/) || [])[1] || from;
+      const dateStr = getH('Date');
+      const ts = dateStr ? new Date(dateStr).getTime() : 0;
+      const isUnread = (d.labelIds || []).includes('UNREAD');
+      // Only keep INBOX and user-created labels (no system/category labels)
+      const SKIP_LABELS = ['UNREAD','STARRED','IMPORTANT','SENT','DRAFT',
+        'CATEGORY_PROMOTIONS','CATEGORY_SOCIAL','CATEGORY_UPDATES','CATEGORY_FORUMS','CATEGORY_PERSONAL'];
+      const rawLabelIds = d.labelIds || [];
+      const inInbox = rawLabelIds.includes('INBOX');
+      const labelIds = rawLabelIds.filter(function(l) {
+        return !SKIP_LABELS.includes(l) && !l.startsWith('CATEGORY_');
+      });
+      return {
+        id,
+        subject: getH('Subject') || '(no subject)',
+        sender: senderName,
+        senderEmail,
+        snippet: d.snippet || '',
+        dateStr: ts ? new Date(ts).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '',
+        dateFull: ts ? new Date(ts).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '',
+        ts,
+        labelIds,
+        isUnread,
+        link: 'https://mail.google.com/mail/u/0/#all/' + id,
+        inInbox,
+      };
+    } catch(e) { return null; }
+  }))).filter(Boolean);
+  return { messages, nextPageToken: listData.nextPageToken || null };
+}
+
 async function fetchMailMessages() {
   if (!calState.token) return;
   mailState.loading = true;
@@ -537,62 +599,13 @@ async function fetchMailMessages() {
   renderMail();
   toggleLoadingOverlay(true);
   try {
-    const excluded = getGmailExcluded();
-    const exclusionClause = excluded.length ? ' ' + excluded.map(id => '-label:' + id).join(' ') : '';
-    const q = 'is:unread newer_than:30d -in:spam -in:trash' + exclusionClause;
-    const params = new URLSearchParams({ q, maxResults: 100 });
-    const listRes = await fetch(
-      'https://gmail.googleapis.com/gmail/v1/users/me/messages?' + params,
-      { headers: { Authorization: 'Bearer ' + calState.token } }
-    );
-    if (!listRes.ok) throw new Error('Failed to list messages');
-    const listData = await listRes.json();
-    const ids = (listData.messages || []).map(function(m) { return m.id; });
-    // Fetch metadata for each message
-    const messages = (await Promise.all(ids.map(async function(id) {
-      try {
-        const r = await fetch(
-          'https://gmail.googleapis.com/gmail/v1/users/me/messages/' + id + '?format=metadata&metadataHeaders=From&metadataHeaders=Subject&metadataHeaders=Date',
-          { headers: { Authorization: 'Bearer ' + calState.token } }
-        );
-        if (!r.ok) return null;
-        const d = await r.json();
-        const headers = d.payload ? d.payload.headers || [] : [];
-        const getH = function(name) { return (headers.find(function(h) { return h.name === name; }) || {}).value || ''; };
-        const from = getH('From');
-        const senderMatch = from.match(/^"?(.+?)"?\s*</) || from.match(/^(.+)$/);
-        const senderName = senderMatch ? senderMatch[1].replace(/"/g, '').trim() : from;
-        const senderEmail = (from.match(/<(.+?)>/) || [])[1] || from;
-        const dateStr = getH('Date');
-        const ts = dateStr ? new Date(dateStr).getTime() : 0;
-        const isUnread = (d.labelIds || []).includes('UNREAD');
-        // Only keep INBOX and user-created labels (no system/category labels)
-        const SKIP_LABELS = ['UNREAD','STARRED','IMPORTANT','SENT','DRAFT',
-          'CATEGORY_PROMOTIONS','CATEGORY_SOCIAL','CATEGORY_UPDATES','CATEGORY_FORUMS','CATEGORY_PERSONAL'];
-        const rawLabelIds = d.labelIds || [];
-        const inInbox = rawLabelIds.includes('INBOX');
-        const labelIds = rawLabelIds.filter(function(l) {
-          return !SKIP_LABELS.includes(l) && !l.startsWith('CATEGORY_');
-        });
-        return {
-          id,
-          subject: getH('Subject') || '(no subject)',
-          sender: senderName,
-          senderEmail,
-          snippet: d.snippet || '',
-          dateStr: ts ? new Date(ts).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '',
-          dateFull: ts ? new Date(ts).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '',
-          ts,
-          labelIds,
-          isUnread,
-          link: 'https://mail.google.com/mail/u/0/#all/' + id,
-          inInbox,
-        };
-      } catch(e) { return null; }
-    }))).filter(Boolean).sort(function(a, b) { return b.ts - a.ts; });
+    const { messages, nextPageToken } = await fetchMailPage(null);
+    messages.sort(function(a, b) { return b.ts - a.ts; });
     mailState.messages = messages;
+    mailState.nextPageToken = nextPageToken;
     mailState.asOf = new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
     localStorage.setItem('uyt_mail_messages', JSON.stringify(messages));
+    localStorage.setItem('uyt_mail_next_page_token', nextPageToken || '');
     localStorage.setItem('uyt_mail_asof', mailState.asOf);
     calFetchGmailLabelBreakdown();
   } catch(e) {
@@ -600,6 +613,27 @@ async function fetchMailMessages() {
   } finally {
     mailState.loading = false;
     toggleLoadingOverlay(false);
+    renderMail();
+  }
+}
+
+async function loadMoreMail() {
+  if (!calState.token || !mailState.nextPageToken || mailState.loadingMore) return;
+  mailState.loadingMore = true;
+  renderMail();
+  try {
+    const { messages, nextPageToken } = await fetchMailPage(mailState.nextPageToken);
+    const existingIds = new Set(mailState.messages.map(function(m) { return m.id; }));
+    const merged = mailState.messages.concat(messages.filter(function(m) { return !existingIds.has(m.id); }));
+    merged.sort(function(a, b) { return b.ts - a.ts; });
+    mailState.messages = merged;
+    mailState.nextPageToken = nextPageToken;
+    localStorage.setItem('uyt_mail_messages', JSON.stringify(merged));
+    localStorage.setItem('uyt_mail_next_page_token', nextPageToken || '');
+  } catch(e) {
+    mailState.error = e.message;
+  } finally {
+    mailState.loadingMore = false;
     renderMail();
   }
 }
@@ -662,6 +696,31 @@ function mailApplySearch(msgs) {
   });
   if (date) filtered = filtered.filter(function(m) { return m.dateFull.toLowerCase().includes(date.toLowerCase()); });
   return filtered;
+}
+
+// Same grouping logic as renderMail(), extracted so the Dashboard tile's
+// "other labels" breakdown can use the exact same 30-day-scoped data instead
+// of Gmail's labels.get counts (which report ALL-TIME unread, not just the
+// last 30 days) — those two numbers can differ wildly for an old archive
+// label, since labels.get counts everything ever left unread under it,
+// while Mail only ever looks at the last 30 days. Returns null if mail
+// hasn't been fetched yet, since there's nothing consistent to show.
+function computeMailLabelBreakdown() {
+  if (!mailState.messages) return null;
+  const labelMap = {};
+  mailState.messages.forEach(function(m) {
+    const assignedLabels = m.labelIds.length ? m.labelIds : (m.inInbox ? ['INBOX'] : []);
+    assignedLabels.forEach(function(lid) {
+      if (!labelMap[lid]) labelMap[lid] = [];
+      if (!labelMap[lid].find(function(x) { return x.id === m.id; })) labelMap[lid].push(m);
+    });
+  });
+  const excluded = getGmailExcluded();
+  return Object.keys(labelMap)
+    .filter(function(lid) { return lid !== 'INBOX' && !excluded.includes(lid) && mailGetLabelName(lid) !== null; })
+    .map(function(lid) { return { id: lid, name: mailGetLabelName(lid), unread: labelMap[lid].filter(function(m) { return m.isUnread; }).length }; })
+    .filter(function(l) { return l.unread > 0; })
+    .sort(function(a, b) { return b.unread - a.unread; });
 }
 
 function setMailFilter(f) { mailState.search = f; renderMail(); }
@@ -739,11 +798,19 @@ function renderMail() {
   }).join('');
 
   const headerHtml = '<div class="mail-header">' +
-    '<div class="mail-meta">Last updated ' + escHtml(mailState.asOf || '') + ' · ' + msgs.length + ' messages</div>' +
+    '<div class="mail-meta">Last updated ' + escHtml(mailState.asOf || '') + ' · ' + msgs.length + ' messages' + (mailState.nextPageToken ? ' (more available)' : '') + '</div>' +
     '<button class="connect-btn" onclick="fetchMailMessages()" style="padding:8px 16px;font-size:13px">↺ Refresh</button>' +
     '</div>';
 
-  el.innerHTML = headerHtml + searchHtml + groupsHtml; // NOSONAR
+  const loadMoreHtml = mailState.nextPageToken
+    ? '<div style="text-align:center;margin-top:16px">' +
+        '<button class="connect-btn" onclick="loadMoreMail()" style="padding:10px 20px;' + (mailState.loadingMore ? 'opacity:0.5;pointer-events:none' : '') + '">' +
+          (mailState.loadingMore ? '⏳ Loading more…' : '↓ Load more unread mail') +
+        '</button>' +
+      '</div>'
+    : '';
+
+  el.innerHTML = headerHtml + searchHtml + groupsHtml + loadMoreHtml; // NOSONAR
 }
 
 
@@ -2003,20 +2070,34 @@ function renderDashboard() {
             ` : calState.unreadCount === null ? `
               <div class="dash-card-value">—</div>
               <div class="dash-card-sub">Loading inbox…</div>
-            ` : (calState.unreadCount === 0 && (!calState.gmailBreakdown || !calState.gmailBreakdown.some(l => l.id !== 'INBOX' && l.unread > 0))) ? `
+            ` : (() => {
+              // Uses Gmail's labels.get counts (calState.gmailBreakdown),
+              // NOT Mail page data — Mail is now paginated (no date limit,
+              // but only 100 messages loaded at a time via "Load more"), so
+              // its data is often incomplete. labels.get always reports the
+              // true, complete unread count for a label immediately, no
+              // pagination needed, which is exactly what a glance-view tile
+              // needs. Both are now scoped to "all unread, no date limit,"
+              // so they'll agree once Mail is fully paginated through.
+              const hasOtherUnread = calState.gmailBreakdown && calState.gmailBreakdown.some(l => l.id !== 'INBOX' && l.unread > 0);
+              if (calState.unreadCount === 0 && !hasOtherUnread) {
+                return `
               <div class="dash-card-value" style="font-size:22px">0 📭</div>
               <div class="dash-card-sub">${getInboxZeroMessage()}</div>
               <div class="dash-card-action">View mail ${ICONS.arrowRight}</div>
-            ` : `
+            `;
+              }
+              return `
               <div class="dash-card-value" style="font-size:28px;font-weight:700">${calState.unreadCount}${calState.unreadCountCapped ? '+' : ''}</div>
               <div class="dash-card-sub">unread email${calState.unreadCount === 1 ? '' : 's'}</div>
-              ${calState.gmailBreakdown && calState.gmailBreakdown.length > 0 ? `
+              ${hasOtherUnread ? `
                 <div style="margin-top:6px;display:flex;flex-direction:column;gap:3px">
-                  ${calState.gmailBreakdown.slice(0,4).map(l => `<div class="sf-tier-row"><span class="sf-tier-label" style="max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escHtml(l.name)}</span><span class="sf-tier-stat">${l.unread}</span></div>`).join('')}
+                  ${calState.gmailBreakdown.filter(l => l.id !== 'INBOX' && l.unread > 0).slice(0,4).map(l => `<div class="sf-tier-row"><span class="sf-tier-label" style="max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escHtml(l.name)}</span><span class="sf-tier-stat">${l.unread}</span></div>`).join('')}
                 </div>
               ` : ''}
               <div class="dash-card-action" style="margin-top:6px">View all ${ICONS.arrowRight}</div>
-            `}
+            `;
+            })()}
           </div>
 
           <div class="dash-card" onclick="navigate('slack')" style="cursor:pointer">
