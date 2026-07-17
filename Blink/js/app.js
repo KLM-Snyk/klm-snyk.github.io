@@ -1306,13 +1306,23 @@ function renderSettingsPanel() {
       <div class="settings-section-title">Gmail</div>
       <div class="cal-connect-box">
         <p>Labels to exclude from your unread count and Mail page.</p>
-        ${calState.gmailBreakdown && calState.gmailBreakdown.length > 0 ? `
-          <div style="display:flex;flex-direction:column;gap:4px;margin-bottom:10px">
-            ${calState.gmailBreakdown.map(l => {
-              return '<div class="slack-channel-row"><span class="slack-channel-name">' + escHtml(l.name) + '</span><button class="slack-channel-remove" onclick="toggleGmailExclude(' + JSON.stringify(l.id) + ')" title="Exclude">✕</button></div>';
-            }).join('')}
-          </div>
-        ` : '<p style="font-size:12px;color:var(--text-secondary)">Load mail to see your labels here.</p>'}
+        ${(() => {
+          // Filter out already-excluded labels right here at render time,
+          // rather than relying solely on the async re-fetch to catch up —
+          // calState.gmailBreakdown only gets refreshed once that fetch
+          // completes, so without this, a just-excluded label would keep
+          // showing in both this list AND the "Currently excluded" list
+          // below until the fetch finished, making the button look broken.
+          const currentlyExcluded = getGmailExcluded();
+          const visible = (calState.gmailBreakdown || []).filter(l => !currentlyExcluded.includes(l.id));
+          return visible.length > 0 ? `
+            <div style="display:flex;flex-direction:column;gap:4px;margin-bottom:10px">
+              ${visible.map(l => {
+                return '<div class="slack-channel-row"><span class="slack-channel-name">' + escHtml(l.name) + '</span><button class="slack-channel-remove" onclick="toggleGmailExclude(' + JSON.stringify(l.id) + ')" title="Exclude">✕</button></div>';
+              }).join('')}
+            </div>
+          ` : '<p style="font-size:12px;color:var(--text-secondary)">Load mail to see your labels here.</p>';
+        })()}
         ${getGmailExcluded().length > 0 ? `
           <p style="font-size:12px;color:var(--text-secondary);margin-top:12px;margin-bottom:6px">Currently excluded:</p>
           <div style="display:flex;flex-direction:column;gap:4px">
@@ -1990,7 +2000,7 @@ function renderDashboard() {
             ` : calState.unreadCount === null ? `
               <div class="dash-card-value">—</div>
               <div class="dash-card-sub">Loading inbox…</div>
-            ` : calState.unreadCount === 0 ? `
+            ` : (calState.unreadCount === 0 && (!calState.gmailBreakdown || !calState.gmailBreakdown.some(l => l.id !== 'INBOX' && l.unread > 0))) ? `
               <div class="dash-card-value" style="font-size:22px">0 📭</div>
               <div class="dash-card-sub">${getInboxZeroMessage()}</div>
               <div class="dash-card-action">View mail ${ICONS.arrowRight}</div>
@@ -2940,7 +2950,9 @@ function renderSetupStep() {
         '<span class="theme-swatch-label">' + t.label + '</span>' +
       '</div>'
     ).join('');
-    const nameVal = escHtml(calState.userProfile?.name || p.userName);
+    // Same priority fix as the dashboard greeting — prefer the saved
+    // preference over the Google account name for the pre-filled value.
+    const nameVal = escHtml(p.userName || calState.userProfile?.name || '');
     content.innerHTML = '<div class="setup-icon">🎨</div>' +
       '<h1 class="setup-title">Make it yours</h1>' +
       '<p class="setup-desc">Almost done! Just a couple of quick preferences.</p>' +
@@ -2995,6 +3007,13 @@ function setupSavePrefs() {
 }
 
 function setupSelectTheme(id) {
+  // Preserve whatever's currently typed in the name field before this
+  // re-renders the whole step — otherwise picking a theme after typing a
+  // preferred name (a completely natural order) would silently wipe out
+  // the typed name, since the step rebuilds the input from state.prefs
+  // fresh, discarding anything not yet explicitly saved via setupSavePrefs.
+  const currentName = document.getElementById('setup-name')?.value.trim();
+  if (currentName) state.prefs.userName = currentName;
   state.prefs.colorScheme = id;
   savePrefs(state.prefs);
   applyTheme(state.prefs);
