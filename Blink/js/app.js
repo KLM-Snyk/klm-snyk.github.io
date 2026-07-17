@@ -2683,6 +2683,7 @@ const setupSteps = [
 
 let setupStep = 0;
 let _jiraSetupPoll = null;
+let _googleSetupPoll = null;
 
 function isSetupComplete() {
   return !!localStorage.getItem(SETUP_KEY);
