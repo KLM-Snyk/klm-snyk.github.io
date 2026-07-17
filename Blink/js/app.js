@@ -2767,14 +2767,19 @@ function renderSetupStep() {
         (connected ? '<button class="setup-btn-primary" onclick="setupNext()">Next →</button>' : '') +
       '</div>';
     // Poll until Google connects then auto-advance — clear any previous
-    // poll first, for the same reason as the Jira step's poll below.
+    // poll first, for the same reason as the Jira step's poll below. Also
+    // guarded at fire-time against having already moved off this step by
+    // the time the delay elapses, so a leftover poll can't advance a second
+    // time and skip whatever step comes after Google.
     if (_googleSetupPoll) { clearInterval(_googleSetupPoll); _googleSetupPoll = null; }
     if (!calIsConnected()) {
       _googleSetupPoll = setInterval(function() {
         if (calIsConnected()) {
           clearInterval(_googleSetupPoll);
           _googleSetupPoll = null;
-          setTimeout(function() { setupNext(); }, 800);
+          setTimeout(function() {
+            if (setupSteps[setupStep] === 'google') setupNext();
+          }, 800);
         }
       }, 500);
     }
@@ -2825,13 +2830,20 @@ function renderSetupStep() {
     // step. Without that, multiple overlapping intervals could each detect
     // the same token and each call setupNext() independently, double-
     // incrementing setupStep and silently skipping the next wizard step.
+    // Also guarded at fire-time against the wizard having already moved off
+    // this step via a different path (triggerJiraOAuth's own popup-close
+    // handler) by the time this interval's own delay elapses — otherwise
+    // this leftover poll can still advance a second time on top of that,
+    // skipping whatever step comes right after Jira.
     if (_jiraSetupPoll) { clearInterval(_jiraSetupPoll); _jiraSetupPoll = null; }
     if (!hasJira) {
       _jiraSetupPoll = setInterval(function() {
         if (localStorage.getItem('uyt_jira_token')) {
           clearInterval(_jiraSetupPoll);
           _jiraSetupPoll = null;
-          setTimeout(function() { setupNext(); }, 800);
+          setTimeout(function() {
+            if (setupSteps[setupStep] === 'jira') setupNext();
+          }, 800);
         }
       }, 500);
     }
