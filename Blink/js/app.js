@@ -499,16 +499,32 @@ function getGmailExcluded() {
 function toggleGmailExclude(labelId) {
   const excluded = getGmailExcluded();
   const idx = excluded.indexOf(labelId);
-  if (idx === -1) excluded.push(labelId); else excluded.splice(idx, 1);
+  if (idx === -1) {
+    // Defense in depth: never allow adding INBOX to the exclusion list —
+    // excluding your own Inbox doesn't make sense now that it's literally
+    // the core unread count, and the Settings UI shouldn't offer it as an
+    // option in the first place. Removing/re-including is still always
+    // allowed below, in case INBOX is already sitting in an old saved
+    // exclusion list from before this was filtered out of the display.
+    if (labelId === 'INBOX') return;
+    excluded.push(labelId);
+  } else {
+    excluded.splice(idx, 1);
+  }
   localStorage.setItem('uyt_gmail_excluded_labels', JSON.stringify(excluded));
-  renderSettingsPanel();
+  // Mail page's own grouping already checks getGmailExcluded() fresh at
+  // render time, so re-rendering it here immediately hides/shows the group
+  // without waiting on the async re-fetch below.
+  if (typeof renderMail === 'function') renderMail();
+  if (typeof renderSettingsPanel === 'function') renderSettingsPanel();
   // Excluded labels are filtered out before they're ever fetched, so
   // re-fetching is what actually applies the new exclusion list (or brings
   // a re-included label back into range) rather than just updating a flag
   // on already-cached data.
   if (typeof calFetchUnreadCount === 'function') {
     calFetchUnreadCount().then(function() {
-      renderSettingsPanel();
+      if (typeof renderMail === 'function') renderMail();
+      if (typeof renderSettingsPanel === 'function') renderSettingsPanel();
       renderDashboard();
     });
   }
@@ -710,8 +726,13 @@ function renderMail() {
       ? '<div class="mail-col-header"><span>Date</span><span>Sender</span><span>Subject</span></div>'
       : '';
     const body = isExpanded ? mailRenderRows(labelMsgs, lid) : '';
+    // No exclude button for INBOX — excluding your own Inbox doesn't make
+    // sense now that it's the core unread count.
+    const excludeBtn = lid !== 'INBOX'
+      ? '<button class="mail-label-exclude" onclick="event.stopPropagation();toggleGmailExclude(\'' + lid.replace(/'/g,'') + '\')" title="Exclude this label from your unread count and Mail page">✕</button>'
+      : '';
     return '<div class="mail-label-group">' +
-      '<div class="mail-label-header">' + toggle + '<span class="mail-label-name">' + escHtml(labelName) + '</span>' + badge + '<span class="mail-label-total">(' + labelMsgs.length + ')</span></div>' +
+      '<div class="mail-label-header">' + toggle + '<span class="mail-label-name">' + escHtml(labelName) + '</span>' + badge + '<span class="mail-label-total">(' + labelMsgs.length + ')</span>' + excludeBtn + '</div>' +
       colHeader +
       '<div class="mail-list">' + body + '</div>' +
       '</div>';
@@ -1305,32 +1326,14 @@ function renderSettingsPanel() {
     <div class="settings-section">
       <div class="settings-section-title">Gmail</div>
       <div class="cal-connect-box">
-        <p>Labels to exclude from your unread count and Mail page.</p>
-        ${(() => {
-          // Filter out already-excluded labels right here at render time,
-          // rather than relying solely on the async re-fetch to catch up —
-          // calState.gmailBreakdown only gets refreshed once that fetch
-          // completes, so without this, a just-excluded label would keep
-          // showing in both this list AND the "Currently excluded" list
-          // below until the fetch finished, making the button look broken.
-          const currentlyExcluded = getGmailExcluded();
-          const visible = (calState.gmailBreakdown || []).filter(l => !currentlyExcluded.includes(l.id));
-          return visible.length > 0 ? `
-            <div style="display:flex;flex-direction:column;gap:4px;margin-bottom:10px">
-              ${visible.map(l => {
-                return '<div class="slack-channel-row"><span class="slack-channel-name">' + escHtml(l.name) + '</span><button class="slack-channel-remove" onclick="toggleGmailExclude(' + JSON.stringify(l.id) + ')" title="Exclude">✕</button></div>';
-              }).join('')}
-            </div>
-          ` : '<p style="font-size:12px;color:var(--text-secondary)">Load mail to see your labels here.</p>';
-        })()}
+        <p>Exclude a label from your unread count and Mail page by clicking the ✕ on its group header on the Mail page itself. Anything excluded shows here so you can bring it back.</p>
         ${getGmailExcluded().length > 0 ? `
-          <p style="font-size:12px;color:var(--text-secondary);margin-top:12px;margin-bottom:6px">Currently excluded:</p>
-          <div style="display:flex;flex-direction:column;gap:4px">
+          <div style="display:flex;flex-direction:column;gap:4px;margin-top:10px">
             ${getGmailExcluded().map(function(id) {
               return '<div class="slack-channel-row"><span class="slack-channel-name" style="opacity:0.6">' + escHtml(id) + '</span><button class="slack-channel-remove" onclick="toggleGmailExclude(' + JSON.stringify(id) + ')" title="Re-include" style="color:var(--primary)">↩</button></div>';
             }).join('')}
           </div>
-        ` : ''}
+        ` : '<p style="font-size:12px;color:var(--text-secondary);margin-top:8px">Nothing excluded yet.</p>'}
       </div>
     </div>
 

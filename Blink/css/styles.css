@@ -2847,6 +2847,8 @@ button, a.setup-btn-primary, a.cal-connect-btn {
 .mail-label-name { font-size:13px; font-weight:700; color:var(--text); flex:1; }
 .mail-label-badge { font-size:11px; font-weight:700; color:white; background:var(--primary); padding:2px 7px; border-radius:99px; }
 .mail-label-total { font-size:11px; color:var(--text-secondary); }
+.mail-label-exclude { background:none; border:none; cursor:pointer; color:var(--text-secondary); opacity:0.4; font-size:12px; padding:2px 6px; border-radius:4px; transition:opacity var(--transition),color var(--transition); }
+.mail-label-exclude:hover { opacity:1; color:#DC2626; }
 /* 3-column grid: date 80px | sender 160px | subject rest — same for header and rows */
 .mail-col-header { display:grid; grid-template-columns:80px 160px 1fr; gap:0 12px; padding:6px 14px; background:var(--bg); border-top:1px solid var(--border); border-bottom:1px solid var(--border); font-size:11px; font-weight:700; color:var(--text-secondary); text-transform:uppercase; letter-spacing:0.05em; }
 .mail-list { display:flex; flex-direction:column; }
