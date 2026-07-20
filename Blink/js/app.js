@@ -664,10 +664,10 @@ function mailRenderRows(msgs, labelId) {
   }).join('');
   const safeId = labelId.replace(/'/g, '');
   const prevBtn = page > 0
-    ? '<button class="mail-page-btn" onclick="mailPage(' + JSON.stringify(safeId) + ',-1)">← Prev 10</button>'
+    ? "<button class=\"mail-page-btn\" onclick='mailPage(" + JSON.stringify(safeId) + ",-1)'>← Prev 10</button>"
     : '';
   const nextBtn = msgs.length > start + 10
-    ? '<button class="mail-page-btn" onclick="mailPage(' + JSON.stringify(safeId) + ',1)">Next 10 →</button>'
+    ? "<button class=\"mail-page-btn\" onclick='mailPage(" + JSON.stringify(safeId) + ",1)'>Next 10 →</button>"
     : '';
   const pageNav = (prevBtn || nextBtn)
     ? '<div class="mail-page-nav">' + prevBtn + '<span style="font-size:12px;color:var(--text-secondary)">' + (start+1) + '–' + Math.min(start+10, msgs.length) + ' of ' + msgs.length + '</span>' + nextBtn + '</div>'
@@ -1405,7 +1405,7 @@ function renderSettingsPanel() {
         ${getGmailExcluded().length > 0 ? `
           <div style="display:flex;flex-direction:column;gap:4px;margin-top:10px">
             ${getGmailExcluded().map(function(id) {
-              return '<div class="slack-channel-row"><span class="slack-channel-name" style="opacity:0.6">' + escHtml(id) + '</span><button class="slack-channel-remove" onclick="toggleGmailExclude(' + JSON.stringify(id) + ')" title="Re-include" style="color:var(--primary)">↩</button></div>';
+              return "<div class=\"slack-channel-row\"><span class=\"slack-channel-name\" style=\"opacity:0.6\">" + escHtml(id) + "</span><button class=\"slack-channel-remove\" onclick='toggleGmailExclude(" + JSON.stringify(id) + ")' title=\"Re-include\" style=\"color:var(--primary)\">↩</button></div>";
             }).join('')}
           </div>
         ` : '<p style="font-size:12px;color:var(--text-secondary);margin-top:8px">Nothing excluded yet.</p>'}
