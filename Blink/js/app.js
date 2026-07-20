@@ -836,12 +836,20 @@ function getJiraProjects() {
 function jiraDisconnect() {
   localStorage.removeItem('uyt_jira_token');
   localStorage.removeItem('uyt_jira_cloud');
+  localStorage.removeItem('uyt_jira_issues');
+  localStorage.removeItem('uyt_jira_asof');
   jiraState.issues = null;
   jiraState.loading = false;
   jiraState.error = null;
   jiraState.asOf = null;
   if (typeof renderSettingsPanel === 'function') renderSettingsPanel();
   if (typeof renderCases === 'function') renderCases();
+  // Previously missing — without this, the Dashboard's JIRA tile kept
+  // showing whatever was last rendered until some unrelated event happened
+  // to trigger a re-render, which is exactly the "stale for about a minute"
+  // delay this was causing. jiraState.issues was already correctly cleared
+  // in memory the whole time; nothing was ever telling the tile to reflect it.
+  if (typeof renderDashboard === 'function') renderDashboard();
 }
 
 // Full sign-out: clears Google, Slack, and Jira together so "Sign out" actually
