@@ -495,10 +495,20 @@ function getGmailExcluded() {
   catch { return []; }
 }
 
+// Separate from the exclusion list itself — excluded labels get filtered out
+// before they're ever fetched, so mailGetLabelName() has no way to resolve a
+// friendly name for one afterward. This snapshots the name at the moment of
+// exclusion (while we still have it) so "Currently excluded" in Settings can
+// show something recognizable instead of a raw Label_1234567890 ID.
+function getGmailExcludedNames() {
+  try { return JSON.parse(localStorage.getItem('uyt_gmail_excluded_names') || '{}'); }
+  catch { return {}; }
+}
+
 // Was called from the Settings panel's X/re-include buttons but never
 // actually defined anywhere — clicking those buttons just silently threw a
 // ReferenceError in the console, which is why they appeared to do nothing.
-function toggleGmailExclude(labelId) {
+function toggleGmailExclude(labelId, labelName) {
   const excluded = getGmailExcluded();
   const idx = excluded.indexOf(labelId);
   if (idx === -1) {
@@ -510,8 +520,14 @@ function toggleGmailExclude(labelId) {
     // exclusion list from before this was filtered out of the display.
     if (labelId === 'INBOX') return;
     excluded.push(labelId);
+    const names = getGmailExcludedNames();
+    names[labelId] = labelName || mailGetLabelName(labelId) || labelId;
+    localStorage.setItem('uyt_gmail_excluded_names', JSON.stringify(names));
   } else {
     excluded.splice(idx, 1);
+    const names = getGmailExcludedNames();
+    delete names[labelId];
+    localStorage.setItem('uyt_gmail_excluded_names', JSON.stringify(names));
   }
   localStorage.setItem('uyt_gmail_excluded_labels', JSON.stringify(excluded));
   // Mail page's own grouping already checks getGmailExcluded() fresh at
@@ -788,7 +804,7 @@ function renderMail() {
     // No exclude button for INBOX — excluding your own Inbox doesn't make
     // sense now that it's the core unread count.
     const excludeBtn = lid !== 'INBOX'
-      ? '<button class="mail-label-exclude" onclick="event.stopPropagation();toggleGmailExclude(\'' + lid.replace(/'/g,'') + '\')" title="Exclude this label from your unread count and Mail page">✕</button>'
+      ? '<button class="mail-label-exclude" onclick="event.stopPropagation();toggleGmailExclude(\'' + lid.replace(/'/g,'') + '\',' + JSON.stringify(labelName || lid).replace(/"/g, '&quot;') + ')" title="Exclude this label from your unread count and Mail page">✕</button>'
       : '';
     return '<div class="mail-label-group">' +
       '<div class="mail-label-header">' + toggle + '<span class="mail-label-name">' + escHtml(labelName) + '</span>' + badge + '<span class="mail-label-total">(' + labelMsgs.length + ')</span>' + excludeBtn + '</div>' +
@@ -1404,9 +1420,13 @@ function renderSettingsPanel() {
         <p>Exclude a label from your unread count and Mail page by clicking the ✕ on its group header on the Mail page itself. Anything excluded shows here so you can bring it back.</p>
         ${getGmailExcluded().length > 0 ? `
           <div style="display:flex;flex-direction:column;gap:4px;margin-top:10px">
-            ${getGmailExcluded().map(function(id) {
-              return "<div class=\"slack-channel-row\"><span class=\"slack-channel-name\" style=\"opacity:0.6\">" + escHtml(id) + "</span><button class=\"slack-channel-remove\" onclick='toggleGmailExclude(" + JSON.stringify(id) + ")' title=\"Re-include\" style=\"color:var(--primary)\">↩</button></div>";
-            }).join('')}
+            ${(() => {
+              const names = getGmailExcludedNames();
+              return getGmailExcluded().map(function(id) {
+                const displayName = names[id] || id;
+                return "<div class=\"slack-channel-row\"><span class=\"slack-channel-name\" style=\"opacity:0.6\">" + escHtml(displayName) + "</span><button class=\"slack-channel-remove\" onclick='toggleGmailExclude(" + JSON.stringify(id) + ")' title=\"Re-include\" style=\"color:var(--primary)\">↩</button></div>";
+              }).join('');
+            })()}
           </div>
         ` : '<p style="font-size:12px;color:var(--text-secondary);margin-top:8px">Nothing excluded yet.</p>'}
       </div>
