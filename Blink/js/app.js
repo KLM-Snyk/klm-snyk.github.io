@@ -58,64 +58,36 @@ const ZEN_QUOTES = [
   { text: "Most of the important things in the world have been accomplished by people who have kept on trying when there seemed to be no hope at all.", author: "Dale Carnegie" },
 ];
 
-// Original quotes in a different reflective spirit (time, wonder, curiosity,
-// courage) — NOT reproductions of any existing scripted dialogue, which
-// would be copyrighted. Shown instead of ZEN_QUOTES when a particular theme
-// combination is active. Same "pick once per page load" behavior as the
-// regular quotes.
-const DR_WHO_QUOTES = [
-  { text: "Every moment is a doorway, if you're brave enough to step through.", author: "The Doctor" },
-  { text: "Time is not a line to walk, it's a universe to explore.", author: "The Doctor" },
-  { text: "Wonder is the beginning of wisdom, and curiosity is how we keep it.", author: "The Doctor" },
-  { text: "The bravest thing you can do today is simply show up.", author: "The Doctor" },
-  { text: "Some days call for running. Most days call for kindness.", author: "The Doctor" },
-  { text: "A good day is one where you learn something you didn't know when it started.", author: "The Doctor" },
-  { text: "Hope is a technology all its own.", author: "The Doctor" },
-  { text: "Never underestimate the difference you can make before lunch.", author: "The Doctor" },
-  { text: "The universe is big, but so is your capacity to help.", author: "The Doctor" },
-  { text: "Change isn't the end of who you are, it's the next chapter.", author: "The Doctor" },
-  { text: "Every ending is just a regeneration in disguise.", author: "The Doctor" },
-  { text: "Stars burn brightest when they've got somewhere to be.", author: "The Doctor" },
-  { text: "Adventure isn't a place, it's a decision you make each morning.", author: "The Doctor" },
-  { text: "The best companions are the ones who ask 'what if' and mean it.", author: "The Doctor" },
-  { text: "Time travels forward whether you're ready or not — best to be ready.", author: "The Doctor" },
-  { text: "Small kindnesses ripple across bigger timelines than you'd think.", author: "The Doctor" },
-  { text: "Curiosity is a compass; let it point you somewhere new today.", author: "The Doctor" },
-  { text: "You don't need a time machine to make today matter.", author: "The Doctor" },
-  { text: "Every companion starts as a stranger who said yes to something bigger.", author: "The Doctor" },
-  { text: "The most important journeys start with an open door and a nervous smile.", author: "The Doctor" },
-  { text: "Even in the dark, the console lights are still blinking — keep going.", author: "The Doctor" },
-  { text: "Wisdom is just curiosity that's been paying attention.", author: "The Doctor" },
-  { text: "You are allowed to be a whole new version of yourself today.", author: "The Doctor" },
-  { text: "Somewhere, some when, this exact effort is exactly what's needed.", author: "The Doctor" },
-  { text: "The TARDIS doesn't care what day it is — neither should your ambition.", author: "The Doctor" },
-  { text: "A universe of possibility fits inside one ordinary Tuesday.", author: "The Doctor" },
-  { text: "Fear is just excitement that hasn't found its story yet.", author: "The Doctor" },
-  { text: "Every companion becomes a hero eventually — usually on a Wednesday.", author: "The Doctor" },
-  { text: "The console room is loudest right before something wonderful happens.", author: "The Doctor" },
-  { text: "Time is kind to those who use it kindly.", author: "The Doctor" },
-  { text: "You've survived every difficult day so far — that's a perfect record.", author: "The Doctor" },
-  { text: "Somewhere out there, a version of you is already proud of today's effort.", author: "The Doctor" },
-  { text: "The unknown is just the familiar, not yet met.", author: "The Doctor" },
-  { text: "Great adventures usually begin with someone saying 'well, that's odd.'", author: "The Doctor" },
-  { text: "Bravery is just curiosity that kept walking.", author: "The Doctor" },
-  { text: "A single spark of hope can outshine an entire dark timeline.", author: "The Doctor" },
-  { text: "The best stories always have room for one more chapter.", author: "The Doctor" },
-  { text: "Today's small victory is tomorrow's favorite memory.", author: "The Doctor" },
-  { text: "You don't need two hearts to have double the courage.", author: "The Doctor" },
-  { text: "Every clock ticks toward something worth waiting for.", author: "The Doctor" },
-  { text: "The stars don't mind if you take the scenic route.", author: "The Doctor" },
-  { text: "New days are just old universes wearing a fresh coat of stardust.", author: "The Doctor" },
-  { text: "Somewhere in all of time and space, today counts.", author: "The Doctor" },
-  { text: "The best companions bring snacks and better questions.", author: "The Doctor" },
-  { text: "A little wonder goes a long way across a long day.", author: "The Doctor" },
-  { text: "Every great journey needs someone willing to press the first button.", author: "The Doctor" },
-  { text: "Kindness is the only universal language that needs no translation circuit.", author: "The Doctor" },
-  { text: "The future is unwritten — which is exactly why it's worth showing up for.", author: "The Doctor" },
-  { text: "Even paradoxes resolve themselves if you just keep being decent.", author: "The Doctor" },
-  { text: "Some days you're the hero. Some days you're just the reason someone else got to be.", author: "The Doctor" },
-  { text: "However strange today feels, the TARDIS has seen stranger — and it still flies.", author: "The Doctor" },
-  { text: "One good decision can rewrite an entire timeline. Make it today's.", author: "The Doctor" },
+// Real, accurately-attributed quotes from actual scientists/science
+// communicators — shown instead of ZEN_QUOTES for the alternate theme.
+// Unlike the earlier attempt at this, these are genuine public statements
+// (same category as the Churchill/Franklin quotes above), not scripted
+// creative dialogue, so there's no copyright concern reproducing them.
+const SCIENCE_QUOTES = [
+  { text: "The universe is under no obligation to make sense to you.", author: "Neil deGrasse Tyson" },
+  { text: "Not only do we live among the stars, the stars live within us.", author: "Neil deGrasse Tyson" },
+  { text: "The good thing about science is that it's true whether or not you believe in it.", author: "Neil deGrasse Tyson" },
+  { text: "Ignorance of the natural world was not a sin. It's just where you started.", author: "Neil deGrasse Tyson" },
+  { text: "We are made of star-stuff.", author: "Carl Sagan" },
+  { text: "Somewhere, something incredible is waiting to be known.", author: "Carl Sagan" },
+  { text: "Extraordinary claims require extraordinary evidence.", author: "Carl Sagan" },
+  { text: "For small creatures such as we, the vastness is bearable only through love.", author: "Carl Sagan" },
+  { text: "Science is a way of thinking much more than it is a body of knowledge.", author: "Carl Sagan" },
+  { text: "I would rather have questions that can't be answered than answers that can't be questioned.", author: "Richard Feynman" },
+  { text: "The first principle is that you must not fool yourself — and you are the easiest person to fool.", author: "Richard Feynman" },
+  { text: "What I cannot create, I do not understand.", author: "Richard Feynman" },
+  { text: "Study hard what interests you the most, in the most undisciplined, irreverent and original manner possible.", author: "Richard Feynman" },
+  { text: "Nothing in life is to be feared, it is only to be understood.", author: "Marie Curie" },
+  { text: "Be less curious about people and more curious about ideas.", author: "Marie Curie" },
+  { text: "Intelligence is the ability to adapt to change.", author: "Stephen Hawking" },
+  { text: "However difficult life may seem, there is always something you can do and succeed at.", author: "Stephen Hawking" },
+  { text: "Look up at the stars and not down at your feet.", author: "Stephen Hawking" },
+  { text: "The important thing is not to stop questioning. Curiosity has its own reason for existing.", author: "Albert Einstein" },
+  { text: "Look deep into nature, and then you will understand everything better.", author: "Albert Einstein" },
+  { text: "The most beautiful thing we can experience is the mysterious.", author: "Albert Einstein" },
+  { text: "Imagination is more important than knowledge.", author: "Albert Einstein" },
+  { text: "What you do makes a difference, and you have to decide what kind of difference you want to make.", author: "Jane Goodall" },
+  { text: "If I have seen further it is by standing on the shoulders of giants.", author: "Isaac Newton" },
 ];
 
 function isWhovianActive() {
@@ -137,15 +109,13 @@ let _cachedDailyQuote = null;
 let _cachedQuoteWasWhovian = null;
 
 function getDailyQuote() {
-  // Picked once per active quote pool (lazily, on first call — by which
-  // point state.prefs is definitely loaded) so it stays the same across
-  // re-renders within a session but shows a fresh one on page reload.
-  // Previously this was cached unconditionally for the whole session, so
-  // switching themes mid-session (no reload) left a stale quote from the
-  // wrong pool showing — now it re-picks whenever the active pool changes.
+  // Picked once per active pool (lazily, on first call — by which point
+  // state.prefs is definitely loaded) so it stays the same across
+  // re-renders within a session but shows a fresh one on page reload, and
+  // re-picks if the theme itself changes mid-session.
   const isWhovian = isWhovianActive();
   if (_cachedDailyQuote === null || _cachedQuoteWasWhovian !== isWhovian) {
-    const pool = isWhovian ? DR_WHO_QUOTES : ZEN_QUOTES;
+    const pool = isWhovian ? SCIENCE_QUOTES : ZEN_QUOTES;
     _cachedDailyQuote = pool[Math.floor(Math.random() * pool.length)];
     _cachedQuoteWasWhovian = isWhovian;
   }
