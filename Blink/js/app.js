@@ -860,12 +860,19 @@ function jiraDisconnect() {
   if (typeof renderDashboard === 'function') renderDashboard();
 }
 
-// Full sign-out: clears Google, Slack, and Jira together so "Sign out" actually
-// signs the person out of everything Blink is connected to, not just Google.
+// Full sign-out: clears Google, Slack, Jira, and Snowflake together so
+// "Sign out" actually signs the person out of everything Blink is
+// connected to, not just Google.
 function signOutAll() {
   calDisconnect();
   if (typeof slackDisconnect === 'function') slackDisconnect();
   jiraDisconnect();
+  localStorage.removeItem('uyt_snowflake_token');
+  supportCasesState.cases = null;
+  supportCasesState.error = null;
+  supportCasesState.asOf = null;
+  if (typeof renderSupportCases === 'function') renderSupportCases();
+  if (typeof renderDashboard === 'function') renderDashboard();
 }
 
 
@@ -1234,12 +1241,13 @@ const supportCasesState = {
 
 async function fetchSupportCases() {
   const ownerName = calState.userProfile?.name;
-  if (!ownerName) return;
+  const snowflakeToken = localStorage.getItem('uyt_snowflake_token');
+  if (!ownerName || !snowflakeToken) return;
   supportCasesState.loading = true;
   supportCasesState.error = null;
   renderSupportCases();
   try {
-    const params = new URLSearchParams({ owner: ownerName, open: '1' });
+    const params = new URLSearchParams({ owner: ownerName, open: '1', t: snowflakeToken });
     const res = await fetch('https://uyt-slack-digest.kar-marsten.workers.dev/snowflake/cases?' + params);
     const data = await res.json();
     if (data.error) throw new Error(data.error);
@@ -1268,6 +1276,10 @@ function renderSupportCases() {
 
   if (!calIsConnected()) {
     el.innerHTML = '<div class="cal-connect-prompt"><div class="cal-connect-icon">🗂️</div><h3>Connect Google first</h3><p>Your name from Google is used to match your support cases.</p></div>';
+    return;
+  }
+  if (!localStorage.getItem('uyt_snowflake_token')) {
+    el.innerHTML = '<div class="cal-connect-prompt"><div class="cal-connect-icon">🗂️</div><h3>Sign in to Snowflake</h3><p>Sign in with your own Snowflake account to see your open support cases.</p><button class="connect-btn" onclick="triggerSnowflakeOAuth()">Sign in to Snowflake</button></div>';
     return;
   }
   if (supportCasesState.loading && !supportCasesState.cases) {
@@ -1455,6 +1467,22 @@ function renderSettingsPanel() {
           Sign in to Looker
         </a>
         ${localStorage.getItem('uyt_looker_last_signin') ? '<p style="font-size:12px;color:var(--text-secondary);margin-top:10px">Last signed in: ' + escHtml(new Date(parseInt(localStorage.getItem('uyt_looker_last_signin'), 10)).toLocaleString()) + '</p>' : ''}
+      </div>
+    </div>
+
+    <!-- Snowflake (Support Cases) -->
+    <div class="settings-section">
+      <div class="settings-section-title">Snowflake</div>
+      <div class="cal-connect-box">
+        <p style="font-size:13px;color:var(--text-secondary);margin-bottom:10px">Sign in with your own Snowflake account to see your open support cases on the Dashboard and Support Cases screen — your queries run under your own Snowflake identity, not a shared account.</p>
+        ${localStorage.getItem('uyt_snowflake_token') ? `
+          <div class="setup-connected-badge" style="margin-bottom:10px">✓ Signed in to Snowflake</div>
+          <button class="connect-btn" onclick="localStorage.removeItem('uyt_snowflake_token');renderSettingsPanel();renderDashboard();if(typeof renderSupportCases==='function')renderSupportCases();" style="background:var(--surface2);color:var(--text)">Sign out of Snowflake</button>
+        ` : `
+          <a href="#" onclick="triggerSnowflakeOAuth();return false;" class="cal-connect-btn" style="display:inline-flex;align-items:center;gap:8px;text-decoration:none;color:white">
+            Sign in to Snowflake
+          </a>
+        `}
       </div>
     </div>
 
@@ -1729,6 +1757,48 @@ function triggerJiraOAuth() {
         if (typeof renderSetupStep === 'function') renderSetupStep();
         if (typeof renderSettingsPanel === 'function') renderSettingsPanel();
         if (typeof renderCases === 'function') renderCases();
+      }
+    }
+  }, 500);
+}
+
+// Snowflake OAuth — same popup + postMessage + poll-fallback pattern as
+// triggerJiraOAuth above. Each person signs into Snowflake with their own
+// identity, so support-case queries run under their own role rather than a
+// shared service account.
+function triggerSnowflakeOAuth() {
+  const width = 600, height = 700;
+  const left = Math.round(window.screenX + (window.outerWidth - width) / 2);
+  const top = Math.round(window.screenY + (window.outerHeight - height) / 2);
+  const popup = window.open(
+    'https://uyt-slack-digest.kar-marsten.workers.dev/snowflake/start',
+    'snowflake-oauth',
+    'width=' + width + ',height=' + height + ',left=' + left + ',top=' + top + ',toolbar=no,menubar=no'
+  );
+  let _snowflakeAuthHandled = false;
+
+  function _handleSnowflakeMessage(event) {
+    if (event.origin !== 'https://klm-snyk.github.io') return;
+    if (event.data?.type === 'snowflake-token') {
+      if (_snowflakeAuthHandled) return;
+      _snowflakeAuthHandled = true;
+      clearInterval(poll);
+      localStorage.setItem('uyt_snowflake_token', event.data.token);
+      window.removeEventListener('message', _handleSnowflakeMessage);
+      if (popup && !popup.closed) popup.close();
+      if (typeof renderSettingsPanel === 'function') renderSettingsPanel();
+      fetchSupportCases();
+    }
+  }
+  window.addEventListener('message', _handleSnowflakeMessage);
+  const poll = setInterval(function() {
+    if (popup.closed) {
+      clearInterval(poll);
+      if (_snowflakeAuthHandled) return;
+      if (localStorage.getItem('uyt_snowflake_token')) {
+        _snowflakeAuthHandled = true;
+        if (typeof renderSettingsPanel === 'function') renderSettingsPanel();
+        fetchSupportCases();
       }
     }
   }, 500);
@@ -2312,7 +2382,10 @@ function renderDashboard() {
               <div class="dash-card-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M20 7h-3V6a3 3 0 00-3-3h-4a3 3 0 00-3 3v1H4a1 1 0 00-1 1v11a2 2 0 002 2h14a2 2 0 002-2V8a1 1 0 00-1-1zM9 6a1 1 0 011-1h4a1 1 0 011 1v1H9z"/></svg></div>
               <div class="dash-card-title">Support Cases</div>
             </div>
-            ${supportCasesState.loading ? '<div class="dash-card-sub" style="margin-top:8px">⏳ Loading…</div>' :
+            ${!localStorage.getItem('uyt_snowflake_token') ? `
+              <div class="dash-card-sub">Sign in to see your cases</div>
+              <div class="dash-card-action" onclick="event.stopPropagation();triggerSnowflakeOAuth()" style="cursor:pointer">Sign in ${ICONS.arrowRight}</div>
+            ` : supportCasesState.loading ? '<div class="dash-card-sub" style="margin-top:8px">⏳ Loading…</div>' :
               supportCasesState.cases && supportCasesState.cases.length > 0 ? (() => {
                 const byCat = {};
                 supportCasesState.cases.forEach(c => { const k = c.CATEGORY_C || 'Other'; byCat[k] = (byCat[k]||0)+1; });
@@ -3288,6 +3361,16 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   }
 
+  // If this is a popup returning from Snowflake OAuth, notify parent and close
+  if (window.opener && window.location.hash.includes('snowflake-token=')) {
+    const params = new URLSearchParams(window.location.hash.slice(1));
+    const token = params.get('snowflake-token');
+    if (token) {
+      window.opener.postMessage({ type: 'snowflake-token', token }, 'https://klm-snyk.github.io');
+      window.close();
+    }
+  }
+
   // If this is a popup window returning from Slack OAuth, notify parent and close
   if (window.opener && window.location.hash.includes('slack-token=')) {
     const params = new URLSearchParams(window.location.hash.slice(1));
@@ -3379,7 +3462,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       setTimeout(function() { fetchJiraIssues(); }, 2000);
     }
     // Auto-fetch support cases if connected and not already loaded
-    if (calIsConnected() && !supportCasesState.cases) {
+    if (calIsConnected() && localStorage.getItem('uyt_snowflake_token') && !supportCasesState.cases) {
       setTimeout(function() { fetchSupportCases(); }, 2500);
     }
     // Auto-fetch digest if no cache — small delay to ensure token is ready
