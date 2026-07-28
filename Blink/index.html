@@ -73,7 +73,7 @@
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M2 9a3 3 0 010 6v2a1 1 0 001 1h18a1 1 0 001-1v-2a3 3 0 010-6V7a1 1 0 00-1-1H3a1 1 0 00-1 1z"/><path d="M9 9v6" stroke-dasharray="2 2"/></svg>
         <span>JIRA</span>
       </button>
-      <button class="nav-item" data-screen="supportcases">
+      <button class="nav-item" onclick="window.open('https://snyksec.lightning.force.com/lightning/o/Case/list?filterName=All_Unassigned_Cases','_blank')">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M20 7h-3V6a3 3 0 00-3-3h-4a3 3 0 00-3 3v1H4a1 1 0 00-1 1v11a2 2 0 002 2h14a2 2 0 002-2V8a1 1 0 00-1-1zM9 6a1 1 0 011-1h4a1 1 0 011 1v1H9z"/></svg>
         <span>Support Cases</span>
       </button>
@@ -168,24 +168,6 @@
     </div>
     <div class="screen-body">
       <div id="screen-cases-content"></div>
-    </div>
-  </div>
-
-  <!-- Support Cases (Snowflake) -->
-  <div id="screen-supportcases" class="screen">
-    <div class="screen-header">
-      <h2>Support Cases</h2>
-      <div class="header-actions">
-        <button class="icon-btn" onclick="fetchSupportCases()" title="Refresh">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 11-2.12-9.36L23 10"/></svg>
-        </button>
-        <button class="icon-btn" onclick="openSettings()" title="Settings">
-          <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
-        </button>
-      </div>
-    </div>
-    <div class="screen-body">
-      <div id="screen-supportcases-content"></div>
     </div>
   </div>
 
@@ -291,7 +273,7 @@
       <img src="blink-icon.png" alt="Blink" style="width:56px;height:56px;border-radius:14px;margin-right:12px">
       <div>
         <div class="about-app-name">Blink</div>
-        <div class="about-version">Version 18.84</div>
+        <div class="about-version">Version 18.85</div>
       </div>
     </div>
 
@@ -340,10 +322,10 @@
   <div id="generic-spinner" style="display:none"></div>
 </div>
 
-<script src="js/preferences.js?v=18.84"></script>
-<script src="js/calendar.js?v=18.84"></script>
-<script src="js/slack.js?v=18.84"></script>
-<script src="js/app.js?v=18.84"></script>
+<script src="js/preferences.js?v=18.85"></script>
+<script src="js/calendar.js?v=18.85"></script>
+<script src="js/slack.js?v=18.85"></script>
+<script src="js/app.js?v=18.85"></script>
 
 </body>
 </html>
