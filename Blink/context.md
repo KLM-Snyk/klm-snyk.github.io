@@ -178,14 +178,14 @@ git add -A && git commit -m "message" && git push
 ## Security
 - `sanitizeHtml()` function strips `<script>`, `on*` handlers, `javascript:`, `data:` from external HTML
 - Applied to Slack digest HTML before injection into DOM
-- 4 medium Snyk Code findings remain (false positives — all values go through `escHtml()`)
+- 5 medium Snyk Code findings remain (false positives — all values go through `escHtml()` / `renderSlackText()`, or are validated URLs)
 - Snyk GitHub Actions workflow exists but disabled pending SNYK_TOKEN secret setup
 - Snyk account moved from KarMarsten to KLM-Snyk org
 
 ## Pending / Known Issues
 1. **Slack `im:read` scope** — Snyk workspace admin approval pending. Blocks Workday DM tile.
 2. **Snyk workflow** — `.github/workflows/snyk.yml` disabled. Needs `SNYK_TOKEN` secret added to repo.
-3. **4 Snyk Code XSS findings** — false positives, need to be ignored via Snyk web UI (app.snyk.io under KLM-Snyk account)
+3. **5 Snyk Code XSS findings** — false positives, need to be ignored via Snyk web UI (app.snyk.io under KLM-Snyk account). The 5th, in `renderWorkday()` (app.js, ~line 1029), was reviewed in detail: every point where actual external data (message text, extracted link text/URLs) enters the HTML is properly escaped via `escHtml()` / `renderSlackText()` (which itself escapes `&`/`</>` before applying markdown formatting) or validated via `isSafeWorkdayUrl()`. Snyk's taint analysis flags it anyway because it can't verify a hand-written sanitizer (as opposed to a recognized library like DOMPurify) actually neutralizes the data flow from `slackDigestState.workday` (network-fetched, so flagged as tainted) to the `innerHTML` sink.
 4. **index.html truncation** — Desktop Commander times out mid-write. Always verify line count before committing.
 5. **Looker embed SSO framing still not fully confirmed** — the "Sign in to Looker" popup (wizard/Settings/Trends screen) mitigates this by giving the person an easy way to (re-)establish their Looker session, but it's not been verified end-to-end that the Trends iframes then render correctly. Still may need a Looker admin to confirm embedding is enabled/allow-listed for `klm-snyk.github.io`.
 6. **Dead backlog-chart code** — `backlogState`, `fetchBacklogData()`, `renderBacklogChart()`, `BACKLOG_COLORS`, `.backlog-*` CSS, and the Worker's `/looker/backlog` route are all unused now but not yet deleted.
