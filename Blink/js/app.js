@@ -521,10 +521,12 @@ function toggleGmailExclude(labelId, labelName) {
 // Fetches one page of unread messages (up to 100) starting at pageToken
 // (null for the first page). No date restriction — "unread" means unread,
 // regardless of age; that's applied consistently everywhere mail is fetched.
-async function fetchMailPage(pageToken) {
+// extraQuery lets a caller narrow the search (e.g. "in:inbox") on top of the
+// base unread/spam/trash/exclusion filters.
+async function fetchMailPage(pageToken, extraQuery) {
   const excluded = getGmailExcluded();
   const exclusionClause = excluded.length ? ' ' + excluded.map(id => '-label:' + id).join(' ') : '';
-  const q = 'is:unread -in:spam -in:trash' + exclusionClause;
+  const q = 'is:unread -in:spam -in:trash' + exclusionClause + (extraQuery ? ' ' + extraQuery : '');
   const params = new URLSearchParams({ q, maxResults: 100 });
   if (pageToken) params.set('pageToken', pageToken);
   const listRes = await fetch(
@@ -585,13 +587,29 @@ async function fetchMailMessages() {
   renderMail();
   toggleLoadingOverlay(true);
   try {
-    const { messages, nextPageToken } = await fetchMailPage(null);
-    messages.sort(function(a, b) { return b.ts - a.ts; });
-    mailState.messages = messages;
-    mailState.nextPageToken = nextPageToken;
+    // Fetch Inbox on its own, guaranteed — a noisy high-volume label (an
+    // archive folder with constant automated traffic, say) can otherwise
+    // completely dominate the general "is:unread" query's first page, since
+    // that query sorts by recency across every label combined. That can
+    // push genuine Inbox messages so far down they never surface at all,
+    // even though the Dashboard tile (which queries Inbox independently via
+    // labels.get) correctly shows Inbox has unread mail. Fetching Inbox
+    // separately means it always shows up regardless of how noisy anything
+    // else is.
+    const [inboxResult, generalResult] = await Promise.all([
+      fetchMailPage(null, 'in:inbox'),
+      fetchMailPage(null),
+    ]);
+    const seenIds = new Set(inboxResult.messages.map(function(m) { return m.id; }));
+    const merged = inboxResult.messages.concat(
+      generalResult.messages.filter(function(m) { return !seenIds.has(m.id); })
+    );
+    merged.sort(function(a, b) { return b.ts - a.ts; });
+    mailState.messages = merged;
+    mailState.nextPageToken = generalResult.nextPageToken;
     mailState.asOf = new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
-    localStorage.setItem('uyt_mail_messages', JSON.stringify(messages));
-    localStorage.setItem('uyt_mail_next_page_token', nextPageToken || '');
+    localStorage.setItem('uyt_mail_messages', JSON.stringify(merged));
+    localStorage.setItem('uyt_mail_next_page_token', generalResult.nextPageToken || '');
     localStorage.setItem('uyt_mail_asof', mailState.asOf);
     calFetchGmailLabelBreakdown();
   } catch(e) {
