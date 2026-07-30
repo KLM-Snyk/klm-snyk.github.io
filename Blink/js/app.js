@@ -247,8 +247,9 @@ function navigate(screen) {
   if (screen === 'planner')   renderPlanner();
 }
 
-// Shows the Weeping Angel (Whovian theme) or a plain spinner (every other
-// theme) in the same full-screen overlay slot during longer fetches.
+// Shows a themed overlay graphic for one particular theme combination, or a
+// plain spinner for every other theme, in the same full-screen overlay slot
+// during longer fetches.
 function toggleLoadingOverlay(show) {
   const overlay = document.getElementById('angel-overlay');
   if (!overlay) return;
