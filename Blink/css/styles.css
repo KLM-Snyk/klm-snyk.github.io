@@ -1406,6 +1406,11 @@ html, body {
   width: 100%;
   overflow: hidden;
 }
+.snyk-status-banner svg {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+}
 .snyk-status-banner-text {
   white-space: nowrap;
   overflow: hidden;
