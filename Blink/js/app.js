@@ -1997,6 +1997,26 @@ async function checkSnykStatus() {
     if (!res.ok) { snykStatusInfo = null; return; }
     const data = await res.json();
     snykStatusInfo = data.status || null;
+    // The aggregate status above only ever gives a generic label like
+    // "Degraded Performance" — the actual incident title ("Degraded
+    // performance on Security.snyk.io with 502 responses.", etc.) lives on
+    // a separate endpoint listing the real unresolved incidents. Prefer
+    // that specific title when one exists; fall back to the generic label
+    // (e.g. for scheduled maintenance, which isn't listed as an "incident").
+    if (snykStatusInfo && snykStatusInfo.indicator !== 'none') {
+      try {
+        const incRes = await fetch('https://status.snyk.io/api/v2/incidents/unresolved.json');
+        if (incRes.ok) {
+          const incData = await incRes.json();
+          const firstIncident = (incData.incidents || [])[0];
+          if (firstIncident && firstIncident.name) {
+            snykStatusInfo.description = firstIncident.name;
+          }
+        }
+      } catch (e) {
+        // Keep the generic label if this second call fails — not fatal.
+      }
+    }
   } catch (e) {
     // Fail silently — a status-check failure shouldn't be treated as an
     // outage, and shouldn't block or clutter the rest of the dashboard.
