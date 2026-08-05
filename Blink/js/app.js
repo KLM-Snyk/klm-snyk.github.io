@@ -2058,9 +2058,15 @@ function renderDashboard() {
   }
 
   // NOSONAR
+  // Truncate defensively — Statuspage's description field is normally a
+  // short canned label ("Degraded Performance" etc.), but nothing stops it
+  // from being much longer for some incident types, and without a limit
+  // here the banner had no bound on how large it could render.
+  const snykDescRaw = (snykStatusInfo && snykStatusInfo.description) || '';
+  const snykDesc = snykDescRaw.length > 100 ? snykDescRaw.slice(0, 100).trim() + '…' : snykDescRaw;
   const snykStatusHtml = (snykStatusInfo && snykStatusInfo.indicator !== 'none') ? `
     <a href="https://status.snyk.io/" target="_blank" class="snyk-status-banner">
-      ⚠️ ${escHtml(snykStatusInfo.description)} — view status page ${ICONS.arrowRight}
+      <span class="snyk-status-banner-text">⚠️ ${escHtml(snykDesc)} — view status page ${ICONS.arrowRight}</span>
     </a>
   ` : '';
   el.innerHTML = `

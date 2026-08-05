@@ -1396,6 +1396,14 @@ html, body {
   border: 1px solid #FCA5A5;
   color: #991B1B;
   transition: var(--transition);
+  max-height: 44px;
+  overflow: hidden;
+}
+.snyk-status-banner-text {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
 }
 .snyk-status-banner:hover {
   background: #FECACA;
