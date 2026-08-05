@@ -1403,6 +1403,10 @@ html, body {
   overflow: hidden;
   text-overflow: ellipsis;
   min-width: 0;
+  color: #991B1B !important;
+}
+[data-dark="true"] .snyk-status-banner-text {
+  color: #FCA5A5 !important;
 }
 .snyk-status-banner:hover {
   background: #FECACA;
