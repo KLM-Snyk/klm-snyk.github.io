@@ -1397,6 +1397,14 @@ html, body {
   color: #991B1B;
   transition: var(--transition);
   min-width: 0;
+  height: 48px;
+  box-sizing: border-box;
+  flex: none;
+  flex-shrink: 0;
+  flex-grow: 0;
+  align-self: flex-start;
+  width: 100%;
+  overflow: hidden;
 }
 .snyk-status-banner-text {
   white-space: nowrap;
