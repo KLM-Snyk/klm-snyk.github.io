@@ -843,6 +843,7 @@ function jiraDisconnect() {
   localStorage.removeItem('uyt_jira_cloud');
   localStorage.removeItem('uyt_jira_issues');
   localStorage.removeItem('uyt_jira_asof');
+  localStorage.removeItem('uyt_jira_refresh_token');
   jiraState.issues = null;
   jiraState.loading = false;
   jiraState.error = null;
@@ -868,8 +869,26 @@ function signOutAll() {
 }
 
 
+// Atlassian access tokens expire in about an hour. Exchanges the stored
+// refresh_token for a new access token (and new refresh_token — Atlassian
+// rotates it each time, so the old one becomes invalid) via the Worker.
+async function refreshJiraToken() {
+  const refreshToken = localStorage.getItem('uyt_jira_refresh_token');
+  if (!refreshToken) return false;
+  try {
+    const res = await fetch('https://uyt-slack-digest.kar-marsten.workers.dev/jira/refresh?rt=' + encodeURIComponent(refreshToken));
+    const data = await res.json();
+    if (data.token) {
+      localStorage.setItem('uyt_jira_token', data.token);
+      if (data.refresh) localStorage.setItem('uyt_jira_refresh_token', data.refresh);
+      return true;
+    }
+  } catch (e) { /* fall through to false */ }
+  return false;
+}
+
 async function fetchJiraIssues() {
-  const token = localStorage.getItem('uyt_jira_token');
+  let token = localStorage.getItem('uyt_jira_token');
   const cloud = localStorage.getItem('uyt_jira_cloud');
   if (!token || !cloud) return;
   jiraState.loading = true;
@@ -877,11 +896,21 @@ async function fetchJiraIssues() {
   renderCases();
   toggleLoadingOverlay(true);
   const projects = getJiraProjects().map(function(p) { return p.key; }).join(',');
+  const buildUrl = function(t) {
+    return 'https://uyt-slack-digest.kar-marsten.workers.dev/jira/issues?t=' + encodeURIComponent(t) + '&c=' + encodeURIComponent(cloud) + (projects ? '&p=' + encodeURIComponent(projects) : '');
+  };
   try {
-    const res = await fetch(
-      'https://uyt-slack-digest.kar-marsten.workers.dev/jira/issues?t=' + encodeURIComponent(token) + '&c=' + encodeURIComponent(cloud) + (projects ? '&p=' + encodeURIComponent(projects) : ''),
-      { headers: { 'Content-Type': 'application/json' } }
-    );
+    let res = await fetch(buildUrl(token), { headers: { 'Content-Type': 'application/json' } });
+    // Atlassian tokens only last ~1 hour — without this retry, the
+    // connection would silently start failing every hour, requiring a full
+    // manual re-auth even though a valid refresh_token was sitting unused.
+    if (res.status === 401) {
+      const refreshed = await refreshJiraToken();
+      if (refreshed) {
+        token = localStorage.getItem('uyt_jira_token');
+        res = await fetch(buildUrl(token), { headers: { 'Content-Type': 'application/json' } });
+      }
+    }
     const data = await res.json();
     if (data.issues) {
       jiraState.issues = data.issues;
@@ -1606,6 +1635,7 @@ function triggerJiraOAuth() {
       clearInterval(poll);
       localStorage.setItem('uyt_jira_token', event.data.token);
       localStorage.setItem('uyt_jira_cloud', event.data.cloud || '');
+      if (event.data.refresh) localStorage.setItem('uyt_jira_refresh_token', event.data.refresh);
       window.removeEventListener('message', _handleJiraMessage);
       if (popup && !popup.closed) popup.close();
       _advanceJiraStep();
@@ -1717,6 +1747,7 @@ function triggerSlackOAuth() {
       _slackAuthHandled = true;
       clearInterval(poll);
       localStorage.setItem('uyt_slack_token', event.data.token);
+      if (event.data.refresh) localStorage.setItem('uyt_slack_refresh_token', event.data.refresh);
       window.removeEventListener('message', _handleSlackMessage);
       if (popup && !popup.closed) popup.close();
       _advanceSlackStep();
@@ -1915,6 +1946,24 @@ const slackDigestState = {
   workday: JSON.parse(localStorage.getItem('uyt_digest_workday') || 'null'),
 };
 
+// Only relevant if Slack's Token Rotation is enabled for this app (in which
+// case access tokens expire ~12h); harmless no-op otherwise since there'd be
+// no refresh token stored to use.
+async function refreshSlackToken() {
+  const refreshToken = localStorage.getItem('uyt_slack_refresh_token');
+  if (!refreshToken) return false;
+  try {
+    const res = await fetch('https://uyt-slack-digest.kar-marsten.workers.dev/oauth/refresh?rt=' + encodeURIComponent(refreshToken));
+    const data = await res.json();
+    if (data.token) {
+      localStorage.setItem('uyt_slack_token', data.token);
+      if (data.refresh) localStorage.setItem('uyt_slack_refresh_token', data.refresh);
+      return true;
+    }
+  } catch (e) { /* fall through to false */ }
+  return false;
+}
+
 async function fetchSlackDigest() {
   const workerUrl = 'https://uyt-slack-digest.kar-marsten.workers.dev';
   if (!workerUrl) {
@@ -1931,7 +1980,19 @@ async function fetchSlackDigest() {
 
   try {
     const channels = getSlackChannels();
-    const res = await fetch(workerUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ channels, userName: calState.userProfile?.name || state.prefs.userName || 'the user', userEmail: calState.userProfile?.email || '', slackToken: localStorage.getItem('uyt_slack_token') || '' }) });
+    const buildBody = function() {
+      return JSON.stringify({ channels, userName: calState.userProfile?.name || state.prefs.userName || 'the user', userEmail: calState.userProfile?.email || '', slackToken: localStorage.getItem('uyt_slack_token') || '' });
+    };
+    let res = await fetch(workerUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: buildBody() });
+    // Only relevant if Token Rotation is enabled for this Slack app — if so,
+    // access tokens expire (~12h) and would otherwise just start silently
+    // failing with no way to renew short of a full manual re-auth.
+    if (res.status === 401) {
+      const refreshed = await refreshSlackToken();
+      if (refreshed) {
+        res = await fetch(workerUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: buildBody() });
+      }
+    }
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
       throw new Error(err.error || `HTTP ${res.status}`);
@@ -3197,8 +3258,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     const params = new URLSearchParams(window.location.hash.slice(1));
     const token = params.get('jira-token');
     const cloud = params.get('jira-cloud');
+    const refresh = params.get('jira-refresh');
     if (token) {
-      window.opener.postMessage({ type: 'jira-token', token, cloud }, 'https://klm-snyk.github.io');
+      window.opener.postMessage({ type: 'jira-token', token, cloud, refresh }, 'https://klm-snyk.github.io');
       window.close();
     }
   }
@@ -3207,8 +3269,9 @@ document.addEventListener('DOMContentLoaded', async () => {
   if (window.opener && window.location.hash.includes('slack-token=')) {
     const params = new URLSearchParams(window.location.hash.slice(1));
     const token = params.get('slack-token');
+    const refresh = params.get('slack-refresh');
     if (token) {
-      window.opener.postMessage({ type: 'slack-token', token: token }, 'https://klm-snyk.github.io');
+      window.opener.postMessage({ type: 'slack-token', token: token, refresh: refresh }, 'https://klm-snyk.github.io');
       window.close();
     }
   }
@@ -3219,8 +3282,10 @@ document.addEventListener('DOMContentLoaded', async () => {
   if (hash.includes('slack-token=')) {
     const params = new URLSearchParams(hash.slice(1));
     const token = params.get('slack-token');
+    const refresh = params.get('slack-refresh');
     if (token) {
       localStorage.setItem('uyt_slack_token', token);
+      if (refresh) localStorage.setItem('uyt_slack_refresh_token', refresh);
       localStorage.removeItem('uyt_pre_oauth_state');
       window.history.replaceState(null, '', window.location.pathname);
       _returnedFromSlackOAuth = true;
@@ -3231,7 +3296,13 @@ document.addEventListener('DOMContentLoaded', async () => {
     const params = new URLSearchParams(hash.slice(1));
     const token = params.get('jira-token');
     const cloud = params.get('jira-cloud');
-    if (token) { localStorage.setItem('uyt_jira_token', token); localStorage.setItem('uyt_jira_cloud', cloud || ''); window.history.replaceState(null, '', window.location.pathname); }
+    const refresh = params.get('jira-refresh');
+    if (token) {
+      localStorage.setItem('uyt_jira_token', token);
+      localStorage.setItem('uyt_jira_cloud', cloud || '');
+      if (refresh) localStorage.setItem('uyt_jira_refresh_token', refresh);
+      window.history.replaceState(null, '', window.location.pathname);
+    }
   }
   if (hash.includes('jira-error=')) {
     const params = new URLSearchParams(hash.slice(1));

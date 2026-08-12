@@ -197,3 +197,14 @@ git add -A && git commit -m "message" && git push
 - Status page information
 - Workday tasks (direct Workday API)
 - Possible: configurable Trends embeds UI in Settings (currently hardcoded arrays in `app.js` by design — user chose hardcode-for-now over building an add/remove UI)
+
+## Fixed: OAuth tokens expiring with no refresh (v18.93)
+User reported "connectivity gets dropped very quickly" across multiple integrations. Root cause confirmed by code inspection: **neither Jira nor Slack ever implemented token refresh**, despite both having the pieces in place to support it.
+
+- **Jira (severe — ~1hr token life):** `offline_access` scope was already being requested at `/jira/start` (specifically what makes Atlassian issue a `refresh_token`), but the callback discarded `tokenData.refresh_token` entirely, only ever passing back `access_token`. Atlassian access tokens expire in about an hour, so Jira was silently disconnecting roughly every hour with no way to renew short of a full manual re-auth.
+- **Also found along the way:** the Worker's `/jira/issues` route always returned HTTP 200 regardless of whether the underlying Atlassian call actually succeeded — it just relayed Atlassian's JSON body verbatim. This meant even *with* refresh logic added, the frontend would have had no way to detect an expired-token failure to know it should refresh. Fixed to propagate the real upstream status code.
+- **Slack (only if Token Rotation is enabled for this app — unconfirmed either way):** same pattern — `authed_user.refresh_token` was never checked for or stored. If this Slack app has Token Rotation enabled in its settings, tokens expire ~12h; if not, this fix is a defensive no-op since there'd be nothing to refresh.
+
+**Fix, both services:** Worker callbacks (`/oauth/callback`, `/jira/callback`) now capture the refresh token and pass it back to the frontend via the URL hash (`&jira-refresh=`/`&slack-refresh=`), stored in `uyt_jira_refresh_token`/`uyt_slack_refresh_token`. New Worker routes `/jira/refresh` and `/oauth/refresh` exchange a stored refresh token for a fresh access token (both providers rotate the refresh token itself on each use, so the new one must overwrite the old). Frontend `fetchJiraIssues()`/`fetchSlackDigest()` now retry once automatically on a 401: call the refresh endpoint, update the stored token, retry the original request — all transparent to the person, no re-auth prompt unless the refresh token itself has also expired/been revoked. `jiraDisconnect()`/`slackDisconnect()` updated to also clear the new refresh-token keys.
+
+**Note:** this only fixes tokens expiring on their own schedule. If someone explicitly revokes access (e.g. via their Google/Slack/Atlassian account security settings) or an org admin revokes the app, no refresh token will save that — a real re-auth is still required in that case, which is expected/correct behavior, not a bug.

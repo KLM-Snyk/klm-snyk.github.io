@@ -44,6 +44,7 @@ function slackDisconnect() {
   slackState.threadCount = null;
   slackState.fetchError  = null;
   localStorage.removeItem(SLACK_TOKEN_KEY);
+  localStorage.removeItem('uyt_slack_refresh_token');
   // Also clear cached digest data — otherwise stale Slack digest/Workday
   // content keeps showing on the dashboard even though nothing's connected,
   // since slackDigestState is initialized straight from these localStorage
