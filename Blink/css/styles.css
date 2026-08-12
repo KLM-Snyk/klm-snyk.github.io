@@ -2839,25 +2839,6 @@ button, a.setup-btn-primary, a.cal-connect-btn {
 .trends-embed-row { display:flex; gap:24px; align-items:flex-start; }
 .trends-embed-row .trends-embed-block { flex:1; min-width:0; }
 
-/* Backlog chart (Cases screen) — vertical stacked columns */
-.backlog-chart { margin-bottom:24px; padding:16px; background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); }
-.backlog-chart-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:14px; flex-wrap:wrap; gap:8px; }
-.backlog-chart-title { font-size:14px; font-weight:700; color:var(--text); }
-.backlog-chart-body { display:flex; align-items:flex-start; }
-.backlog-axis { display:flex; flex-direction:column; justify-content:space-between; align-items:flex-end; height:180px; padding-right:10px; margin-right:8px; border-right:1px solid var(--border); flex-shrink:0; }
-.backlog-axis-tick { font-size:10px; color:var(--text-secondary); line-height:1; }
-.backlog-cols-wrap { flex:1; min-width:0; overflow-x:auto; overflow-y:hidden; padding-bottom:135px; }
-.backlog-cols { display:flex; align-items:flex-end; gap:11px; height:180px; min-width:min-content; }
-.backlog-col { display:flex; flex-direction:column; align-items:center; width:22px; height:100%; flex-shrink:0; position:relative; }
-.backlog-col-track { width:18px; height:100%; display:flex; flex-direction:column-reverse; }
-.backlog-col-bar { width:100%; display:flex; flex-direction:column-reverse; border-radius:3px 3px 0 0; overflow:hidden; min-height:2px; }
-.backlog-col-segment { width:100%; transition:opacity var(--transition); }
-.backlog-col-segment:hover { opacity:0.75; }
-.backlog-col-name { position:absolute; top:100%; left:50%; margin-top:6px; font-size:10px; color:var(--text-secondary); white-space:nowrap; transform-origin:top left; transform:rotate(75deg); }
-.backlog-legend-side { display:flex; flex-direction:column; gap:8px; flex-shrink:0; min-width:150px; padding-left:16px; margin-left:8px; border-left:1px solid var(--border); }
-.backlog-legend-item { display:flex; align-items:center; gap:6px; font-size:11px; color:var(--text-secondary); }
-.backlog-legend-swatch { width:10px; height:10px; border-radius:2px; flex-shrink:0; }
-
 /* Mail screen */
 .mail-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:12px; padding-bottom:12px; border-bottom:1px solid var(--border); }
 .mail-meta { font-size:13px; color:var(--text-secondary); }
