@@ -62,6 +62,14 @@ function slackDisconnect() {
     slackDigestState.workday = null;
     slackDigestState.error = null;
   }
+  if (typeof supportCasesState !== 'undefined') {
+    supportCasesState.cases = null;
+    supportCasesState.rawHtml = null;
+    supportCasesState.error = null;
+    supportCasesState.asOf = null;
+    supportCasesState.refreshRequested = false;
+  }
   if (typeof renderSettingsPanel === 'function') renderSettingsPanel();
   if (typeof renderDashboard     === 'function') renderDashboard();
+  if (typeof renderSupportCases  === 'function') renderSupportCases();
 }

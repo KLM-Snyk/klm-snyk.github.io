@@ -238,6 +238,10 @@ function navigate(screen) {
     renderCases();
     if (!jiraState.issues && !jiraState.loading && localStorage.getItem('uyt_jira_token')) fetchJiraIssues();
   }
+  if (screen === 'supportcases') {
+    renderSupportCases();
+    if (!supportCasesState.cases && !supportCasesState.loading && localStorage.getItem('uyt_slack_token')) fetchSupportCases();
+  }
   if (screen === 'workday') {
     renderWorkday();
     if (slackIsConnected() && !slackDigestState.workday && !slackDigestState.loading) fetchSlackDigest().then(renderWorkday);
@@ -1061,6 +1065,192 @@ function renderWorkday() {
     '<div class="mail-header"><div class="mail-meta">' + slackDigestState.workday.length + ' notification' + (slackDigestState.workday.length === 1 ? '' : 's') + ' · last 30 days</div></div>' +
     summaryHtml + groupsHtml;
 }
+
+/* ============================================================
+   Support Cases (Snowflake data relayed via a Slack Canvas)
+   ============================================================ */
+// NOT live — this only reflects whatever was in the canvas the last time
+// someone (or the Refresh button) asked Claude Tag to re-query Snowflake
+// and update it. This exists because a genuinely live connection would
+// require Snowflake/Salesforce admin approval that isn't available; see
+// context.md for the full history of what else was tried and why this is
+// where things landed.
+//
+// PARSING CAVEAT: the canvas-to-HTML conversion in parseCasesCanvasHtml()
+// below has not been empirically verified against Slack's real output as of
+// this writing — files:read is a newly-added scope, so nobody has
+// re-authenticated yet to actually test it. If cases don't show up
+// correctly after that, inspect the raw HTML (supportCasesState.rawHtml is
+// kept around for exactly this) and adjust the parsing to match.
+
+const CASES_CANVAS_ID = 'F0BSKGT6K61';
+const CASES_REFRESH_CHANNEL = 'C0BFMN42UJ0';
+
+const supportCasesState = {
+  loading: false,
+  refreshRequested: false,
+  cases: null,      // all parsed rows, unfiltered
+  rawHtml: null,     // kept for debugging the parser against real output
+  error: null,
+  asOf: null,
+  search: '',
+};
+
+// Walks the canvas's downloaded HTML structurally (H2 = owner name, the
+// table immediately under it = that owner's cases) rather than assuming
+// exact nesting, since the real output hasn't been verified yet.
+function parseCasesCanvasHtml(html) {
+  const doc = new DOMParser().parseFromString(html, 'text/html');
+  const cases = [];
+  let currentOwner = null;
+  function walk(nodes) {
+    nodes.forEach(function(node) {
+      const tag = (node.tagName || '').toUpperCase();
+      if (tag === 'H2') {
+        currentOwner = node.textContent.trim();
+      } else if (tag === 'TABLE') {
+        const rows = Array.from(node.querySelectorAll('tr'));
+        // Skip the header row (first <tr>, whether it uses <th> or <td>)
+        rows.slice(1).forEach(function(tr) {
+          const cells = Array.from(tr.children).map(function(c) { return c.textContent.trim(); });
+          if (cells.length >= 4) {
+            cases.push({
+              owner: currentOwner,
+              caseId: cells[0],
+              status: cells[1],
+              subject: cells[2],
+              lastModified: cells[3],
+            });
+          }
+        });
+      }
+      if (node.children && node.children.length) walk(Array.from(node.children));
+    });
+  }
+  if (doc.body) walk(Array.from(doc.body.children));
+  return cases;
+}
+
+async function fetchSupportCases() {
+  const token = localStorage.getItem('uyt_slack_token');
+  if (!token) return;
+  supportCasesState.loading = true;
+  supportCasesState.error = null;
+  renderSupportCases();
+  try {
+    const res = await fetch('https://uyt-slack-digest.kar-marsten.workers.dev/slack/read-cases-canvas?t=' + encodeURIComponent(token));
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+    supportCasesState.rawHtml = data.html;
+    supportCasesState.cases = parseCasesCanvasHtml(data.html || '');
+    supportCasesState.asOf = new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+  } catch (e) {
+    supportCasesState.error = e.message;
+  } finally {
+    supportCasesState.loading = false;
+    renderSupportCases();
+    renderDashboard();
+  }
+}
+
+// Doesn't wait for or return the refreshed data — it just asks Claude Tag to
+// go do the work in Slack, which happens asynchronously on its own time.
+async function refreshSupportCasesCanvas() {
+  const token = localStorage.getItem('uyt_slack_token');
+  if (!token) return;
+  supportCasesState.refreshRequested = true;
+  renderSupportCases();
+  try {
+    const res = await fetch('https://uyt-slack-digest.kar-marsten.workers.dev/slack/refresh-cases', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ slackToken: token }),
+    });
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+  } catch (e) {
+    supportCasesState.error = 'Refresh request failed: ' + e.message;
+    renderSupportCases();
+  }
+}
+
+function renderSupportCases() {
+  const el = document.getElementById('screen-supportcases-content');
+  if (!el) return;
+
+  if (!localStorage.getItem('uyt_slack_token')) {
+    el.innerHTML = '<div class="cal-connect-prompt"><div class="cal-connect-icon">🗂️</div><h3>Connect Slack first</h3><p>Support case data is relayed through a Slack Canvas — connect Slack to read it.</p></div>';
+    return;
+  }
+  if (supportCasesState.loading && !supportCasesState.cases) {
+    el.innerHTML = '<div class="cal-connect-prompt"><div class="cal-connect-icon">⏳</div><h3>Loading support cases…</h3></div>';
+    return;
+  }
+  if (supportCasesState.error) {
+    el.innerHTML = '<div class="cal-connect-prompt" style="margin-top:32px"><div class="cal-connect-icon">⚠️</div><h3>Error loading cases</h3><p>' + escHtml(supportCasesState.error) + '</p><button class="connect-btn" onclick="fetchSupportCases()">Try again</button></div>';
+    return;
+  }
+  if (!supportCasesState.cases) {
+    el.innerHTML = '<div class="cal-connect-prompt"><div class="cal-connect-icon">🗂️</div><h3>Ready to load</h3><button class="connect-btn" onclick="fetchSupportCases()">Load cases</button></div>';
+    return;
+  }
+
+  const myName = (calState.userProfile?.name || state.prefs.userName || '').trim();
+  const mine = supportCasesState.cases.filter(function(c) {
+    return myName && c.owner && c.owner.toLowerCase().includes(myName.toLowerCase());
+  });
+  const q = supportCasesState.search.trim().toLowerCase();
+  const filtered = q ? mine.filter(function(c) {
+    return c.subject.toLowerCase().includes(q) || c.caseId.toLowerCase().includes(q);
+  }) : mine;
+
+  const byStatus = {};
+  filtered.forEach(function(c) {
+    const s = c.status || 'Unknown';
+    if (!byStatus[s]) byStatus[s] = [];
+    byStatus[s].push(c);
+  });
+  const STATUS_ORDER = ['New', 'Open', 'Pending', 'Waiting for Internal', 'On-Hold', 'Scheduled', 'Meeting Scheduled', 'Submitted'];
+  const statusEntries = Object.entries(byStatus).sort(function(a, b) {
+    const ai = STATUS_ORDER.indexOf(a[0]), bi = STATUS_ORDER.indexOf(b[0]);
+    if (ai === -1 && bi === -1) return b[1].length - a[1].length;
+    if (ai === -1) return 1;
+    if (bi === -1) return -1;
+    return ai - bi;
+  });
+
+  const searchHtml = '<div class="mail-search-bar">' +
+    '<input class="mail-search-input" placeholder="🔍 Subject or case number…" value="' + escHtml(supportCasesState.search) + '" oninput="supportCasesState.search=this.value;renderSupportCases()">' +
+    '</div>';
+
+  const groupsHtml = statusEntries.map(function(entry) {
+    const status = entry[0], list = entry[1];
+    const rows = list.map(function(c) {
+      return '<div class="cases-issue">' +
+        '<span class="cases-issue-key">' + escHtml(c.caseId) + '</span>' +
+        '<span class="cases-issue-summary">' + escHtml(c.subject || '(no subject)') + '</span>' +
+        '<span class="cases-issue-status">' + escHtml(c.lastModified || '') + '</span>' +
+        '</div>';
+    }).join('');
+    return '<div class="mail-label-group">' +
+      '<div class="mail-label-header"><span class="mail-label-name">' + escHtml(status) + '</span><span class="mail-label-badge" style="background:var(--primary)">' + list.length + '</span></div>' +
+      '<div class="cases-issue-list">' + rows + '</div>' +
+      '</div>';
+  }).join('') || '<div style="padding:24px;text-align:center;color:var(--text-secondary)">No open cases match' + (myName ? ' for "' + escHtml(myName) + '"' : '') + '</div>';
+
+  el.innerHTML =
+    '<div class="mail-header"><div class="mail-meta">' +
+      (supportCasesState.asOf ? 'Canvas last read ' + escHtml(supportCasesState.asOf) : '') +
+      ' · ' + filtered.length + ' open' +
+    '</div>' +
+    '<div style="display:flex;gap:8px">' +
+      '<button class="connect-btn" onclick="refreshSupportCasesCanvas()" style="padding:8px 16px;font-size:13px">' + (supportCasesState.refreshRequested ? '✓ Refresh requested' : '@Claude Refresh') + '</button>' +
+      '<button class="connect-btn" onclick="fetchSupportCases()" style="padding:8px 16px;font-size:13px">↺ Reload canvas</button>' +
+    '</div></div>' +
+    (supportCasesState.refreshRequested ? '<p style="font-size:12px;color:var(--text-secondary);margin:-4px 0 12px">Requested — Claude Tag will update the canvas asynchronously in Slack, then click "Reload canvas" once it\'s done.</p>' : '') +
+    searchHtml + groupsHtml;
+}
+
 
 
 function casesApplySearch(issues) {
@@ -2197,13 +2387,24 @@ function renderDashboard() {
               '<div class="dash-card-sub">Your open Jira cases</div><div class="dash-card-action">View cases ' + ICONS.arrowRight + '</div>'}
           </div>
 
-          <div class="dash-card" onclick="window.open('https://snyksec.lightning.force.com/lightning/o/Case/list?filterName=All_Unassigned_Cases','_blank')" style="cursor:pointer">
+          <div class="dash-card" onclick="navigate('supportcases')" style="cursor:pointer">
             <div class="dash-card-header">
               <div class="dash-card-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M20 7h-3V6a3 3 0 00-3-3h-4a3 3 0 00-3 3v1H4a1 1 0 00-1 1v11a2 2 0 002 2h14a2 2 0 002-2V8a1 1 0 00-1-1zM9 6a1 1 0 011-1h4a1 1 0 011 1v1H9z"/></svg></div>
               <div class="dash-card-title">Support Cases</div>
             </div>
-            <div class="dash-card-sub">Unassigned cases in Salesforce</div>
-            <div class="dash-card-action">Open in Salesforce ${ICONS.arrowRight}</div>
+            ${!localStorage.getItem('uyt_slack_token') ? `
+              <div class="dash-card-sub">Connect Slack to see cases</div>
+            ` : supportCasesState.loading ? '<div class="dash-card-sub" style="margin-top:8px">⏳ Loading…</div>' :
+              (() => {
+                const myName = (calState.userProfile?.name || state.prefs.userName || '').trim();
+                const mine = (supportCasesState.cases || []).filter(c => myName && c.owner && c.owner.toLowerCase().includes(myName.toLowerCase()));
+                if (!supportCasesState.cases) return '<div class="dash-card-sub">Your open support cases</div><div class="dash-card-action">View cases ' + ICONS.arrowRight + '</div>';
+                if (mine.length === 0) return '<div class="dash-card-sub">No open cases ✅</div>';
+                const byStatus = {};
+                mine.forEach(c => { const s = c.status || 'Unknown'; byStatus[s] = (byStatus[s]||0)+1; });
+                return Object.entries(byStatus).map(([s,c]) => '<div class="sf-tier-row"><span class="sf-tier-label">' + escHtml(s) + '</span><span class="sf-tier-stat">' + c + '</span></div>').join('') +
+                  '<div class="dash-card-action" style="margin-top:6px">View all ' + ICONS.arrowRight + '</div>';
+              })()}
           </div>
 
           <div class="dash-card" onclick="navigate('drive')">
@@ -3270,6 +3471,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Auto-fetch Jira issues if connected
     if (localStorage.getItem('uyt_jira_token') && !jiraState.issues) {
       setTimeout(function() { fetchJiraIssues(); }, 2000);
+    }
+    // Auto-fetch support cases canvas if connected and not already loaded
+    if (localStorage.getItem('uyt_slack_token') && !supportCasesState.cases) {
+      setTimeout(function() { fetchSupportCases(); }, 2200);
     }
     // Auto-fetch digest if no cache — small delay to ensure token is ready
       if (!slackDigestState.html && localStorage.getItem('uyt_slack_token')) {
