@@ -358,7 +358,13 @@ async function calFetchUpcoming(daysAhead = 7) {
     calendarId:   'primary',
     timeMin:      new Date(now.getFullYear(), now.getMonth(), 1).toISOString(),
     timeMax:      end.toISOString(),
-    maxResults:   100,
+    // Fetches from the 1st of the month (needed for the Month view grid),
+    // not from "now" — for anyone with a dense calendar, results ordered
+    // chronologically from the 1st can exhaust a small cap before ever
+    // reaching today, silently truncating away later meetings today and
+    // beyond. Raised well above the old 100 to leave real headroom; Google
+    // Calendar's API allows up to 2500 per request.
+    maxResults:   500,
     singleEvents: 'true',
     orderBy:      'startTime',
   });
