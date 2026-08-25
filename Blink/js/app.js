@@ -292,10 +292,9 @@ async function refreshApp() {
 
 // Default channels
 const SLACK_DEFAULT_CHANNELS = [
-  { id: 'C0885BMRNBA', name: 'support-leads' },
-  { id: 'C0AFSPT6YK1', name: 'the-four-horsemen-of-support' },
   { id: 'C07JV4M7BAT', name: 'cx-support-sla' },
   { id: 'C08K5GUMVHS', name: 'cs-support-chatter' },
+  { id: 'C5CNH3MTM', name: 'cs-support' },
 ];
 
 function getSlackChannels() {
