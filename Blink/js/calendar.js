@@ -783,19 +783,32 @@ function calTodayEvents() {
 
 function calUpcomingEvents() {
   const now = new Date();
-  const todayStr = now.toISOString().slice(0, 10);
+  // Built from local date components, not toISOString() (which converts to
+  // UTC first) — toISOString() can already show tomorrow's date during
+  // evening hours in EST/similar zones, which would silently misclassify
+  // both all-day and timed events near the UTC day boundary.
+  const todayStr = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-' + String(now.getDate()).padStart(2, '0');
+  const todayLocal = now.toDateString();
   return calState.events.filter(e => {
     const start = (e.start || '').slice(0, 10);
     if (e.allDay) {
-      // All-day events don't have a meaningful start time to compare
-      // against `now` — keep them if today or later, by date alone.
-      return start >= todayStr;
+      // Must be today specifically, not "today or later" — this previously
+      // had no upper bound, so any future all-day event (tomorrow, next
+      // week, etc.) also qualified as "today".
+      return start === todayStr;
     }
-    // Timed events: only genuinely upcoming ones — this used to compare
-    // dates only, so events from earlier today (already passed) were
-    // incorrectly included, crowding out real upcoming events once the
-    // dashboard capped the list length.
-    return new Date(e.start) >= now;
+    // Timed events: must be both not-yet-passed AND actually today — this
+    // previously had no upper bound at all (just `>= now`), so any future
+    // event qualified regardless of date. Once today's remaining meetings
+    // ran out, tomorrow's early meetings silently filled the rest of the
+    // list while the "X today" label (built from the correctly-bounded
+    // calTodayEvents()) kept counting only real today events — two
+    // different data sources feeding one card, showing tomorrow's meetings
+    // under a "today" heading. toDateString() compares in local time,
+    // avoiding the UTC-shift issue that would otherwise misclassify
+    // evening events near a UTC day boundary.
+    const eventDate = new Date(e.start);
+    return eventDate >= now && eventDate.toDateString() === todayLocal;
   });
 }
 

@@ -3482,18 +3482,29 @@ document.addEventListener('DOMContentLoaded', async () => {
     navigate('dashboard');
     try {
       await calInit();
+    } catch (e) {
+      console.error('calInit error:', e);
+    }
+    // Everything below is independent of calInit() succeeding — these are
+    // separate features (Slack, Jira, Support Cases) and a Google Calendar
+    // failure shouldn't cascade into silently blocking all of them. This was
+    // a real bug: previously a single throw from calInit() would abort the
+    // rest of this try block entirely, which is why the Support Cases tile
+    // (and Jira, and the digest) sometimes only loaded after visiting their
+    // dedicated screens directly, bypassing this chain.
+    try {
       slackInit();
       // Fetch Gmail label breakdown lazily
-    if (calIsConnected()) calFetchGmailLabelBreakdown().then(() => renderDashboard());
-    // Auto-fetch Jira issues if connected
-    if (localStorage.getItem('uyt_jira_token') && !jiraState.issues) {
-      setTimeout(function() { fetchJiraIssues(); }, 2000);
-    }
-    // Auto-fetch support cases canvas if connected and not already loaded
-    if (localStorage.getItem('uyt_slack_token') && !supportCasesState.cases) {
-      setTimeout(function() { fetchSupportCases(); }, 2200);
-    }
-    // Auto-fetch digest if no cache — small delay to ensure token is ready
+      if (calIsConnected()) calFetchGmailLabelBreakdown().then(() => renderDashboard());
+      // Auto-fetch Jira issues if connected
+      if (localStorage.getItem('uyt_jira_token') && !jiraState.issues) {
+        setTimeout(function() { fetchJiraIssues(); }, 2000);
+      }
+      // Auto-fetch support cases canvas if connected and not already loaded
+      if (localStorage.getItem('uyt_slack_token') && !supportCasesState.cases) {
+        setTimeout(function() { fetchSupportCases(); }, 2200);
+      }
+      // Auto-fetch digest if no cache — small delay to ensure token is ready
       if (!slackDigestState.html && localStorage.getItem('uyt_slack_token')) {
         setTimeout(function() {
           fetchSlackDigest().then(() => { renderDashboard(); renderSlack(); });
