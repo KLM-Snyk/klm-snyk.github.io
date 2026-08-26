@@ -1112,11 +1112,19 @@ function parseCasesCanvasHtml(html) {
         const rows = Array.from(node.querySelectorAll('tr'));
         // Skip the header row (first <tr>, whether it uses <th> or <td>)
         rows.slice(1).forEach(function(tr) {
-          const cells = Array.from(tr.children).map(function(c) { return c.textContent.trim(); });
+          const tds = Array.from(tr.children);
+          const cells = tds.map(function(c) { return c.textContent.trim(); });
           if (cells.length >= 4) {
+            // Case ID cell may contain a link to the Salesforce record — not
+            // present on older canvas rows populated before this was added,
+            // so this is optional and falls back to plain text cleanly.
+            // Slack's Canvas HTML renderer uses a custom <lnk href="..."> tag
+            // here, not a standard <a> tag — confirmed against real output.
+            const link = tds[0] ? tds[0].querySelector('lnk') : null;
             cases.push({
               owner: currentOwner,
               caseId: cells[0],
+              caseUrl: link ? link.getAttribute('href') : null,
               status: cells[1],
               subject: cells[2],
               lastModified: cells[3],
@@ -1161,10 +1169,14 @@ async function refreshSupportCasesCanvas() {
   supportCasesState.refreshRequested = true;
   renderSupportCases();
   try {
+    // Scoped to the logged-in person only — asking for all ~1,000 rows
+    // across every owner every time was slow to process and unnecessary;
+    // each person just refreshes their own section when they need it.
+    const ownerName = (calState.userProfile?.name || state.prefs.userName || '').trim();
     const res = await fetch('https://uyt-slack-digest.kar-marsten.workers.dev/slack/refresh-cases', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ slackToken: token }),
+      body: JSON.stringify({ slackToken: token, ownerName: ownerName }),
     });
     const data = await res.json();
     if (data.error) throw new Error(data.error);
@@ -1226,11 +1238,16 @@ function renderSupportCases() {
   const groupsHtml = statusEntries.map(function(entry) {
     const status = entry[0], list = entry[1];
     const rows = list.map(function(c) {
-      return '<div class="cases-issue">' +
+      // Older canvas rows populated before the Salesforce link was added
+      // won't have caseUrl — falls back to a plain, non-clickable div.
+      const safeUrl = c.caseUrl && /^https:\/\//.test(c.caseUrl) ? c.caseUrl : null;
+      const tag = safeUrl ? 'a' : 'div';
+      const hrefAttr = safeUrl ? ' href="' + escHtml(safeUrl) + '" target="_blank" rel="noopener"' : '';
+      return '<' + tag + ' class="cases-issue"' + hrefAttr + '>' +
         '<span class="cases-issue-key">' + escHtml(c.caseId) + '</span>' +
         '<span class="cases-issue-summary">' + escHtml(c.subject || '(no subject)') + '</span>' +
         '<span class="cases-issue-status">' + escHtml(c.lastModified || '') + '</span>' +
-        '</div>';
+        '</' + tag + '>';
     }).join('');
     return '<div class="mail-label-group">' +
       '<div class="mail-label-header"><span class="mail-label-name">' + escHtml(status) + '</span><span class="mail-label-badge" style="background:var(--primary)">' + list.length + '</span></div>' +
