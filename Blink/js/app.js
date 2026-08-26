@@ -1260,11 +1260,20 @@ function renderSupportCases() {
       (supportCasesState.asOf ? 'Canvas last read ' + escHtml(supportCasesState.asOf) : '') +
       ' · ' + filtered.length + ' open' +
     '</div>' +
+    // "@Claude Refresh" button removed (not just hidden) — it posts a
+    // tagged Slack message that nothing currently processes, since this
+    // workspace runs the legacy "Claude in Slack" bot, not Claude Tag. The
+    // underlying refreshSupportCasesCanvas() function and its Worker route
+    // (/slack/refresh-cases) are left completely intact — re-add this
+    // button (and it should work exactly as designed, no other changes
+    // needed) once Claude Tag is actually enabled for the workspace. The
+    // message it posts already includes the person's name via ownerName,
+    // so once Claude Tag can also see the blink-refresh skill in the org's
+    // real skill catalog (see /mnt/skills/user/blink-refresh/SKILL.md),
+    // it should be able to follow it automatically from that same message.
     '<div style="display:flex;gap:8px">' +
-      '<button class="connect-btn" onclick="refreshSupportCasesCanvas()" style="padding:8px 16px;font-size:13px">' + (supportCasesState.refreshRequested ? '✓ Refresh requested' : '@Claude Refresh') + '</button>' +
       '<button class="connect-btn" onclick="fetchSupportCases()" style="padding:8px 16px;font-size:13px">↺ Reload canvas</button>' +
     '</div></div>' +
-    (supportCasesState.refreshRequested ? '<p style="font-size:12px;color:var(--text-secondary);margin:-4px 0 12px">Requested — Claude Tag will update the canvas asynchronously in Slack, then click "Reload canvas" once it\'s done.</p>' : '') +
     searchHtml + groupsHtml;
 }
 
