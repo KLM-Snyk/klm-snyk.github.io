@@ -37,7 +37,6 @@
       flex-direction: column;
     }
 
-    /* ── Header ── */
     .app-header {
       position: absolute;
       top: 0; left: 0; right: 0;
@@ -67,7 +66,6 @@
     .header-back:hover { background: var(--primary-light); }
     .header-back svg { width: 13px; height: 13px; }
 
-    /* ── Hero (photo slideshow) ── */
     .hero {
       position: relative;
       height: 520px;
@@ -123,7 +121,6 @@
       pointer-events: none;
     }
 
-    /* ── Content (solid background) ── */
     .content {
       flex: 1;
       background: var(--bg);
@@ -134,7 +131,6 @@
       margin: 0 auto;
     }
 
-    /* ── Moz-o-meter ── */
     .mozometer {
       background: var(--surface);
       border: 1px solid var(--border);
@@ -164,7 +160,6 @@
       letter-spacing: 0.5px; color: var(--text-secondary);
     }
 
-    /* ── Section header ── */
     .section-header {
       display: flex; align-items: center; justify-content: space-between;
       margin-bottom: 12px;
@@ -175,7 +170,6 @@
     }
     .updated-note { font-size: 11px; color: var(--text-secondary); }
 
-    /* ── Show cards ── */
     .show-list { display: flex; flex-direction: column; gap: 10px; }
     .show-card {
       background: var(--surface);
@@ -225,7 +219,6 @@
     .risk-chip.good    { background: rgba(16,185,129,0.12); color: #6ee7b7; border-color: rgba(16,185,129,0.25); }
     .risk-chip.neutral { background: rgba(255,255,255,0.05); color: var(--text-secondary); border-color: var(--border); }
 
-    /* ── Disclaimer ── */
     .disclaimer {
       margin-top: 28px; padding: 14px 18px;
       background: var(--surface); border: 1px solid var(--border);
@@ -234,7 +227,6 @@
     }
     .disclaimer strong { color: var(--text); }
 
-    /* ── Footer ── */
     footer {
       text-align: center; padding: 14px;
       font-size: 12px; color: var(--text-secondary);
@@ -244,7 +236,6 @@
     footer a { color: var(--primary); text-decoration: none; }
     footer a:hover { text-decoration: underline; }
 
-    /* ── Risk colour helpers ── */
     .low    { color: var(--risk-low); }
     .medium { color: var(--risk-medium); }
     .high   { color: var(--risk-high); }
@@ -255,7 +246,6 @@
 </head>
 <body>
 
-  <!-- Header -->
   <header class="app-header">
     <div class="header-logo">
       <svg class="rose-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
@@ -278,7 +268,6 @@
     </a>
   </header>
 
-  <!-- Hero with photo slideshow -->
   <div class="hero" id="hero">
     <div class="hero-overlay"></div>
     <div class="hero-content">
@@ -288,7 +277,6 @@
     <div class="photo-credit" id="photo-credit"></div>
   </div>
 
-  <!-- Solid content area -->
   <div class="content">
     <div class="inner">
 
@@ -337,7 +325,6 @@
   </footer>
 
   <script>
-    // ── Photos ──────────────────────────────────────────────────────────────
     const photos = [
       { url: 'https://upload.wikimedia.org/wikipedia/commons/e/ec/Morrissey_Hop_Farm_Music_Festival.jpg', credit: 'Hop Farm Music Festival' },
       { url: 'https://upload.wikimedia.org/wikipedia/commons/a/a5/Morrissey_Live_at_Wembley_in_December_2006.jpg', credit: 'Wembley Arena, 2006' },
@@ -371,53 +358,37 @@
     }, 6000);
 
     // ── Shows ───────────────────────────────────────────────────────────────
-    const shows = [
-      {
-        date: '2026-06-27', venue: 'Nova Spektrum',
-        city: 'Lillestrøm', country: 'Norway', flag: '🇳🇴',
-        riskFactors: [
-          { label: 'Scandinavia shows rarely cancelled', type: 'good' },
-          { label: 'Outdoor festival context', type: 'neutral' },
-        ]
-      },
-      {
-        date: '2026-07-01', venue: 'Dalhalla',
-        city: 'Rättvik', country: 'Sweden', flag: '🇸🇪',
-        riskFactors: [
-          { label: 'Iconic outdoor amphitheatre', type: 'good' },
-          { label: 'Morrissey loves dramatic settings', type: 'good' },
-        ]
-      },
-      {
-        date: '2026-07-04', venue: 'Partille Arena',
-        city: 'Partille (Gothenburg)', country: 'Sweden', flag: '🇸🇪',
-        riskFactors: [
-          { label: 'Indoor arena — lower weather risk', type: 'good' },
-          { label: '3 days after Dalhalla — fatigue risk', type: 'bad' },
-          { label: 'Back-to-back shows historically risky', type: 'bad' },
-        ]
-      },
-      {
-        date: '2026-08-14', venue: 'Encore Theater at Wynn Las Vegas',
-        city: 'Las Vegas', country: 'USA', flag: '🇺🇸',
-        riskFactors: [
-          { label: '4-night residency run', type: 'bad' },
-          { label: 'One Rancho Mirage date already postponed', type: 'bad' },
-          { label: 'US shows historically higher risk', type: 'bad' },
-        ]
-      },
-      {
-        date: '2026-09-30', venue: 'Lowell Memorial Auditorium',
-        city: 'Lowell, MA', country: 'USA', flag: '🇺🇸',
-        riskFactors: [
-          { label: 'US shows historically higher risk', type: 'bad' },
-          { label: 'Theatre venue — intimate setting', type: 'good' },
-          { label: 'Greater Boston area', type: 'neutral' },
-        ]
-      },
-    ];
+    // Show data now lives in shows.json (fetched at load time), not hardcoded
+    // here. Add new tour dates to that file — past shows drop off the list
+    // automatically once their date has passed. See README for details.
+    let shows = [];
 
-    // ── Risk calc ───────────────────────────────────────────────────────────
+    async function loadShows() {
+      const list = document.getElementById('show-list');
+      try {
+        const res = await fetch('shows.json', { cache: 'no-store' });
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        const allShows = await res.json();
+
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+
+        shows = allShows
+          .filter(s => s.date && new Date(s.date + 'T23:59:59') >= today)
+          .sort((a, b) => new Date(a.date) - new Date(b.date))
+          .slice(0, 5);
+
+        if (shows.length === 0) {
+          list.innerHTML = '<p style="color: var(--text-secondary); font-size: 13px;">No upcoming shows in shows.json — time to add some tour dates.</p>';
+          return;
+        }
+        render();
+      } catch (err) {
+        console.error('Failed to load show data:', err);
+        list.innerHTML = '<p style="color: var(--text-secondary); font-size: 13px;">Couldn\'t load show data (shows.json). Try refreshing.</p>';
+      }
+    }
+
     function calcRisk(show) {
       const now = new Date();
       const showDate = new Date(show.date + 'T12:00:00');
@@ -522,7 +493,7 @@
         'Last updated ' + new Date().toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'});
     }
 
-    render();
+    loadShows();
   </script>
 </body>
 </html>

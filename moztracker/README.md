@@ -21,26 +21,44 @@ Live at: **https://klm-snyk.github.io/moztracker/**
 
 ## Updating show data
 
-Edit the `shows` array in the `<script>` block of `index.html`. Each show takes:
+Show data lives in `shows.json`, not inline in `index.html`. On load, the page
+fetches that file, drops any show whose date has already passed, sorts by
+date, and displays the next 5 — so you don't need to prune old shows by hand,
+only add new ones as they're announced. Keeping a buffer of more than 5
+upcoming shows in the file means it keeps working correctly for a while
+without edits.
 
-```js
+Each entry in `shows.json` takes:
+
+```json
 {
-  date: 'YYYY-MM-DD',        // or null for TBA
-  venue: 'Venue Name',
-  city: 'City',
-  country: 'Country',
-  flag: '🇺🇸',
-  riskFactors: [
-    { label: 'Some context', type: 'good' },   // green chip
-    { label: 'Some concern', type: 'bad' },    // red chip
-    { label: 'Neutral note', type: 'neutral' } // grey chip
+  "date": "YYYY-MM-DD",
+  "venue": "Venue Name",
+  "city": "City",
+  "country": "Country",
+  "flag": "🇺🇸",
+  "riskFactors": [
+    { "label": "Some context", "type": "good" },
+    { "label": "Some concern", "type": "bad" },
+    { "label": "Neutral note", "type": "neutral" }
   ]
 }
 ```
 
+`riskFactors` chips are the only hand-curated part — everything else (day
+countdown, risk %, Moz-o-meter mood, filtering/sorting) is computed
+automatically by `index.html`.
+
+Note: because the page now fetches `shows.json`, opening `index.html`
+directly from disk (`file://`) will fail due to browser CORS restrictions on
+local fetches. Test locally with a simple server instead, e.g.
+`python3 -m http.server` from this folder, then visit
+`http://localhost:8000`. It works fine as-is once deployed to GitHub Pages.
+
 ## Tech
 
-Pure HTML/CSS/JS — no build step, no dependencies beyond Google Fonts. One file.
+Pure HTML/CSS/JS + one JSON data file — no build step, no dependencies beyond
+Google Fonts.
 
 ## Photo credits
 

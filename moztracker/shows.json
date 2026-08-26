@@ -1,0 +1,142 @@
+[
+  {
+    "date": "2026-09-22", "venue": "Shea's Buffalo Theatre",
+    "city": "Buffalo, NY", "country": "USA", "flag": "🇺🇸",
+    "riskFactors": [
+      { "label": "First show back after summer EU leg", "type": "neutral" },
+      { "label": "US shows historically higher risk", "type": "bad" },
+      { "label": "Historic theatre venue", "type": "good" }
+    ]
+  },
+  {
+    "date": "2026-09-30", "venue": "Lowell Memorial Auditorium",
+    "city": "Lowell, MA", "country": "USA", "flag": "🇺🇸",
+    "riskFactors": [
+      { "label": "US shows historically higher risk", "type": "bad" },
+      { "label": "Theatre venue — intimate setting", "type": "good" },
+      { "label": "Greater Boston area", "type": "neutral" }
+    ]
+  },
+  {
+    "date": "2026-10-15", "venue": "The Anthem",
+    "city": "Washington, DC", "country": "USA", "flag": "🇺🇸",
+    "riskFactors": [
+      { "label": "US shows historically higher risk", "type": "bad" },
+      { "label": "Mid-size venue, strong local following", "type": "good" }
+    ]
+  },
+  {
+    "date": "2026-10-18", "venue": "Steven Tanger Center for the Performing Arts",
+    "city": "Greensboro, NC", "country": "USA", "flag": "🇺🇸",
+    "riskFactors": [
+      { "label": "3 days after DC — fatigue risk", "type": "bad" },
+      { "label": "Back-to-back shows historically risky", "type": "bad" },
+      { "label": "US shows historically higher risk", "type": "bad" }
+    ]
+  },
+  {
+    "date": "2026-10-21", "venue": "The Louisville Palace",
+    "city": "Louisville, KY", "country": "USA", "flag": "🇺🇸",
+    "riskFactors": [
+      { "label": "3 days after Greensboro — fatigue risk", "type": "bad" },
+      { "label": "US shows historically higher risk", "type": "bad" },
+      { "label": "Historic theatre venue", "type": "good" }
+    ]
+  },
+  {
+    "date": "2026-10-25", "venue": "The Pinnacle",
+    "city": "Nashville, TN", "country": "USA", "flag": "🇺🇸",
+    "riskFactors": [
+      { "label": "US shows historically higher risk", "type": "bad" },
+      { "label": "Mid-size venue", "type": "neutral" }
+    ]
+  },
+  {
+    "date": "2026-11-01", "venue": "713 Music Hall",
+    "city": "Houston, TX", "country": "USA", "flag": "🇺🇸",
+    "riskFactors": [
+      { "label": "US shows historically higher risk", "type": "bad" },
+      { "label": "Large venue", "type": "neutral" }
+    ]
+  },
+  {
+    "date": "2026-11-06", "venue": "Don Haskins Center, UTEP",
+    "city": "El Paso, TX", "country": "USA", "flag": "🇺🇸",
+    "riskFactors": [
+      { "label": "US shows historically higher risk", "type": "bad" },
+      { "label": "Border-region arena show", "type": "neutral" }
+    ]
+  },
+  {
+    "date": "2026-11-10", "venue": "Mullett Arena",
+    "city": "Tempe, AZ", "country": "USA", "flag": "🇺🇸",
+    "riskFactors": [
+      { "label": "US shows historically higher risk", "type": "bad" },
+      { "label": "4 days after El Paso — fatigue risk", "type": "bad" }
+    ]
+  },
+  {
+    "date": "2026-12-03", "venue": "La Grande Seine, La Seine Musicale",
+    "city": "Boulogne-Billancourt", "country": "France", "flag": "🇫🇷",
+    "riskFactors": [
+      { "label": "First European date of the winter leg", "type": "neutral" },
+      { "label": "Modern riverside venue", "type": "good" }
+    ]
+  },
+  {
+    "date": "2026-12-06", "venue": "Brighton Centre",
+    "city": "Brighton", "country": "UK", "flag": "🇬🇧",
+    "riskFactors": [
+      { "label": "UK shows carry elevated risk", "type": "bad" },
+      { "label": "Seaside venue, strong fanbase", "type": "good" }
+    ]
+  },
+  {
+    "date": "2026-12-10", "venue": "Utilita Arena Cardiff",
+    "city": "Cardiff", "country": "UK", "flag": "🇬🇧",
+    "riskFactors": [
+      { "label": "UK shows carry elevated risk", "type": "bad" },
+      { "label": "Large arena", "type": "neutral" }
+    ]
+  },
+  {
+    "date": "2026-12-12", "venue": "Space by Echo Arena Liverpool",
+    "city": "Liverpool", "country": "UK", "flag": "🇬🇧",
+    "riskFactors": [
+      { "label": "UK shows carry elevated risk", "type": "bad" },
+      { "label": "2 days after Cardiff — fatigue risk", "type": "bad" }
+    ]
+  },
+  {
+    "date": "2026-12-16", "venue": "OVO Hydro",
+    "city": "Glasgow", "country": "UK", "flag": "🇬🇧",
+    "riskFactors": [
+      { "label": "UK shows carry elevated risk", "type": "bad" },
+      { "label": "Major arena, strong Scottish following", "type": "good" }
+    ]
+  },
+  {
+    "date": "2026-12-19", "venue": "First Direct Bank Arena",
+    "city": "Leeds", "country": "UK", "flag": "🇬🇧",
+    "riskFactors": [
+      { "label": "UK shows carry elevated risk", "type": "bad" },
+      { "label": "3 days after Glasgow — fatigue risk", "type": "bad" }
+    ]
+  },
+  {
+    "date": "2026-12-28", "venue": "013 Poppodium",
+    "city": "Tilburg", "country": "Netherlands", "flag": "🇳🇱",
+    "riskFactors": [
+      { "label": "Year-end European date", "type": "neutral" },
+      { "label": "Reliable mid-size venue", "type": "good" }
+    ]
+  },
+  {
+    "date": "2026-12-31", "venue": "Vorst Nationaal/Forest National",
+    "city": "Vorst", "country": "Belgium", "flag": "🇧🇪",
+    "riskFactors": [
+      { "label": "New Year's Eve show — high demand", "type": "good" },
+      { "label": "3 days after Tilburg — fatigue risk", "type": "bad" }
+    ]
+  }
+]
