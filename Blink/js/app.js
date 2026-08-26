@@ -2232,9 +2232,15 @@ function renderDashboard() {
         Reconnect calendar ${ICONS.arrowRight}
       </div>`;
   } else if (events.length === 0) {
+    // This message must match calUpcomingEvents()'s actual scope (today
+    // only, as of the fix for events bleeding into tomorrow) — it
+    // previously said "next 7 days", which became wrong/misleading the
+    // moment the underlying function was narrowed to today-only: an empty
+    // result now just means today's meetings are done, not that nothing's
+    // coming up for a week.
     eventsCardContent = `
       <div class="dash-card-value" style="font-size:16px;font-weight:500">All clear</div>
-      <div class="dash-card-sub">No upcoming events in the next 7 days</div>`;
+      <div class="dash-card-sub">No more events today</div>`;
   } else {
     const todayEvents = calTodayEvents();
     eventsCardContent = `
