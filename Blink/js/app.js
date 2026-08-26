@@ -3501,30 +3501,53 @@ document.addEventListener('DOMContentLoaded', async () => {
       console.error('calInit error:', e);
     }
     // Everything below is independent of calInit() succeeding — these are
-    // separate features (Slack, Jira, Support Cases) and a Google Calendar
-    // failure shouldn't cascade into silently blocking all of them. This was
-    // a real bug: previously a single throw from calInit() would abort the
-    // rest of this try block entirely, which is why the Support Cases tile
-    // (and Jira, and the digest) sometimes only loaded after visiting their
-    // dedicated screens directly, bypassing this chain.
+    // separate features (Slack, Jira, Support Cases, digest) and a failure
+    // in any one of them shouldn't cascade into silently blocking the
+    // others. This was a real, recurring bug: a single throw anywhere in a
+    // shared try block aborts everything after it in that same block —
+    // already happened once with calInit() blocking this whole section, and
+    // happened again with slackInit() blocking Jira/Support Cases/digest
+    // specifically (confirmed live: calling fetchSupportCases() directly
+    // worked perfectly — 593 cases, zero error — proving the function was
+    // never actually reached during normal page load). Each piece below now
+    // gets its own try/catch so this class of bug can't recur a third time
+    // for some other feature added later.
     try {
       slackInit();
+    } catch (e) {
+      console.error('slackInit error:', e);
+    }
+    try {
       // Fetch Gmail label breakdown lazily
       if (calIsConnected()) calFetchGmailLabelBreakdown().then(() => renderDashboard());
+    } catch (e) {
+      console.error('Gmail label breakdown error:', e);
+    }
+    try {
       // Auto-fetch Jira issues if connected
       if (localStorage.getItem('uyt_jira_token') && !jiraState.issues) {
         setTimeout(function() { fetchJiraIssues(); }, 2000);
       }
+    } catch (e) {
+      console.error('Jira auto-fetch scheduling error:', e);
+    }
+    try {
       // Auto-fetch support cases canvas if connected and not already loaded
       if (localStorage.getItem('uyt_slack_token') && !supportCasesState.cases) {
         setTimeout(function() { fetchSupportCases(); }, 2200);
       }
+    } catch (e) {
+      console.error('Support Cases auto-fetch scheduling error:', e);
+    }
+    try {
       // Auto-fetch digest if no cache — small delay to ensure token is ready
       if (!slackDigestState.html && localStorage.getItem('uyt_slack_token')) {
         setTimeout(function() {
           fetchSlackDigest().then(() => { renderDashboard(); renderSlack(); });
         }, 1500);
       }
-    } catch(e) { console.error('Init error:', e); }
+    } catch (e) {
+      console.error('Digest auto-fetch scheduling error:', e);
+    }
   }
 });
