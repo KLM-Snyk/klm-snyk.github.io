@@ -834,7 +834,23 @@ const jiraState = {
   search: '',
   searchProject: '',
   expanded: {},
+  statusFilters: new Set(),
+  escalatedOnly: false,
 };
+
+function casesToggleStatusFilter(status) {
+  if (jiraState.statusFilters.has(status)) {
+    jiraState.statusFilters.delete(status);
+  } else {
+    jiraState.statusFilters.add(status);
+  }
+  renderCases();
+}
+
+function casesToggleEscalatedOnly() {
+  jiraState.escalatedOnly = !jiraState.escalatedOnly;
+  renderCases();
+}
 
 function getJiraProjects() {
   try { return JSON.parse(localStorage.getItem('uyt_jira_projects') || '[]'); }
@@ -899,8 +915,17 @@ async function fetchJiraIssues() {
   renderCases();
   toggleLoadingOverlay(true);
   const projects = getJiraProjects().map(function(p) { return p.key; }).join(',');
+  // Also matches issues linked (via customfield_12416, confirmed live
+  // against real data) to one of the person's own open Salesforce cases —
+  // pulled from the same Support Cases data already loaded, matched by name
+  // the same way renderSupportCases() does.
+  const myName = (calState.userProfile?.name || state.prefs.userName || '').trim();
+  const myCaseNumbers = (supportCasesState.cases || [])
+    .filter(function(c) { return myName && c.owner && c.owner.toLowerCase().includes(myName.toLowerCase()); })
+    .map(function(c) { return c.caseId; })
+    .filter(Boolean);
   const buildUrl = function(t) {
-    return 'https://uyt-slack-digest.kar-marsten.workers.dev/jira/issues?t=' + encodeURIComponent(t) + '&c=' + encodeURIComponent(cloud) + (projects ? '&p=' + encodeURIComponent(projects) : '');
+    return 'https://uyt-slack-digest.kar-marsten.workers.dev/jira/issues?t=' + encodeURIComponent(t) + '&c=' + encodeURIComponent(cloud) + (projects ? '&p=' + encodeURIComponent(projects) : '') + (myCaseNumbers.length ? '&cases=' + encodeURIComponent(myCaseNumbers.join(',')) : '');
   };
   try {
     let res = await fetch(buildUrl(token), { headers: { 'Content-Type': 'application/json' } });
@@ -1121,6 +1146,10 @@ function parseCasesCanvasHtml(html) {
             // Slack's Canvas HTML renderer uses a custom <lnk href="..."> tag
             // here, not a standard <a> tag — confirmed against real output.
             const link = tds[0] ? tds[0].querySelector('lnk') : null;
+            // 5th "Escalated" column is optional too, for the same reason —
+            // older rows populated before this was added just won't have
+            // it, and cells[4] will be undefined, correctly falling back to
+            // "not escalated" rather than erroring.
             cases.push({
               owner: currentOwner,
               caseId: cells[0],
@@ -1128,6 +1157,7 @@ function parseCasesCanvasHtml(html) {
               status: cells[1],
               subject: cells[2],
               lastModified: cells[3],
+              escalated: (cells[4] || '').trim().toLowerCase() === 'yes',
             });
           }
         });
@@ -1243,9 +1273,10 @@ function renderSupportCases() {
       const safeUrl = c.caseUrl && /^https:\/\//.test(c.caseUrl) ? c.caseUrl : null;
       const tag = safeUrl ? 'a' : 'div';
       const hrefAttr = safeUrl ? ' href="' + escHtml(safeUrl) + '" target="_blank" rel="noopener"' : '';
+      const escalatedBadge = c.escalated ? '<span class="cases-issue-reason" style="background:#FEE2E2;color:#991B1B" title="Active escalation">🔥 Escalated</span>' : '';
       return '<' + tag + ' class="cases-issue"' + hrefAttr + '>' +
         '<span class="cases-issue-key">' + escHtml(c.caseId) + '</span>' +
-        '<span class="cases-issue-summary">' + escHtml(c.subject || '(no subject)') + '</span>' +
+        '<span class="cases-issue-summary">' + escHtml(c.subject || '(no subject)') + escalatedBadge + '</span>' +
         '<span class="cases-issue-status">' + escHtml(c.lastModified || '') + '</span>' +
         '</' + tag + '>';
     }).join('');
@@ -1289,6 +1320,20 @@ function casesApplySearch(issues) {
   if (proj) filtered = filtered.filter(function(i) {
     return i.fields.project.key.toUpperCase().includes(proj);
   });
+  if (jiraState.statusFilters.size > 0) {
+    filtered = filtered.filter(function(i) {
+      return jiraState.statusFilters.has(i.fields.status.name);
+    });
+  }
+  if (jiraState.escalatedOnly) {
+    const myName = (calState.userProfile?.name || state.prefs.userName || '').trim();
+    const myEscalatedCaseNumbers = (supportCasesState.cases || [])
+      .filter(function(c) { return c.escalated && myName && c.owner && c.owner.toLowerCase().includes(myName.toLowerCase()); })
+      .map(function(c) { return c.caseId; });
+    filtered = filtered.filter(function(i) {
+      return myEscalatedCaseNumbers.includes(i.fields.customfield_12416);
+    });
+  }
   return filtered;
 }
 
@@ -1316,6 +1361,15 @@ function renderCases() {
 
   const issues = casesApplySearch(jiraState.issues);
 
+  // Same case-number list used when fetching, so badges reflect exactly
+  // why each issue matched (case-linked vs. watching vs. directly assigned
+  // — assigned is the default/majority case, so it gets no badge).
+  const myName = (calState.userProfile?.name || state.prefs.userName || '').trim();
+  const myCases = (supportCasesState.cases || [])
+    .filter(function(c) { return myName && c.owner && c.owner.toLowerCase().includes(myName.toLowerCase()); });
+  const myCaseNumbers = myCases.map(function(c) { return c.caseId; }).filter(Boolean);
+  const myEscalatedCaseNumbers = myCases.filter(function(c) { return c.escalated; }).map(function(c) { return c.caseId; });
+
   // Group by project
   const byProject = {};
   issues.forEach(function(issue) {
@@ -1330,6 +1384,19 @@ function renderCases() {
     '<input class="mail-search-input" placeholder="📁 Project (e.g. OSM)…" value="' + escHtml(jiraState.searchProject) + '" oninput="jiraState.searchProject=this.value;renderCases()">' +
     '</div>';
 
+  // Toggle-pill filters — status options are whatever's actually in the
+  // full (pre-filter) issue list, so the available buttons always reflect
+  // real, current statuses rather than a hardcoded guess.
+  const allStatuses = Array.from(new Set((jiraState.issues || []).map(function(i) { return i.fields.status.name; }))).sort();
+  const statusFilterHtml = allStatuses.length ? '<div class="drive-filters" style="margin-bottom:12px">' +
+    '<button class="drive-filter ' + (jiraState.statusFilters.size === 0 ? 'active' : '') + '" onclick="jiraState.statusFilters.clear();renderCases()">All statuses</button>' +
+    allStatuses.map(function(s) {
+      const safeS = s.replace(/'/g, "\\'");
+      return '<button class="drive-filter ' + (jiraState.statusFilters.has(s) ? 'active' : '') + '" onclick="casesToggleStatusFilter(\'' + safeS + '\')">' + escHtml(s) + '</button>';
+    }).join('') +
+    '<button class="drive-filter ' + (jiraState.escalatedOnly ? 'active' : '') + '" onclick="casesToggleEscalatedOnly()">🔥 Escalated only</button>' +
+    '</div>' : '';
+
   const groupsHtml = Object.entries(byProject).map(function(entry) {
     const key = entry[0], proj = entry[1];
     const isExpanded = jiraState.expanded[key] !== false; // default expanded
@@ -1341,9 +1408,20 @@ function renderCases() {
       ? '<div class="cases-col-header"><span>Key</span><span>Summary</span><span>Status</span></div>'
       : '';
     const rows = isExpanded ? proj.issues.map(function(issue) {
+      const linkedCaseId = issue.fields.customfield_12416;
+      const isCaseLinked = linkedCaseId && myCaseNumbers.includes(linkedCaseId);
+      const isEscalated = isCaseLinked && myEscalatedCaseNumbers.includes(linkedCaseId);
+      const isWatching = !isCaseLinked && issue.fields.watches && issue.fields.watches.isWatching;
+      const reasonBadge =
+        (isEscalated ? '<span class="cases-issue-reason" style="background:#FEE2E2;color:#991B1B" title="Case ' + escHtml(linkedCaseId) + ' has an active escalation">🔥 Escalated</span>' : '') +
+        (isCaseLinked
+          ? '<span class="cases-issue-reason" style="background:#DBEAFE;color:#1E40AF" title="Linked to your open case ' + escHtml(linkedCaseId) + '">🔗 Case</span>'
+          : isWatching
+            ? '<span class="cases-issue-reason" style="background:#F1F5F9;color:#475569" title="You are watching this issue">👁 Watching</span>'
+            : '');
       return '<a class="cases-issue" href="https://snyksec.atlassian.net/browse/' + escHtml(issue.key) + '" target="_blank">' +
         '<span class="cases-issue-key">' + escHtml(issue.key) + '</span>' +
-        '<span class="cases-issue-summary">' + escHtml(issue.fields.summary) + '</span>' +
+        '<span class="cases-issue-summary">' + escHtml(issue.fields.summary) + reasonBadge + '</span>' +
         '<span class="cases-issue-status">' + escHtml(issue.fields.status.name) + '</span>' +
         '</a>';
     }).join('') : '';
@@ -1361,7 +1439,7 @@ function renderCases() {
   el.innerHTML =
     '<div class="mail-header"><div class="mail-meta">Last updated ' + escHtml(jiraState.asOf || '') + ' · ' + issues.length + ' open</div>' +
     '<button class="connect-btn" onclick="fetchJiraIssues()" style="padding:8px 16px;font-size:13px">↺ Refresh</button></div>' +
-    searchHtml + groupsHtml; // NOSONAR
+    searchHtml + statusFilterHtml + groupsHtml; // NOSONAR
 }
 
 

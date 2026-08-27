@@ -2873,6 +2873,7 @@ button, a.setup-btn-primary, a.cal-connect-btn {
 .cases-issue-key { font-size:11px; font-weight:700; color:var(--primary); font-family:monospace; }
 .cases-issue-summary { font-size:13px; color:var(--text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .cases-issue-status { font-size:11px; color:var(--text-secondary); text-align:right; }
+.cases-issue-reason { display:inline-block; font-size:10px; font-weight:700; padding:1px 7px; border-radius:99px; margin-left:8px; vertical-align:middle; }
 
 /* Cases SF quick links */
 .cases-sf-links { display:flex; gap:8px; margin-bottom:16px; flex-wrap:wrap; }
