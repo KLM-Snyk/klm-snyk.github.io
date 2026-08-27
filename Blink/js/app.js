@@ -987,6 +987,86 @@ const TRENDS_EMBEDS_ROW2 = [
   { title: 'Cases Closed Today', url: 'https://snykanalytics.eu.looker.com/embed/looks/6883' },
 ];
 
+// Snowflake-sourced metrics relayed via a Slack Canvas — same pattern as
+// Support Cases, since Blink has no live Snowflake access. NOT live; only
+// as current as the last on-demand refresh. Currently covers Submitted vs
+// Solved (Support-wide) and MTTR. R&D-linked views (which need a larger,
+// separate Jira pull to determine which cases have a linked issue) are a
+// planned follow-up, not included yet.
+const TRENDS_CANVAS_ID = 'F0BSZGUQ97D';
+
+const trendsDataState = {
+  loading: false,
+  weekly: null,   // [{week, submitted, solved}, ...]
+  mttr: null,     // {average, median, count} — raw display strings from the canvas
+  error: null,
+  asOf: null,
+};
+
+// Structurally similar to parseCasesCanvasHtml() — walks H2 headings and
+// associates the table immediately following each with that heading, but
+// differentiates parsing by heading text since the two tables here have
+// different column shapes (weekly trend vs metric/value pairs).
+function parseTrendsCanvasHtml(html) {
+  const doc = new DOMParser().parseFromString(html, 'text/html');
+  const result = { weekly: [], mttr: null };
+  let currentHeading = '';
+  function walk(nodes) {
+    nodes.forEach(function(node) {
+      const tag = (node.tagName || '').toUpperCase();
+      if (tag === 'H2') {
+        currentHeading = node.textContent.trim();
+      } else if (tag === 'TABLE') {
+        const rows = Array.from(node.querySelectorAll('tr')).slice(1); // skip header row
+        if (/submitted vs solved/i.test(currentHeading)) {
+          rows.forEach(function(tr) {
+            const cells = Array.from(tr.children).map(function(c) { return c.textContent.trim(); });
+            if (cells.length >= 3) {
+              result.weekly.push({ week: cells[0], submitted: Number(cells[1]) || 0, solved: Number(cells[2]) || 0 });
+            }
+          });
+        } else if (/mttr/i.test(currentHeading)) {
+          const metrics = {};
+          rows.forEach(function(tr) {
+            const cells = Array.from(tr.children).map(function(c) { return c.textContent.trim(); });
+            if (cells.length >= 2) metrics[cells[0].toLowerCase()] = cells[1];
+          });
+          result.mttr = {
+            average: metrics['average'] || '',
+            median: metrics['median'] || '',
+            count: metrics['resolved cases in window'] || '',
+          };
+        }
+      }
+      if (node.children && node.children.length) walk(Array.from(node.children));
+    });
+  }
+  if (doc.body) walk(Array.from(doc.body.children));
+  return result;
+}
+
+async function fetchTrendsData() {
+  const token = localStorage.getItem('uyt_slack_token');
+  if (!token) return;
+  trendsDataState.loading = true;
+  trendsDataState.error = null;
+  renderTrends();
+  try {
+    const res = await fetch('https://uyt-slack-digest.kar-marsten.workers.dev/slack/read-trends-canvas?t=' + encodeURIComponent(token));
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+    const parsed = parseTrendsCanvasHtml(data.html || '');
+    trendsDataState.weekly = parsed.weekly;
+    trendsDataState.mttr = parsed.mttr;
+    trendsDataState.asOf = new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+  } catch (e) {
+    trendsDataState.error = e.message;
+  } finally {
+    trendsDataState.loading = false;
+    renderTrends();
+  }
+}
+
 function renderTrends() {
   const el = document.getElementById('screen-trends-content');
   if (!el) return;
@@ -1014,7 +1094,51 @@ function renderTrends() {
     '<a href="https://snyksec.lightning.force.com/lightning/r/Dashboard/01ZPU000004pbPp2AI/view?queryScope=userFolders" target="_blank" class="cases-sf-btn">📊 Case Trends &amp; Data</a>' +
     '<a href="https://snyksec.lightning.force.com/lightning/o/Case/list?filterName=All_Unassigned_Cases" target="_blank" class="cases-sf-btn">📋 All Unassigned Cases</a>' +
     '</div>';
-  el.innerHTML = lookerBar + sfLinksHtml + topHtml + rowHtml;
+
+  // Submitted vs Solved + MTTR — relayed from Snowflake via Slack Canvas,
+  // not live. Rendered as simple CSS bars since Blink has no charting
+  // library; matches the visual weight of existing tier-row displays
+  // elsewhere in the app (Slack digest, Workday tiles) rather than
+  // introducing a new visual pattern.
+  let snowflakeSectionHtml = '';
+  if (!localStorage.getItem('uyt_slack_token')) {
+    snowflakeSectionHtml = '';
+  } else if (trendsDataState.loading && !trendsDataState.weekly) {
+    snowflakeSectionHtml = '<div class="cal-connect-prompt" style="margin-bottom:20px"><div class="cal-connect-icon">⏳</div><h3>Loading trends…</h3></div>';
+  } else if (trendsDataState.error) {
+    snowflakeSectionHtml = '<div class="cal-connect-prompt" style="margin-bottom:20px"><div class="cal-connect-icon">⚠️</div><h3>Error loading trends</h3><p>' + escHtml(trendsDataState.error) + '</p><button class="connect-btn" onclick="fetchTrendsData()">Try again</button></div>';
+  } else if (trendsDataState.weekly && trendsDataState.weekly.length) {
+    const maxVal = Math.max.apply(null, trendsDataState.weekly.flatMap(function(w) { return [w.submitted, w.solved]; }).concat([1]));
+    const barsHtml = trendsDataState.weekly.map(function(w) {
+      const subPct = Math.round((w.submitted / maxVal) * 100);
+      const solPct = Math.round((w.solved / maxVal) * 100);
+      const shortWeek = w.week.slice(5); // MM-DD, week is YYYY-MM-DD
+      return '<div style="margin-bottom:8px">' +
+        '<div style="font-size:11px;color:var(--text-secondary);margin-bottom:2px">' + escHtml(shortWeek) + '</div>' +
+        '<div style="display:flex;align-items:center;gap:6px;margin-bottom:2px"><div style="height:8px;border-radius:4px;background:#6366F1;width:' + subPct + '%;min-width:2px"></div><span style="font-size:11px;color:var(--text-secondary)">' + w.submitted + ' submitted</span></div>' +
+        '<div style="display:flex;align-items:center;gap:6px"><div style="height:8px;border-radius:4px;background:#10B981;width:' + solPct + '%;min-width:2px"></div><span style="font-size:11px;color:var(--text-secondary)">' + w.solved + ' solved</span></div>' +
+      '</div>';
+    }).join('');
+    const mttrHtml = trendsDataState.mttr ? '<div style="display:flex;gap:20px;flex-wrap:wrap;margin-top:16px;padding-top:16px;border-top:1px solid var(--border)">' +
+      '<div><div style="font-size:20px;font-weight:700">' + escHtml(trendsDataState.mttr.average) + '</div><div style="font-size:11px;color:var(--text-secondary)">Average MTTR</div></div>' +
+      '<div><div style="font-size:20px;font-weight:700">' + escHtml(trendsDataState.mttr.median) + '</div><div style="font-size:11px;color:var(--text-secondary)">Median MTTR (more typical)</div></div>' +
+      '<div><div style="font-size:20px;font-weight:700">' + escHtml(trendsDataState.mttr.count) + '</div><div style="font-size:11px;color:var(--text-secondary)">Resolved cases in window</div></div>' +
+    '</div>' : '';
+    snowflakeSectionHtml = '<div class="dash-card" style="margin-bottom:20px">' +
+      '<div class="dash-card-header"><div class="dash-card-title">Submitted vs Solved (Support) — Last 12 Weeks</div></div>' +
+      '<div style="margin-top:10px">' + barsHtml + '</div>' +
+      mttrHtml +
+      '<div style="margin-top:12px;font-size:11px;color:var(--text-secondary)">' +
+        (trendsDataState.asOf ? 'Canvas last read ' + escHtml(trendsDataState.asOf) + ' · ' : '') +
+        'Not live — refreshed occasionally on request. R&D-linked views and Technical Support backlog are a planned follow-up.' +
+        ' <button class="connect-btn" onclick="fetchTrendsData()" style="padding:4px 10px;font-size:11px;margin-left:8px">↺ Reload</button>' +
+      '</div>' +
+    '</div>';
+  } else if (!trendsDataState.loading) {
+    fetchTrendsData();
+  }
+
+  el.innerHTML = lookerBar + sfLinksHtml + snowflakeSectionHtml + topHtml + rowHtml;
 }
 
 /* ============================================================
