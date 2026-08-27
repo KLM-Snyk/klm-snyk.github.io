@@ -1100,7 +1100,7 @@ async function fetchTrendsData() {
 // Solved), circle markers, and numeric labels at each point. Values are raw
 // case counts (COUNT(*) from Snowflake) — always whole numbers, so labels
 // show plain integers rather than decimals. Submitted labels sit above
-// their points, Solved labels below, to keep the two sets of 13 labels
+// their points, Solved labels below, to keep the two sets of labels
 // from overlapping.
 function buildTrendsLineChartSvg(monthlyData) {
   const W = 700, H = 290;
@@ -1166,7 +1166,9 @@ function buildResolutionTimeLineChartSvg(monthlyData) {
   const linePoints = monthlyData.map(function(m, i) { return xFor(i).toFixed(1) + ',' + yFor(m.medianDays).toFixed(1); }).join(' ');
   const pointsAndLabels = monthlyData.map(function(m, i) {
     const x = xFor(i), y = yFor(m.medianDays);
-    return '<circle cx="' + x.toFixed(1) + '" cy="' + y.toFixed(1) + '" r="2.5" fill="#F59E0B"></circle>' +
+    // Visible label stays at 1 decimal for a clean look; hover reveals the
+    // full 2-decimal value the canvas actually stores.
+    return '<circle cx="' + x.toFixed(1) + '" cy="' + y.toFixed(1) + '" r="2.5" fill="#F59E0B" style="cursor:default"><title>' + m.medianDays.toFixed(2) + ' days</title></circle>' +
       '<text x="' + x.toFixed(1) + '" y="' + (y - 9).toFixed(1) + '" font-size="8" fill="#F59E0B" text-anchor="middle" font-weight="600">' + m.medianDays.toFixed(1) + '</text>';
   }).join('');
   // Rotated at a slight -30° slant — 20 months in this window need it even
@@ -1292,18 +1294,15 @@ function renderTrends() {
       '<span><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#6366F1;margin-right:4px;vertical-align:middle"></span>Submitted</span>' +
       '<span><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#10B981;margin-right:4px;vertical-align:middle"></span>Solved</span>' +
     '</div>';
-    const mttrHtml = trendsDataState.mttr ? '<div style="display:flex;gap:20px;flex-wrap:wrap;margin-top:16px;padding-top:16px;border-top:1px solid var(--border)">' +
-      '<div><div style="font-size:20px;font-weight:700">' + escHtml(trendsDataState.mttr.median) + '</div><div style="font-size:11px;color:var(--text-secondary)">Median MTTR</div></div>' +
-    '</div>' : '';
+    // Median MTTR callout removed — the separate Median Resolution Time
+    // chart now covers this same metric in a richer, trend-over-time form,
+    // making a single flat number here redundant.
     snowflakeSectionHtml = '<div class="dash-card" style="margin-bottom:20px;flex:1 1 380px;min-width:0">' +
-      '<div class="dash-card-header"><div class="dash-card-title">Submitted vs Solved (Support) — Last 12 Months</div></div>' +
+      '<div class="dash-card-header"><div class="dash-card-title">Submitted vs Solved (Support) — Since Jan 2025</div></div>' +
       legendHtml +
       '<div style="margin-top:6px">' + chartSvg + '</div>' +
-      mttrHtml +
-      '<div style="margin-top:12px;font-size:11px;color:var(--text-secondary)">' +
-        (trendsDataState.asOf ? 'Canvas last read ' + escHtml(trendsDataState.asOf) + ' · ' : '') +
-        'Not live — refreshed occasionally on request. R&D-linked views are a planned follow-up.' +
-        ' <button class="connect-btn" onclick="fetchTrendsData()" style="padding:4px 10px;font-size:11px;margin-left:8px">↺ Reload</button>' +
+      '<div style="margin-top:12px;text-align:right">' +
+        '<button class="connect-btn" onclick="fetchTrendsData()" style="padding:4px 10px;font-size:11px">↺ Reload</button>' +
       '</div>' +
     '</div>';
   } else if (!trendsDataState.loading) {
