@@ -836,6 +836,8 @@ const jiraState = {
   expanded: {},
   statusFilters: new Set(),
   escalatedOnly: false,
+  reportedOnly: false,
+  watchingOnly: false,
 };
 
 function casesToggleStatusFilter(status) {
@@ -849,6 +851,16 @@ function casesToggleStatusFilter(status) {
 
 function casesToggleEscalatedOnly() {
   jiraState.escalatedOnly = !jiraState.escalatedOnly;
+  renderCases();
+}
+
+function casesToggleReportedOnly() {
+  jiraState.reportedOnly = !jiraState.reportedOnly;
+  renderCases();
+}
+
+function casesToggleWatchingOnly() {
+  jiraState.watchingOnly = !jiraState.watchingOnly;
   renderCases();
 }
 
@@ -1119,7 +1131,13 @@ const supportCasesState = {
   error: null,
   asOf: null,
   search: '',
+  escalatedOnly: false,
 };
+
+function supportCasesToggleEscalatedOnly() {
+  supportCasesState.escalatedOnly = !supportCasesState.escalatedOnly;
+  renderSupportCases();
+}
 
 // Walks the canvas's downloaded HTML structurally (H2 = owner name, the
 // table immediately under it = that owner's cases) rather than assuming
@@ -1242,9 +1260,12 @@ function renderSupportCases() {
     return myName && c.owner && c.owner.toLowerCase().includes(myName.toLowerCase());
   });
   const q = supportCasesState.search.trim().toLowerCase();
-  const filtered = q ? mine.filter(function(c) {
+  let filtered = q ? mine.filter(function(c) {
     return c.subject.toLowerCase().includes(q) || c.caseId.toLowerCase().includes(q);
   }) : mine;
+  if (supportCasesState.escalatedOnly) {
+    filtered = filtered.filter(function(c) { return c.escalated; });
+  }
 
   const byStatus = {};
   filtered.forEach(function(c) {
@@ -1263,6 +1284,9 @@ function renderSupportCases() {
 
   const searchHtml = '<div class="mail-search-bar">' +
     '<input class="mail-search-input" placeholder="🔍 Subject or case number…" value="' + escHtml(supportCasesState.search) + '" oninput="supportCasesState.search=this.value;renderSupportCases()">' +
+    '</div>' +
+    '<div class="drive-filters" style="margin-bottom:12px">' +
+      '<button class="drive-filter ' + (supportCasesState.escalatedOnly ? 'active' : '') + '" onclick="supportCasesToggleEscalatedOnly()">🔥 Escalated only</button>' +
     '</div>';
 
   const groupsHtml = statusEntries.map(function(entry) {
@@ -1310,6 +1334,21 @@ function renderSupportCases() {
 
 
 
+// Classifies a single Jira issue's "reason for showing up" — shared by both
+// the filter logic (casesApplySearch) and the badge rendering (renderCases),
+// so a change to one can't silently drift out of sync with the other.
+// Priority mirrors the JQL match clause's own OR order, most specific first:
+// case-linked (+ escalated) > reported by you > watched by you > assigned
+// (assigned is the default/majority case and gets no special classification).
+function classifyJiraIssue(issue, myCaseNumbers, myEscalatedCaseNumbers, myEmail) {
+  const linkedCaseId = issue.fields.customfield_12416;
+  const isCaseLinked = !!(linkedCaseId && myCaseNumbers.includes(linkedCaseId));
+  const isEscalated = isCaseLinked && myEscalatedCaseNumbers.includes(linkedCaseId);
+  const isReporter = !isCaseLinked && !!myEmail && !!issue.fields.reporter && (issue.fields.reporter.emailAddress || '').toLowerCase() === myEmail;
+  const isWatching = !isCaseLinked && !isReporter && !!(issue.fields.watches && issue.fields.watches.isWatching);
+  return { linkedCaseId, isCaseLinked, isEscalated, isReporter, isWatching };
+}
+
 function casesApplySearch(issues) {
   let filtered = issues;
   const kw = jiraState.search.trim().toLowerCase();
@@ -1325,13 +1364,21 @@ function casesApplySearch(issues) {
       return jiraState.statusFilters.has(i.fields.status.name);
     });
   }
-  if (jiraState.escalatedOnly) {
+  // Reason-based filters (escalated/reported/watching) all use the same
+  // classifyJiraIssue() helper the badges use, so "filter by Watching" is
+  // guaranteed to show exactly the issues actually showing a Watching badge.
+  if (jiraState.escalatedOnly || jiraState.reportedOnly || jiraState.watchingOnly) {
     const myName = (calState.userProfile?.name || state.prefs.userName || '').trim();
-    const myEscalatedCaseNumbers = (supportCasesState.cases || [])
-      .filter(function(c) { return c.escalated && myName && c.owner && c.owner.toLowerCase().includes(myName.toLowerCase()); })
-      .map(function(c) { return c.caseId; });
+    const myEmail = (calState.userProfile?.email || '').toLowerCase();
+    const myCases = (supportCasesState.cases || [])
+      .filter(function(c) { return myName && c.owner && c.owner.toLowerCase().includes(myName.toLowerCase()); });
+    const myCaseNumbers = myCases.map(function(c) { return c.caseId; }).filter(Boolean);
+    const myEscalatedCaseNumbers = myCases.filter(function(c) { return c.escalated; }).map(function(c) { return c.caseId; });
     filtered = filtered.filter(function(i) {
-      return myEscalatedCaseNumbers.includes(i.fields.customfield_12416);
+      const c = classifyJiraIssue(i, myCaseNumbers, myEscalatedCaseNumbers, myEmail);
+      return (jiraState.escalatedOnly && c.isEscalated) ||
+             (jiraState.reportedOnly && c.isReporter) ||
+             (jiraState.watchingOnly && c.isWatching);
     });
   }
   return filtered;
@@ -1396,6 +1443,8 @@ function renderCases() {
       return '<button class="drive-filter ' + (jiraState.statusFilters.has(s) ? 'active' : '') + '" onclick="casesToggleStatusFilter(\'' + safeS + '\')">' + escHtml(s) + '</button>';
     }).join('') +
     '<button class="drive-filter ' + (jiraState.escalatedOnly ? 'active' : '') + '" onclick="casesToggleEscalatedOnly()">🔥 Escalated only</button>' +
+    '<button class="drive-filter ' + (jiraState.reportedOnly ? 'active' : '') + '" onclick="casesToggleReportedOnly()">✍️ Reported by me</button>' +
+    '<button class="drive-filter ' + (jiraState.watchingOnly ? 'active' : '') + '" onclick="casesToggleWatchingOnly()">👁 Watching</button>' +
     '</div>' : '';
 
   const groupsHtml = Object.entries(byProject).map(function(entry) {
@@ -1409,23 +1458,14 @@ function renderCases() {
       ? '<div class="cases-col-header"><span>Key</span><span>Summary</span><span>Status</span></div>'
       : '';
     const rows = isExpanded ? proj.issues.map(function(issue) {
-      const linkedCaseId = issue.fields.customfield_12416;
-      const isCaseLinked = linkedCaseId && myCaseNumbers.includes(linkedCaseId);
-      const isEscalated = isCaseLinked && myEscalatedCaseNumbers.includes(linkedCaseId);
-      // Check reporter before falling back to "watching" — Jira auto-adds
-      // the creator of an issue as a watcher, so without this, every issue
-      // you created (but aren't assigned to) showed a "Watching" badge that
-      // was technically true but not the actual, meaningful reason it's
-      // here. Being the reporter is a more specific, more honest label.
-      const isReporter = !isCaseLinked && myEmail && issue.fields.reporter && (issue.fields.reporter.emailAddress || '').toLowerCase() === myEmail;
-      const isWatching = !isCaseLinked && !isReporter && issue.fields.watches && issue.fields.watches.isWatching;
+      const c = classifyJiraIssue(issue, myCaseNumbers, myEscalatedCaseNumbers, myEmail);
       const reasonBadge =
-        (isEscalated ? '<span class="cases-issue-reason" style="background:#FEE2E2;color:#991B1B" title="Case ' + escHtml(linkedCaseId) + ' has an active escalation">🔥 Escalated</span>' : '') +
-        (isCaseLinked
-          ? '<span class="cases-issue-reason" style="background:#DBEAFE;color:#1E40AF" title="Linked to your open case ' + escHtml(linkedCaseId) + '">🔗 Case</span>'
-          : isReporter
+        (c.isEscalated ? '<span class="cases-issue-reason" style="background:#FEE2E2;color:#991B1B" title="Case ' + escHtml(c.linkedCaseId) + ' has an active escalation">🔥 Escalated</span>' : '') +
+        (c.isCaseLinked
+          ? '<span class="cases-issue-reason" style="background:#DBEAFE;color:#1E40AF" title="Linked to your open case ' + escHtml(c.linkedCaseId) + '">🔗 Case</span>'
+          : c.isReporter
             ? '<span class="cases-issue-reason" style="background:#EDE9FE;color:#5B21B6" title="You reported this issue">✍️ Reported</span>'
-            : isWatching
+            : c.isWatching
               ? '<span class="cases-issue-reason" style="background:#F1F5F9;color:#475569" title="You are watching this issue">👁 Watching</span>'
               : '');
       return '<a class="cases-issue" href="https://snyksec.atlassian.net/browse/' + escHtml(issue.key) + '" target="_blank">' +
