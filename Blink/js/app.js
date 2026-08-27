@@ -1369,6 +1369,7 @@ function renderCases() {
     .filter(function(c) { return myName && c.owner && c.owner.toLowerCase().includes(myName.toLowerCase()); });
   const myCaseNumbers = myCases.map(function(c) { return c.caseId; }).filter(Boolean);
   const myEscalatedCaseNumbers = myCases.filter(function(c) { return c.escalated; }).map(function(c) { return c.caseId; });
+  const myEmail = (calState.userProfile?.email || '').toLowerCase();
 
   // Group by project
   const byProject = {};
@@ -1411,14 +1412,22 @@ function renderCases() {
       const linkedCaseId = issue.fields.customfield_12416;
       const isCaseLinked = linkedCaseId && myCaseNumbers.includes(linkedCaseId);
       const isEscalated = isCaseLinked && myEscalatedCaseNumbers.includes(linkedCaseId);
-      const isWatching = !isCaseLinked && issue.fields.watches && issue.fields.watches.isWatching;
+      // Check reporter before falling back to "watching" — Jira auto-adds
+      // the creator of an issue as a watcher, so without this, every issue
+      // you created (but aren't assigned to) showed a "Watching" badge that
+      // was technically true but not the actual, meaningful reason it's
+      // here. Being the reporter is a more specific, more honest label.
+      const isReporter = !isCaseLinked && myEmail && issue.fields.reporter && (issue.fields.reporter.emailAddress || '').toLowerCase() === myEmail;
+      const isWatching = !isCaseLinked && !isReporter && issue.fields.watches && issue.fields.watches.isWatching;
       const reasonBadge =
         (isEscalated ? '<span class="cases-issue-reason" style="background:#FEE2E2;color:#991B1B" title="Case ' + escHtml(linkedCaseId) + ' has an active escalation">🔥 Escalated</span>' : '') +
         (isCaseLinked
           ? '<span class="cases-issue-reason" style="background:#DBEAFE;color:#1E40AF" title="Linked to your open case ' + escHtml(linkedCaseId) + '">🔗 Case</span>'
-          : isWatching
-            ? '<span class="cases-issue-reason" style="background:#F1F5F9;color:#475569" title="You are watching this issue">👁 Watching</span>'
-            : '');
+          : isReporter
+            ? '<span class="cases-issue-reason" style="background:#EDE9FE;color:#5B21B6" title="You reported this issue">✍️ Reported</span>'
+            : isWatching
+              ? '<span class="cases-issue-reason" style="background:#F1F5F9;color:#475569" title="You are watching this issue">👁 Watching</span>'
+              : '');
       return '<a class="cases-issue" href="https://snyksec.atlassian.net/browse/' + escHtml(issue.key) + '" target="_blank">' +
         '<span class="cases-issue-key">' + escHtml(issue.key) + '</span>' +
         '<span class="cases-issue-summary">' + escHtml(issue.fields.summary) + reasonBadge + '</span>' +
