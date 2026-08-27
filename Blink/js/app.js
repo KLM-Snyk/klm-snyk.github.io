@@ -977,9 +977,10 @@ function casesToggle(key, val) { jiraState.expanded[key] = val; renderCases(); }
    ============================================================ */
 
 // Add more entries here as additional Looker embeds are provided —
-// each just needs a title and the embed URL.
+// each just needs a title and the embed URL. "Current Support Backlog"
+// was removed once the Case Backlog by Engineer chart (sourced from
+// Snowflake) replaced it as the actual backlog view.
 const TRENDS_EMBEDS = [
-  { title: 'Current Support Backlog', url: 'https://snykanalytics.eu.looker.com/embed/looks/6881' },
 ];
 
 const TRENDS_EMBEDS_ROW2 = [
@@ -1320,7 +1321,7 @@ function renderTrends() {
     '</div>';
   }
 
-  el.innerHTML = lookerBar + sfLinksHtml + snowflakeSectionHtml + backlogHtml + topHtml + rowHtml;
+  el.innerHTML = lookerBar + sfLinksHtml + backlogHtml + snowflakeSectionHtml + topHtml + rowHtml;
 }
 
 /* ============================================================
