@@ -997,7 +997,7 @@ const TRENDS_CANVAS_ID = 'F0BSZGUQ97D';
 
 const trendsDataState = {
   loading: false,
-  weekly: null,   // [{week, submitted, solved}, ...]
+  monthly: null,  // [{period, submitted, solved}, ...] — period is "YYYY-MM"
   mttr: null,     // {average, median, count} — raw display strings from the canvas
   error: null,
   asOf: null,
@@ -1006,10 +1006,10 @@ const trendsDataState = {
 // Structurally similar to parseCasesCanvasHtml() — walks H2 headings and
 // associates the table immediately following each with that heading, but
 // differentiates parsing by heading text since the two tables here have
-// different column shapes (weekly trend vs metric/value pairs).
+// different column shapes (monthly trend vs metric/value pairs).
 function parseTrendsCanvasHtml(html) {
   const doc = new DOMParser().parseFromString(html, 'text/html');
-  const result = { weekly: [], mttr: null };
+  const result = { monthly: [], mttr: null };
   let currentHeading = '';
   function walk(nodes) {
     nodes.forEach(function(node) {
@@ -1022,7 +1022,7 @@ function parseTrendsCanvasHtml(html) {
           rows.forEach(function(tr) {
             const cells = Array.from(tr.children).map(function(c) { return c.textContent.trim(); });
             if (cells.length >= 3) {
-              result.weekly.push({ week: cells[0], submitted: Number(cells[1]) || 0, solved: Number(cells[2]) || 0 });
+              result.monthly.push({ period: cells[0], submitted: Number(cells[1]) || 0, solved: Number(cells[2]) || 0 });
             }
           });
         } else if (/mttr/i.test(currentHeading)) {
@@ -1056,7 +1056,7 @@ async function fetchTrendsData() {
     const data = await res.json();
     if (data.error) throw new Error(data.error);
     const parsed = parseTrendsCanvasHtml(data.html || '');
-    trendsDataState.weekly = parsed.weekly;
+    trendsDataState.monthly = parsed.monthly;
     trendsDataState.mttr = parsed.mttr;
     trendsDataState.asOf = new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
   } catch (e) {
@@ -1065,6 +1065,52 @@ async function fetchTrendsData() {
     trendsDataState.loading = false;
     renderTrends();
   }
+}
+
+// Builds a hand-rolled SVG line chart — Blink has no charting library, and
+// pulling one in for a single chart isn't worth it. Two series (Submitted/
+// Solved), circle markers, and numeric labels at each point formatted to
+// 2 decimal places as requested. Submitted labels sit above their points,
+// Solved labels below, to keep the two sets of 13 labels from overlapping.
+function buildTrendsLineChartSvg(monthlyData) {
+  const W = 700, H = 280;
+  const padL = 44, padR = 16, padT = 34, padB = 34;
+  const plotW = W - padL - padR, plotH = H - padT - padB;
+  const n = monthlyData.length;
+  const allVals = monthlyData.flatMap(function(m) { return [m.submitted, m.solved]; });
+  const maxVal = Math.max.apply(null, allVals.concat([1])) * 1.12; // headroom for labels
+  const xFor = function(i) { return n <= 1 ? padL : padL + (i / (n - 1)) * plotW; };
+  const yFor = function(v) { return padT + plotH - (v / maxVal) * plotH; };
+
+  const buildLine = function(key) {
+    return monthlyData.map(function(m, i) { return xFor(i).toFixed(1) + ',' + yFor(m[key]).toFixed(1); }).join(' ');
+  };
+  const buildPointsAndLabels = function(key, color, labelAbove) {
+    return monthlyData.map(function(m, i) {
+      const x = xFor(i), y = yFor(m[key]);
+      const labelY = labelAbove ? y - 10 : y + 18;
+      return '<circle cx="' + x.toFixed(1) + '" cy="' + y.toFixed(1) + '" r="3" fill="' + color + '"></circle>' +
+        '<text x="' + x.toFixed(1) + '" y="' + labelY.toFixed(1) + '" font-size="9" fill="' + color + '" text-anchor="middle" font-weight="600">' + m[key].toFixed(2) + '</text>';
+    }).join('');
+  };
+  const xLabels = monthlyData.map(function(m, i) {
+    const x = xFor(i);
+    // period is "YYYY-MM" — show as short month label (Jan, Feb, ...)
+    const parts = m.period.split('-');
+    const label = new Date(Number(parts[0]), Number(parts[1]) - 1, 1).toLocaleDateString('en-US', { month: 'short' });
+    return '<text x="' + x.toFixed(1) + '" y="' + (H - 8) + '" font-size="10" fill="var(--text-secondary)" text-anchor="middle">' + escHtml(label) + '</text>';
+  }).join('');
+  // Faint horizontal gridline at zero for a visual baseline
+  const zeroY = yFor(0).toFixed(1);
+
+  return '<svg viewBox="0 0 ' + W + ' ' + H + '" style="width:100%;height:auto;display:block" xmlns="http://www.w3.org/2000/svg">' +
+    '<line x1="' + padL + '" y1="' + zeroY + '" x2="' + (W - padR) + '" y2="' + zeroY + '" stroke="var(--border)" stroke-width="1"></line>' +
+    '<polyline points="' + buildLine('submitted') + '" fill="none" stroke="#6366F1" stroke-width="2"></polyline>' +
+    '<polyline points="' + buildLine('solved') + '" fill="none" stroke="#10B981" stroke-width="2"></polyline>' +
+    buildPointsAndLabels('submitted', '#6366F1', true) +
+    buildPointsAndLabels('solved', '#10B981', false) +
+    xLabels +
+    '</svg>';
 }
 
 function renderTrends() {
@@ -1096,37 +1142,30 @@ function renderTrends() {
     '</div>';
 
   // Submitted vs Solved + MTTR — relayed from Snowflake via Slack Canvas,
-  // not live. Rendered as simple CSS bars since Blink has no charting
-  // library; matches the visual weight of existing tier-row displays
-  // elsewhere in the app (Slack digest, Workday tiles) rather than
-  // introducing a new visual pattern.
+  // not live. Rendered as a hand-rolled SVG line chart (see
+  // buildTrendsLineChartSvg) since Blink has no charting library.
   let snowflakeSectionHtml = '';
   if (!localStorage.getItem('uyt_slack_token')) {
     snowflakeSectionHtml = '';
-  } else if (trendsDataState.loading && !trendsDataState.weekly) {
+  } else if (trendsDataState.loading && !trendsDataState.monthly) {
     snowflakeSectionHtml = '<div class="cal-connect-prompt" style="margin-bottom:20px"><div class="cal-connect-icon">⏳</div><h3>Loading trends…</h3></div>';
   } else if (trendsDataState.error) {
     snowflakeSectionHtml = '<div class="cal-connect-prompt" style="margin-bottom:20px"><div class="cal-connect-icon">⚠️</div><h3>Error loading trends</h3><p>' + escHtml(trendsDataState.error) + '</p><button class="connect-btn" onclick="fetchTrendsData()">Try again</button></div>';
-  } else if (trendsDataState.weekly && trendsDataState.weekly.length) {
-    const maxVal = Math.max.apply(null, trendsDataState.weekly.flatMap(function(w) { return [w.submitted, w.solved]; }).concat([1]));
-    const barsHtml = trendsDataState.weekly.map(function(w) {
-      const subPct = Math.round((w.submitted / maxVal) * 100);
-      const solPct = Math.round((w.solved / maxVal) * 100);
-      const shortWeek = w.week.slice(5); // MM-DD, week is YYYY-MM-DD
-      return '<div style="margin-bottom:8px">' +
-        '<div style="font-size:11px;color:var(--text-secondary);margin-bottom:2px">' + escHtml(shortWeek) + '</div>' +
-        '<div style="display:flex;align-items:center;gap:6px;margin-bottom:2px"><div style="height:8px;border-radius:4px;background:#6366F1;width:' + subPct + '%;min-width:2px"></div><span style="font-size:11px;color:var(--text-secondary)">' + w.submitted + ' submitted</span></div>' +
-        '<div style="display:flex;align-items:center;gap:6px"><div style="height:8px;border-radius:4px;background:#10B981;width:' + solPct + '%;min-width:2px"></div><span style="font-size:11px;color:var(--text-secondary)">' + w.solved + ' solved</span></div>' +
-      '</div>';
-    }).join('');
+  } else if (trendsDataState.monthly && trendsDataState.monthly.length) {
+    const chartSvg = buildTrendsLineChartSvg(trendsDataState.monthly);
+    const legendHtml = '<div style="display:flex;gap:16px;margin-bottom:8px;font-size:11px;color:var(--text-secondary)">' +
+      '<span><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#6366F1;margin-right:4px;vertical-align:middle"></span>Submitted</span>' +
+      '<span><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#10B981;margin-right:4px;vertical-align:middle"></span>Solved</span>' +
+    '</div>';
     const mttrHtml = trendsDataState.mttr ? '<div style="display:flex;gap:20px;flex-wrap:wrap;margin-top:16px;padding-top:16px;border-top:1px solid var(--border)">' +
       '<div><div style="font-size:20px;font-weight:700">' + escHtml(trendsDataState.mttr.average) + '</div><div style="font-size:11px;color:var(--text-secondary)">Average MTTR</div></div>' +
       '<div><div style="font-size:20px;font-weight:700">' + escHtml(trendsDataState.mttr.median) + '</div><div style="font-size:11px;color:var(--text-secondary)">Median MTTR (more typical)</div></div>' +
       '<div><div style="font-size:20px;font-weight:700">' + escHtml(trendsDataState.mttr.count) + '</div><div style="font-size:11px;color:var(--text-secondary)">Resolved cases in window</div></div>' +
     '</div>' : '';
     snowflakeSectionHtml = '<div class="dash-card" style="margin-bottom:20px">' +
-      '<div class="dash-card-header"><div class="dash-card-title">Submitted vs Solved (Support) — Last 12 Weeks</div></div>' +
-      '<div style="margin-top:10px">' + barsHtml + '</div>' +
+      '<div class="dash-card-header"><div class="dash-card-title">Submitted vs Solved (Support) — Last 12 Months</div></div>' +
+      legendHtml +
+      '<div style="margin-top:6px">' + chartSvg + '</div>' +
       mttrHtml +
       '<div style="margin-top:12px;font-size:11px;color:var(--text-secondary)">' +
         (trendsDataState.asOf ? 'Canvas last read ' + escHtml(trendsDataState.asOf) + ' · ' : '') +
