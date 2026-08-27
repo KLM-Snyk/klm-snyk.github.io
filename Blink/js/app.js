@@ -1103,8 +1103,8 @@ async function fetchTrendsData() {
 // their points, Solved labels below, to keep the two sets of 13 labels
 // from overlapping.
 function buildTrendsLineChartSvg(monthlyData) {
-  const W = 700, H = 280;
-  const padL = 56, padR = 16, padT = 34, padB = 34;
+  const W = 700, H = 290;
+  const padL = 50, padR = 16, padT = 30, padB = 46;
   const plotW = W - padL - padR, plotH = H - padT - padB;
   const n = monthlyData.length;
   const allVals = monthlyData.flatMap(function(m) { return [m.submitted, m.solved]; });
@@ -1118,23 +1118,27 @@ function buildTrendsLineChartSvg(monthlyData) {
   const buildPointsAndLabels = function(key, color, labelAbove) {
     return monthlyData.map(function(m, i) {
       const x = xFor(i), y = yFor(m[key]);
-      const labelY = labelAbove ? y - 10 : y + 18;
-      return '<circle cx="' + x.toFixed(1) + '" cy="' + y.toFixed(1) + '" r="3" fill="' + color + '"></circle>' +
-        '<text x="' + x.toFixed(1) + '" y="' + labelY.toFixed(1) + '" font-size="9" fill="' + color + '" text-anchor="middle" font-weight="600">' + Math.round(m[key]) + '</text>';
+      const labelY = labelAbove ? y - 9 : y + 16;
+      return '<circle cx="' + x.toFixed(1) + '" cy="' + y.toFixed(1) + '" r="2.5" fill="' + color + '"></circle>' +
+        '<text x="' + x.toFixed(1) + '" y="' + labelY.toFixed(1) + '" font-size="8" fill="' + color + '" text-anchor="middle" font-weight="600">' + Math.round(m[key]) + '</text>';
     }).join('');
   };
+  // Rotated at a slight -30° slant (matching the backlog chart's approach
+  // to fitting many labels), rather than sitting flat and crowding into
+  // each other — this was the main source of the clunky look.
   const xLabels = monthlyData.map(function(m, i) {
     const x = xFor(i);
     // period is "YYYY-MM" — show as short month label (Jan, Feb, ...)
     const parts = m.period.split('-');
     const label = new Date(Number(parts[0]), Number(parts[1]) - 1, 1).toLocaleDateString('en-US', { month: 'short' });
-    return '<text x="' + x.toFixed(1) + '" y="' + (H - 8) + '" font-size="10" fill="var(--text-secondary)" text-anchor="middle">' + escHtml(label) + '</text>';
+    const labelY = padT + plotH + 14;
+    return '<text x="' + x.toFixed(1) + '" y="' + labelY + '" font-size="9" fill="var(--text-secondary)" text-anchor="end" transform="rotate(-30 ' + x.toFixed(1) + ' ' + labelY + ')">' + escHtml(label) + '</text>';
   }).join('');
   // Faint horizontal gridline at zero for a visual baseline
   const zeroY = yFor(0).toFixed(1);
   // Y-axis title, rotated — standard chart convention, in addition to the
   // color-key legend rendered separately above the chart.
-  const yAxisTitle = '<text x="14" y="' + (padT + plotH / 2) + '" font-size="10" fill="var(--text-secondary)" text-anchor="middle" transform="rotate(-90 14 ' + (padT + plotH / 2) + ')">Number of Cases</text>';
+  const yAxisTitle = '<text x="14" y="' + (padT + plotH / 2) + '" font-size="9" fill="var(--text-secondary)" text-anchor="middle" transform="rotate(-90 14 ' + (padT + plotH / 2) + ')">Number of Cases</text>';
 
   return '<svg viewBox="0 0 ' + W + ' ' + H + '" style="width:100%;height:auto;display:block" xmlns="http://www.w3.org/2000/svg">' +
     yAxisTitle +
@@ -1151,8 +1155,8 @@ function buildTrendsLineChartSvg(monthlyData) {
 // time in days (not a whole-number count, unlike the Submitted/Solved
 // chart), so labels keep one decimal place for real precision.
 function buildResolutionTimeLineChartSvg(monthlyData) {
-  const W = 700, H = 240;
-  const padL = 44, padR = 16, padT = 26, padB = 34;
+  const W = 700, H = 250;
+  const padL = 42, padR = 16, padT = 24, padB = 46;
   const plotW = W - padL - padR, plotH = H - padT - padB;
   const n = monthlyData.length;
   const maxVal = Math.max.apply(null, monthlyData.map(function(m) { return m.medianDays; }).concat([1])) * 1.15;
@@ -1162,17 +1166,20 @@ function buildResolutionTimeLineChartSvg(monthlyData) {
   const linePoints = monthlyData.map(function(m, i) { return xFor(i).toFixed(1) + ',' + yFor(m.medianDays).toFixed(1); }).join(' ');
   const pointsAndLabels = monthlyData.map(function(m, i) {
     const x = xFor(i), y = yFor(m.medianDays);
-    return '<circle cx="' + x.toFixed(1) + '" cy="' + y.toFixed(1) + '" r="3" fill="#F59E0B"></circle>' +
-      '<text x="' + x.toFixed(1) + '" y="' + (y - 10).toFixed(1) + '" font-size="9" fill="#F59E0B" text-anchor="middle" font-weight="600">' + m.medianDays.toFixed(1) + '</text>';
+    return '<circle cx="' + x.toFixed(1) + '" cy="' + y.toFixed(1) + '" r="2.5" fill="#F59E0B"></circle>' +
+      '<text x="' + x.toFixed(1) + '" y="' + (y - 9).toFixed(1) + '" font-size="8" fill="#F59E0B" text-anchor="middle" font-weight="600">' + m.medianDays.toFixed(1) + '</text>';
   }).join('');
+  // Rotated at a slight -30° slant — 20 months in this window need it even
+  // more than the 13-month Submitted/Solved chart above.
   const xLabels = monthlyData.map(function(m, i) {
     const x = xFor(i);
     const parts = m.period.split('-');
     const label = new Date(Number(parts[0]), Number(parts[1]) - 1, 1).toLocaleDateString('en-US', { month: 'short', year: '2-digit' });
-    return '<text x="' + x.toFixed(1) + '" y="' + (H - 8) + '" font-size="9" fill="var(--text-secondary)" text-anchor="middle">' + escHtml(label) + '</text>';
+    const labelY = padT + plotH + 14;
+    return '<text x="' + x.toFixed(1) + '" y="' + labelY + '" font-size="9" fill="var(--text-secondary)" text-anchor="end" transform="rotate(-30 ' + x.toFixed(1) + ' ' + labelY + ')">' + escHtml(label) + '</text>';
   }).join('');
   const zeroY = yFor(0).toFixed(1);
-  const yAxisTitle = '<text x="14" y="' + (padT + plotH / 2) + '" font-size="10" fill="var(--text-secondary)" text-anchor="middle" transform="rotate(-90 14 ' + (padT + plotH / 2) + ')">Median Days</text>';
+  const yAxisTitle = '<text x="14" y="' + (padT + plotH / 2) + '" font-size="9" fill="var(--text-secondary)" text-anchor="middle" transform="rotate(-90 14 ' + (padT + plotH / 2) + ')">Median Days</text>';
 
   return '<svg viewBox="0 0 ' + W + ' ' + H + '" style="width:100%;height:auto;display:block" xmlns="http://www.w3.org/2000/svg">' +
     yAxisTitle +
