@@ -1097,30 +1097,31 @@ async function fetchTrendsData() {
 
 // Builds a hand-rolled SVG line chart — Blink has no charting library, and
 // pulling one in for a single chart isn't worth it. Two series (Submitted/
-// Solved), circle markers, and numeric labels at each point. Values are raw
-// case counts (COUNT(*) from Snowflake) — always whole numbers, so labels
-// show plain integers rather than decimals. Submitted labels sit above
-// their points, Solved labels below, to keep the two sets of labels
-// from overlapping.
+// Solved), circle markers, no always-visible value labels (20 months of
+// two series collided with each other and the line) — hover a point for
+// its exact value instead, via a larger invisible hit-target circle.
 function buildTrendsLineChartSvg(monthlyData) {
   const W = 700, H = 290;
   const padL = 50, padR = 16, padT = 30, padB = 46;
   const plotW = W - padL - padR, plotH = H - padT - padB;
   const n = monthlyData.length;
   const allVals = monthlyData.flatMap(function(m) { return [m.submitted, m.solved]; });
-  const maxVal = Math.max.apply(null, allVals.concat([1])) * 1.12; // headroom for labels
+  const maxVal = Math.max.apply(null, allVals.concat([1])) * 1.08;
   const xFor = function(i) { return n <= 1 ? padL : padL + (i / (n - 1)) * plotW; };
   const yFor = function(v) { return padT + plotH - (v / maxVal) * plotH; };
 
   const buildLine = function(key) {
     return monthlyData.map(function(m, i) { return xFor(i).toFixed(1) + ',' + yFor(m[key]).toFixed(1); }).join(' ');
   };
-  const buildPointsAndLabels = function(key, color, labelAbove) {
+  // No always-visible value labels — with 20 months now covered (was 13),
+  // labels for both series collided with each other and the line. Larger
+  // invisible hover targets sit on top of each small visible marker, same
+  // approach as the resolution-time chart below.
+  const buildPointsAndLabels = function(key, color, label) {
     return monthlyData.map(function(m, i) {
       const x = xFor(i), y = yFor(m[key]);
-      const labelY = labelAbove ? y - 9 : y + 16;
       return '<circle cx="' + x.toFixed(1) + '" cy="' + y.toFixed(1) + '" r="2.5" fill="' + color + '"></circle>' +
-        '<text x="' + x.toFixed(1) + '" y="' + labelY.toFixed(1) + '" font-size="8" fill="' + color + '" text-anchor="middle" font-weight="600">' + Math.round(m[key]) + '</text>';
+        '<circle cx="' + x.toFixed(1) + '" cy="' + y.toFixed(1) + '" r="9" fill="transparent" style="cursor:default"><title>' + escHtml(m.period) + ' ' + label + ': ' + m[key] + '</title></circle>';
     }).join('');
   };
   // Rotated at a slight -30° slant (matching the backlog chart's approach
@@ -1145,8 +1146,8 @@ function buildTrendsLineChartSvg(monthlyData) {
     '<line x1="' + padL + '" y1="' + zeroY + '" x2="' + (W - padR) + '" y2="' + zeroY + '" stroke="var(--border)" stroke-width="1"></line>' +
     '<polyline points="' + buildLine('submitted') + '" fill="none" stroke="#6366F1" stroke-width="2"></polyline>' +
     '<polyline points="' + buildLine('solved') + '" fill="none" stroke="#10B981" stroke-width="2"></polyline>' +
-    buildPointsAndLabels('submitted', '#6366F1', true) +
-    buildPointsAndLabels('solved', '#10B981', false) +
+    buildPointsAndLabels('submitted', '#6366F1', 'Submitted') +
+    buildPointsAndLabels('solved', '#10B981', 'Solved') +
     xLabels +
     '</svg>';
 }
@@ -1159,17 +1160,21 @@ function buildResolutionTimeLineChartSvg(monthlyData) {
   const padL = 42, padR = 16, padT = 24, padB = 46;
   const plotW = W - padL - padR, plotH = H - padT - padB;
   const n = monthlyData.length;
-  const maxVal = Math.max.apply(null, monthlyData.map(function(m) { return m.medianDays; }).concat([1])) * 1.15;
+  const maxVal = Math.max.apply(null, monthlyData.map(function(m) { return m.medianDays; }).concat([1])) * 1.08;
   const xFor = function(i) { return n <= 1 ? padL : padL + (i / (n - 1)) * plotW; };
   const yFor = function(v) { return padT + plotH - (v / maxVal) * plotH; };
 
   const linePoints = monthlyData.map(function(m, i) { return xFor(i).toFixed(1) + ',' + yFor(m.medianDays).toFixed(1); }).join(' ');
+  // No always-visible value labels — with 20 closely-spaced points they
+  // collided with each other and the line. A larger invisible circle sits
+  // on top of each small visible marker purely as a hover target (the
+  // visible dot alone was too small to reliably hover on a responsively
+  // scaled SVG); the <title> on that hit area is what shows the 2-decimal
+  // value on hover.
   const pointsAndLabels = monthlyData.map(function(m, i) {
     const x = xFor(i), y = yFor(m.medianDays);
-    // Visible label stays at 1 decimal for a clean look; hover reveals the
-    // full 2-decimal value the canvas actually stores.
-    return '<circle cx="' + x.toFixed(1) + '" cy="' + y.toFixed(1) + '" r="2.5" fill="#F59E0B" style="cursor:default"><title>' + m.medianDays.toFixed(2) + ' days</title></circle>' +
-      '<text x="' + x.toFixed(1) + '" y="' + (y - 9).toFixed(1) + '" font-size="8" fill="#F59E0B" text-anchor="middle" font-weight="600">' + m.medianDays.toFixed(1) + '</text>';
+    return '<circle cx="' + x.toFixed(1) + '" cy="' + y.toFixed(1) + '" r="2.5" fill="#F59E0B"></circle>' +
+      '<circle cx="' + x.toFixed(1) + '" cy="' + y.toFixed(1) + '" r="9" fill="transparent" style="cursor:default"><title>' + escHtml(m.period) + ': ' + m.medianDays.toFixed(2) + ' days</title></circle>';
   }).join('');
   // Rotated at a slight -30° slant — 20 months in this window need it even
   // more than the 13-month Submitted/Solved chart above.
