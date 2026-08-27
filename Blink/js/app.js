@@ -973,20 +973,8 @@ async function fetchJiraIssues() {
 function casesToggle(key, val) { jiraState.expanded[key] = val; renderCases(); }
 
 /* ============================================================
-   Support Case Trends & Data (embedded Looker dashboards)
+   Support Case Trends & Data
    ============================================================ */
-
-// Add more entries here as additional Looker embeds are provided —
-// each just needs a title and the embed URL. "Current Support Backlog"
-// was removed once the Case Backlog by Engineer chart (sourced from
-// Snowflake) replaced it as the actual backlog view.
-const TRENDS_EMBEDS = [
-];
-
-const TRENDS_EMBEDS_ROW2 = [
-  { title: 'Cases Taken Today', url: 'https://snykanalytics.eu.looker.com/embed/looks/6884' },
-  { title: 'Cases Closed Today', url: 'https://snykanalytics.eu.looker.com/embed/looks/6883' },
-];
 
 // Snowflake-sourced metrics relayed via a Slack Canvas — same pattern as
 // Support Cases, since Blink has no live Snowflake access. NOT live; only
@@ -1284,26 +1272,6 @@ function buildBacklogStackedBarSvg(byOwner) {
 function renderTrends() {
   const el = document.getElementById('screen-trends-content');
   if (!el) return;
-  if (!TRENDS_EMBEDS.length && !TRENDS_EMBEDS_ROW2.length) {
-    el.innerHTML = '<div class="cal-connect-prompt"><div class="cal-connect-icon">📊</div><h3>No dashboards added yet</h3><p>Looker embeds will show up here once added.</p></div>';
-    return;
-  }
-  const topHtml = TRENDS_EMBEDS.map(function(e, i) {
-    return '<div class="trends-embed-block trends-embed-block-centered">' +
-      '<iframe class="trends-embed-frame trends-embed-frame-half" src="' + e.url + '" title="' + escHtml(e.title) + '" id="trends-iframe-' + i + '" loading="lazy"></iframe>' +
-    '</div>';
-  }).join('');
-  const rowHtml = TRENDS_EMBEDS_ROW2.length
-    ? '<div class="trends-embed-row">' + TRENDS_EMBEDS_ROW2.map(function(e, i) {
-        return '<div class="trends-embed-block">' +
-          '<iframe class="trends-embed-frame trends-embed-frame-half" src="' + e.url + '" title="' + escHtml(e.title) + '" id="trends-iframe-row2-' + i + '" loading="lazy"></iframe>' +
-        '</div>';
-      }).join('') + '</div>'
-    : '';
-  const lookerBar = '<div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:16px;padding:10px 14px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);flex-wrap:wrap">' +
-    '<span style="font-size:12px;color:var(--text-secondary)">Dashboards blank? You may need to be signed in to Looker in this browser.</span>' +
-    '<a href="#" onclick="triggerLookerSSO();return false;" class="connect-btn" style="padding:6px 14px;font-size:12px;text-decoration:none">Sign in to Looker</a>' +
-  '</div>';
   const sfLinksHtml = '<div class="cases-sf-links">' +
     '<a href="https://snyksec.lightning.force.com/lightning/r/Dashboard/01ZPU000004pbPp2AI/view?queryScope=userFolders" target="_blank" class="cases-sf-btn">📊 Case Trends &amp; Data</a>' +
     '<a href="https://snyksec.lightning.force.com/lightning/o/Case/list?filterName=All_Unassigned_Cases" target="_blank" class="cases-sf-btn">📋 All Unassigned Cases</a>' +
@@ -1423,7 +1391,7 @@ function renderTrends() {
     ? '<div style="display:flex;gap:16px;flex-wrap:wrap;align-items:flex-start">' + snowflakeSectionHtml + resolutionTimeHtml + '</div>'
     : '';
 
-  el.innerHTML = lookerBar + sfLinksHtml + backlogHtml + trendChartsRowHtml + topHtml + rowHtml;
+  el.innerHTML = sfLinksHtml + backlogHtml + trendChartsRowHtml;
 }
 
 /* ============================================================
@@ -2028,19 +1996,6 @@ function renderSettingsPanel() {
       </div>
     </div>
 
-    <!-- Looker -->
-    <div class="settings-section">
-      <div class="settings-section-title">Looker</div>
-      <div class="cal-connect-box">
-        <p style="font-size:13px;color:var(--text-secondary);margin-bottom:10px">Looker dashboards on the Support Case Trends &amp; Data screen need you to be signed in to Looker in this browser. This just opens Looker so you can sign in via SSO — Blink doesn't store a token for it.</p>
-        <a href="#" onclick="triggerLookerSSO();return false;" class="cal-connect-btn" style="display:inline-flex;align-items:center;gap:8px;text-decoration:none;color:white">
-          Sign in to Looker
-        </a>
-        ${localStorage.getItem('uyt_looker_last_signin') ? '<p style="font-size:12px;color:var(--text-secondary);margin-top:10px">Last signed in: ' + escHtml(new Date(parseInt(localStorage.getItem('uyt_looker_last_signin'), 10)).toLocaleString()) + '</p>' : ''}
-      </div>
-    </div>
-
-
 
     <!-- Workday -->
     <div class="settings-section">
@@ -2319,38 +2274,7 @@ function triggerJiraOAuth() {
   }, 500);
 }
 
-// Looker doesn't use OAuth tokens the way Slack/Jira do — the Trends screen's
-// iframes rely entirely on the browser's own ambient session cookie with
-// Looker. This popup just gives the person a normal top-level window (not an
-// iframe, so SSO framing restrictions don't apply) to sign in via SSO. There's
-// no token to receive back, so "success" is inferred from the popup closing —
-// not a guaranteed confirmation, just the best signal available.
-function triggerLookerSSO() {
-  const width = 700, height = 750;
-  const left = Math.round(window.screenX + (window.outerWidth - width) / 2);
-  const top = Math.round(window.screenY + (window.outerHeight - height) / 2);
-  const popup = window.open(
-    'https://snykanalytics.eu.looker.com/',
-    'looker-sso',
-    'width=' + width + ',height=' + height + ',left=' + left + ',top=' + top + ',toolbar=no,menubar=no'
-  );
-  let _lookerHandled = false;
-  const poll = setInterval(function() {
-    if (popup.closed) {
-      clearInterval(poll);
-      if (_lookerHandled) return;
-      _lookerHandled = true;
-      localStorage.setItem('uyt_looker_last_signin', String(Date.now()));
-      if (setupSteps[setupStep] === 'looker') setupStep++;
-      if (typeof renderSetupStep === 'function') renderSetupStep();
-      if (typeof renderSettingsPanel === 'function') renderSettingsPanel();
-      // Force the Trends iframes to reload so they pick up the fresh session cookie
-      if (typeof renderTrends === 'function' && state.screen === 'trends') renderTrends();
-    }
-  }, 500);
-}
-
-// Same shape as triggerLookerSSO — Blink's actual Workday data comes via the
+// Blink's actual Workday data comes via the
 // Slack bot DM (see categorizeWorkdayItems), not a direct Workday API
 // integration, so there's no token to store here either. This popup just
 // gives the person's browser an active Workday session so the "Open in
@@ -3595,7 +3519,6 @@ const setupSteps = [
   'google',
   'slack',
   'jira',
-  'looker',
   'workday',
   'preferences',
   'done',
@@ -3782,21 +3705,6 @@ function renderSetupStep() {
     }
   }
 
-  else if (step === 'looker') {
-    const hasSignedIn = !!localStorage.getItem('uyt_looker_last_signin');
-    content.innerHTML = '<div class="setup-icon">📊</div>' +
-      '<h1 class="setup-title">Connect Looker</h1>' +
-      '<p class="setup-desc">Blink shows live Looker dashboards on the Support Case Trends &amp; Data screen. Unlike Slack/Jira, Blink doesn\'t store a token for this — it just needs your browser to have an active Looker session, the same one your regular SSO login already gives you.</p>' +
-      '<a href="#" onclick="triggerLookerSSO();return false;" class="setup-btn-primary" style="display:inline-flex;align-items:center;gap:8px;text-decoration:none;color:white;margin-top:8px">Sign in to Looker</a>' +
-      (hasSignedIn ? '<div class="setup-connected-badge" style="margin-top:12px">✓ Signed in to Looker</div>' : '') +
-      '<p style="font-size:12px;color:var(--text-secondary);margin-top:12px">A window will open — sign in via SSO, then close it yourself to come back here (this window won\'t close on its own, since it\'s a real page on their own site, not something Blink can control).</p>' +
-      '<div class="setup-actions">' +
-        '<button class="setup-btn-ghost" onclick="setupBack()">← Back</button>' +
-        '<button class="setup-btn-ghost" onclick="setupNext()">Skip for now</button>' +
-        '<button class="setup-btn-primary" onclick="setupNext()">Next →</button>' +
-      '</div>';
-  }
-
   else if (step === 'workday') {
     const hasSignedIn = !!localStorage.getItem('uyt_workday_last_signin');
     content.innerHTML = '<div class="setup-icon">🏢</div>' +
@@ -3846,7 +3754,6 @@ function renderSetupStep() {
   else if (step === 'done') {
     const hasJira = !!localStorage.getItem('uyt_jira_token');
     const hasWD = !!localStorage.getItem('uyt_workday_last_signin');
-    const hasLooker = !!localStorage.getItem('uyt_looker_last_signin');
     const hasSlack = !!localStorage.getItem('uyt_slack_token');
     const conn = calIsConnected();
     content.innerHTML = '<div class="setup-icon">🎉</div>' +
@@ -3856,7 +3763,6 @@ function renderSetupStep() {
         (conn ? '<div class="setup-feature">✅ Google — calendar, Gmail &amp; Drive</div>' : '<div class="setup-feature" style="opacity:0.5">○ Google — connect anytime from Settings</div>') +
         (hasSlack ? '<div class="setup-feature">✅ Slack — digest ready</div>' : '<div class="setup-feature" style="opacity:0.5">○ Slack — add your token in Settings</div>') +
         (hasJira ? '<div class="setup-feature">✅ Jira connected</div>' : '<div class="setup-feature" style="opacity:0.5">○ Jira — connect anytime from Settings</div>') +
-        (hasLooker ? '<div class="setup-feature">✅ Looker — signed in</div>' : '<div class="setup-feature" style="opacity:0.5">○ Looker — sign in anytime from Settings</div>') +
         (hasWD ? '<div class="setup-feature">✅ Workday — signed in</div>' : '<div class="setup-feature" style="opacity:0.5">○ Workday — sign in anytime from Settings</div>') +
       '</div>' +
       '<p style="font-size:13px;color:var(--text-secondary);margin-top:8px">Change anything later — just click the ⚙️ gear icon in the top right.</p>' +

@@ -48,7 +48,7 @@ git add -A && git commit -m "message" && git push
 
 ### Cloudflare Worker
 - URL: `https://uyt-slack-digest.kar-marsten.workers.dev`
-- Paid plan. Routes: Slack OAuth (`/oauth/start`, `/oauth/callback`), Jira OAuth (`/jira/start`, `/jira/callback`), Jira issues (`/jira/issues`), Slack digest (POST `/`), debug IMs (`/debug/ims`), Google Sheets-backed backlog data (`/looker/backlog` — see "Dead code" note below, no longer used by the frontend)
+- Paid plan. Routes: Slack OAuth (`/oauth/start`, `/oauth/callback`), Jira OAuth (`/jira/start`, `/jira/callback`), Jira issues (`/jira/issues`), Slack digest (POST `/`), debug IMs (`/debug/ims`), Google Sheets-backed backlog data (`/looker/backlog` — see "Dead code" note below, no longer used by the frontend; despite the route name, this predates and is unrelated to the Looker embeds feature that was later added and then fully removed — see "Looker embeds removed" note below)
 - Env vars: `ANTHROPIC_API_KEY`, `SLACK_MCP_TOKEN`, `ALLOWED_ORIGIN`=`https://klm-snyk.github.io`, `SLACK_CLIENT_ID`, `SLACK_CLIENT_SECRET`, `JIRA_CLIENT_ID`, `JIRA_CLIENT_SECRET`, `GOOGLE_SHEETS_CLIENT_EMAIL`, `GOOGLE_SHEETS_PRIVATE_KEY` (service-account creds for `/looker/backlog`, currently unused by the UI but still functional)
 - APP_URL hardcoded as `https://klm-snyk.github.io/Blink` in worker
 - Region Handover: detects `SupportGlobalHandover` bot (`U0BEK3SPCTY`) first, then falls back to text matching
@@ -100,16 +100,18 @@ git add -A && git commit -m "message" && git push
 - Auto-fetches on navigate if token present
 - Weeping Angel overlay during fetch
 - **Note:** only the visible label changed to "JIRA" — the internal `data-screen`/element ID is still `"cases"` (`screen-cases`, `screen-cases-content`, `renderCases()`, `fetchJiraIssues()`, etc.). Don't go looking for a `"jira"` screen id, it doesn't exist.
-- The backlog-by-SE stacked column chart that used to sit at the top of this screen was **removed** this session (superseded by the new Trends screen's Looker embed). The chart's code (`backlogState`, `fetchBacklogData()`, `renderBacklogChart()`, `BACKLOG_COLORS`, and the `.backlog-*` CSS rules) is still in `app.js`/`styles.css` but is **dead code — nothing calls it anymore**. Candidate for full removal if reused nowhere else.
+- The backlog-by-SE stacked column chart that used to sit at the top of this screen was **removed** this session (superseded at the time by the new Trends screen's Looker embed, which was itself later fully removed and replaced by Snowflake-sourced charts — see "Looker embeds removed" note below). The chart's code (`backlogState`, `fetchBacklogData()`, `renderBacklogChart()`, `BACKLOG_COLORS`, and the `.backlog-*` CSS rules) is still in `app.js`/`styles.css` but is **dead code — nothing calls it anymore**. Candidate for full removal if reused nowhere else.
 
-### Support Case Trends & Data Screen (new this session)
-- New nav item + screen (`data-screen="trends"`, `screen-trends-content`), added right after JIRA in the nav
-- Embeds live Looker dashboards directly via `<iframe>` — no backend data pipeline needed
-- Config lives in `app.js`: `TRENDS_EMBEDS` (array of `{title, url}`, rendered as a single half-width block centered at the top) and `TRENDS_EMBEDS_ROW2` (array of `{title, url}`, rendered side-by-side below it). To add more dashboards, just add entries — no other code changes needed.
-- Current entries: "Current Support Backlog" (`.../embed/looks/6881`), "Cases Taken Today" (`.../embed/looks/6884`), "Cases Closed Today" (`.../embed/looks/6883`) — all on `snykanalytics.eu.looker.com`
-- **Important:** Looker embed URLs must use the `/embed/looks/{id}` path, not the plain `/looks/{id}` path — the latter renders Looker's full app chrome or may not render at all
-- **Open question, untested as of v18.20:** whether the org's SSO provider allows itself to be iframed. If the person isn't already logged into Looker in that browser, the embed may render blank rather than showing a login prompt inline. This needs a Looker admin to (a) enable embedding and (b) allow-list `klm-snyk.github.io`, neither of which has been confirmed done yet.
-- No theming: cross-origin iframe content can't be restyled from Blink's CSS (browser security boundary). Looker does support server-side embed theming via its own Admin settings, but that's a Looker-side config task, not something Blink's code can touch.
+### Support Case Trends & Data Screen (history: Looker embeds → Snowflake charts)
+- Nav item + screen (`data-screen="trends"`, `screen-trends-content`), sits right after JIRA in the nav
+- **Originally** embedded live Looker dashboards directly via `<iframe>` (Current Support Backlog, Cases Taken Today, Cases Closed Today), plus a "Sign in to Looker" popup-SSO flow (wizard step, Settings section, banner on the screen itself) since Looker's iframes rely on the browser's ambient session cookie, not a token Blink stores.
+- **Fully removed.** Replaced with three Snowflake-sourced charts, relayed via a Slack Canvas ("Blink Trends & Data", canvas ID `F0BSZGUQ97D`) since Blink has no live Snowflake access from the browser — refreshed occasionally on request via the `blink-trends-refresh` skill, not real-time:
+  - **Case Backlog by Engineer** — stacked bar, all open Support cases by current owner + status, click-to-drill-down into individual cases (reuses data from the separate Support Cases canvas/`blink-refresh` skill)
+  - **Submitted vs Solved** — monthly line chart, since Jan 2025
+  - **Median Resolution Time** — monthly line chart, since Jan 2025, reproduced from and verified against a live Salesforce report
+- Reasons for the removal: the three Snowflake charts made the Looker dashboards redundant; a same-day "Cases Taken by Eng — Created Today" chart was also built and then removed after discovering Snowflake lags Salesforce by ~2hrs (via `_FIVETRAN_SYNCED`), which makes any same-day count structurally misleading regardless of source (Looker or Snowflake).
+- All Looker-related code (setup wizard step, Settings section, `triggerLookerSSO()`, the Trends-screen banner, `TRENDS_EMBEDS`/`TRENDS_EMBEDS_ROW2` arrays and their iframe rendering, `.trends-embed-*` CSS, `uyt_looker_last_signin`) has been deleted from the frontend — confirmed via full-repo search, zero remaining references. The Worker's `/looker/backlog` route is unrelated (see Worker routes note above) and was not touched by this removal.
+
 
 ### Settings
 - Gmail excluded labels (denylist, `toggleGmailExclude`)
@@ -118,24 +120,17 @@ git add -A && git commit -m "message" && git push
 - Whovian section (dark mode + Modern theme only): None / Tardis / Bigger on the inside / Tally
 - Dark mode toggle immediately re-renders settings to show/hide Whovian section
 
-### Setup Wizard (7-step)
+### Setup Wizard (6-step, was 7 before Looker step removed)
 1. Welcome
 2. Google — SSO, auto-advances after connect
 3. Slack — SSO popup, auto-advances after connect
 4. Jira — SSO popup, auto-advances after connect
-5. Looker — popup to `snykanalytics.eu.looker.com` (see "Looker SSO" note below — not a real OAuth token exchange, "success" is inferred from the popup closing)
-6. Preferences — name, theme
-7. Done — checklist
+5. Preferences — name, theme
+6. Done — checklist
 - The old "Your Tools" (Salesforce/Workday URLs) step was **removed** — those are still configurable in Settings, just no longer a dedicated wizard step.
-- **Fixed this session:** every step title used to have a hardcoded "Step N:" prefix that drifted out of sync with the real dynamic step counter (`Step ${setupStep+1} of ${total}` shown above the content) — Jira and Tools both said "Step 3", which is the "two Step 3s" bug. All hardcoded numbers were removed from step titles; the dynamic counter is now the only source of truth for step numbering.
-- Steps 2–4 (Slack/Jira) and step 5 (Looker) all auto-advance once their popup completes, guarded against double-firing and against auto-advancing when the wizard isn't actually on that step (e.g. reconnecting from Settings).
-
-### Looker SSO (new this session, different mechanism than Slack/Google/Jira)
-- Looker's iframe embeds on the Trends screen rely on the browser's **ambient session cookie** with Looker, not a token Blink requests/stores. There is nothing to "connect" in the OAuth sense.
-- `triggerLookerSSO()` opens `https://snykanalytics.eu.looker.com/` in a real popup (`window.open()`, not an iframe — a popup is its own top-level browsing context, so SSO framing restrictions don't apply to it the way they might to an embedded iframe). The person signs in via normal SSO there.
-- There's no token to receive back, so "success" is inferred from the popup closing and recorded as a timestamp in `uyt_looker_last_signin` — purely a UX hint ("last signed in: ..."), not a real verified-connection check.
-- Entry points: wizard step 5, a "Looker" section in Settings, and a small persistent "Sign in to Looker" bar at the top of the Trends screen itself (the most useful spot, since that's where a blank dashboard would actually be noticed).
-- All three call the same `triggerLookerSSO()` function.
+- The "Looker" step (previously step 5, popup to `snykanalytics.eu.looker.com`) was later **removed entirely** along with the rest of the Looker embeds feature — see "Support Case Trends & Data Screen" note above.
+- **Fixed earlier session:** every step title used to have a hardcoded "Step N:" prefix that drifted out of sync with the real dynamic step counter (`Step ${setupStep+1} of ${total}` shown above the content) — Jira and Tools both said "Step 3", which is the "two Step 3s" bug. All hardcoded numbers were removed from step titles; the dynamic counter is now the only source of truth for step numbering.
+- Steps 2–4 (Slack/Jira) auto-advance once their popup completes, guarded against double-firing and against auto-advancing when the wizard isn't actually on that step (e.g. reconnecting from Settings).
 
 ### Sign Out (`signOutAll()`)
 - Clears Google, Slack, and Jira together (`calDisconnect()`, `slackDisconnect()`, `jiraDisconnect()`) so "Sign out" actually means sign out of everything, not just Google.
@@ -164,7 +159,6 @@ git add -A && git commit -m "message" && git push
 - `uyt_gmail_unread`, `uyt_gmail_breakdown` — cached counts
 - `uyt_mail_messages`, `uyt_mail_asof` — cached mail
 - `uyt_jira_issues`, `uyt_jira_asof` — cached cases
-- `uyt_looker_last_signin` — timestamp (ms) of last "Sign in to Looker" popup close; UX hint only, not a verified connection check
 
 ## Default Slack Channels
 - `C0885BMRNBA` — support-leads
@@ -187,8 +181,8 @@ git add -A && git commit -m "message" && git push
 2. **Snyk workflow** — `.github/workflows/snyk.yml` disabled. Needs `SNYK_TOKEN` secret added to repo.
 3. **4 Snyk Code XSS findings** — false positives, confirmed via `snyk code test` on the local repo (Org: kars-music-box-default). All 4 at app.js lines 817 (Mail screen), 1029 (Workday screen), 1207 (JIRA screen), 2061 (Dashboard). Each was individually traced: every point where actual external data (message text, file/issue names, extracted links) enters the HTML is properly escaped via `escHtml()` / `renderSlackText()` (which escapes `&`/`<`/`>` *before* applying markdown formatting) or validated via `isSafeWorkdayUrl()`. Snyk's taint analysis flags them anyway because it can't verify a hand-written sanitizer (as opposed to a recognized library like DOMPurify) actually neutralizes the data flow from a network/storage source to the `innerHTML` sink. Need to be marked as ignored via the Snyk web UI (app.snyk.io under KLM-Snyk account) since `snyk code test` doesn't have a `--ignore` flag equivalent to the open-source `snyk ignore` command.
 4. **index.html truncation** — Desktop Commander times out mid-write. Always verify line count before committing.
-5. **Looker embed SSO framing still not fully confirmed** — the "Sign in to Looker" popup (wizard/Settings/Trends screen) mitigates this by giving the person an easy way to (re-)establish their Looker session, but it's not been verified end-to-end that the Trends iframes then render correctly. Still may need a Looker admin to confirm embedding is enabled/allow-listed for `klm-snyk.github.io`.
-6. **Dead backlog-chart code — REMOVED (v18.94).** `backlogState`, `fetchBacklogData()`, `renderBacklogChart()`, `BACKLOG_COLORS`, and the `.backlog-*` CSS are gone from the frontend. On the Worker side, the `/looker/backlog` route, `SHEETS_SPREADSHEET_ID`/`SHEETS_TAB_NAME` constants, and the Google service-account JWT helpers (`getGoogleAccessToken()`, `importGooglePrivateKey()`, `base64url()`) were also removed — confirmed via search they weren't used anywhere else in the Worker. The `GOOGLE_SHEETS_CLIENT_EMAIL`/`GOOGLE_SHEETS_PRIVATE_KEY` Cloudflare secrets are now safe to delete too, if not already done.
+5. **~~Looker embed SSO framing~~ — moot.** The entire Looker embeds feature (setup wizard step, Settings section, `triggerLookerSSO()`, Trends-screen banner, `TRENDS_EMBEDS`/`TRENDS_EMBEDS_ROW2` config) was removed and replaced with Snowflake-sourced charts (Case Backlog by Engineer, Submitted vs Solved, Median Resolution Time) — see "Support Case Trends & Data Screen" note above for the full history and reasoning.
+6. **Dead backlog-chart code — REMOVED (v18.94).** `backlogState`, `fetchBacklogData()`, `renderBacklogChart()`, `BACKLOG_COLORS`, and the `.backlog-*` CSS are gone from the frontend. On the Worker side, the `/looker/backlog` route (unrelated to the Looker embeds feature removed above, despite the shared name — see Worker routes note), `SHEETS_SPREADSHEET_ID`/`SHEETS_TAB_NAME` constants, and the Google service-account JWT helpers (`getGoogleAccessToken()`, `importGooglePrivateKey()`, `base64url()`) were also removed — confirmed via search they weren't used anywhere else in the Worker. The `GOOGLE_SHEETS_CLIENT_EMAIL`/`GOOGLE_SHEETS_PRIVATE_KEY` Cloudflare secrets are now safe to delete too, if not already done.
 7. **Two copies of the Worker source on disk** — see "Cloudflare Worker source" note under Key Files. Edit `/Users/kar/Desktop/blink-worker/` going forward, not the gitignored copy inside the Blink project.
 8. **Support Cases — simplified to a plain Salesforce link (v18.85), Snowflake-in-Blink abandoned.** The Dashboard tile and nav item both just do `window.open('https://snyksec.lightning.force.com/lightning/o/Case/list?filterName=All_Unassigned_Cases')` now — same URL already used for the JIRA screen's "All Unassigned Cases" quick link. **History, for context:** this was originally going to be a live Snowflake-backed screen (`PROD_MODELED.GTM.SUPPORT_CASES`), first with a shared service-account key-pair JWT, then reworked to per-user OAuth (mirroring the Jira pattern) once it became clear key-pair auth centralizes too much access in one account. Both approaches were fully built (Worker routes, `supportCasesState`, `renderSupportCases()`, `triggerSnowflakeOAuth()`, a Settings section) but ultimately blocked: creating the required Snowflake OAuth Security Integration needs account-level `CREATE INTEGRATION` privilege (`ACCOUNTADMIN` or an explicitly-granted role), which the user's working role (`ROLE_VIEWER`) doesn't have. Getting Claude to reach Snowflake through the Worker without that admin step was also investigated and ruled out — Claude.ai's MCP connectors are tied to the person's claude.ai account/browser session, not something a raw API key (which is all the Worker has) can inherit or "log in as." **User's decision: not worth pursuing admin approval for this.** All of that code (frontend and Worker) has been fully removed for cleanliness — confirmed zero remaining references to `supportCases`/`Snowflake` in either `app.js` or the Worker file. If support-case data is needed from Snowflake going forward, the workflow is asking Claude directly to query the Snowflake MCP connector on demand (as already demonstrated for a 6-month case-complexity analysis) — not through Blink. Don't proactively suggest rebuilding this unless asked.
 
@@ -196,7 +190,6 @@ git add -A && git commit -m "message" && git push
 - Escalations view on JIRA screen
 - Status page information
 - Workday tasks (direct Workday API)
-- Possible: configurable Trends embeds UI in Settings (currently hardcoded arrays in `app.js` by design — user chose hardcode-for-now over building an add/remove UI)
 
 ## Fixed: OAuth tokens expiring with no refresh (v18.93)
 User reported "connectivity gets dropped very quickly" across multiple integrations. Root cause confirmed by code inspection: **neither Jira nor Slack ever implemented token refresh**, despite both having the pieces in place to support it.

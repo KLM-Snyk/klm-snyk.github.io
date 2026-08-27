@@ -43,7 +43,7 @@ Blink is a browser-native workday dashboard for support managers. It provides a 
 - Grouped into three categories, inferred from each message's leading emoji: **📝 Pending** (no recognized emoji — typically an approval card), **✔️ Approved** (confirmations of something already done), **✨ Updates** (informational). This is a heuristic based on message wording, not a real Workday task-status check
 - Slack's raw `<url|display text>` link syntax and `<@USERID>` mention tokens are parsed into clean text rather than shown raw; mentioned user IDs are resolved to real names via Slack's `users.info` API (cached in the browser) instead of showing a raw ID
 - Items with an embedded link (e.g. a date range) show a small caret — click to expand and see the detail, with a real link back to Workday if it's a genuine `myworkday.com` URL
-- "Sign in to Workday" available in the wizard and Settings — same popup-based pattern as Looker (see below): no token stored, just ensures your browser has an active Workday session
+- "Sign in to Workday" available in the wizard and Settings — a popup-based pattern: no token stored, just ensures your browser has an active Workday session
 
 ### JIRA Screen
 - Open Jira issues assigned to you, grouped by project
@@ -52,10 +52,11 @@ Blink is a browser-native workday dashboard for support managers. It provides a 
 - Each issue links directly to Jira
 
 ### Support Case Trends & Data
-- Live embedded Looker dashboards: Current Support Backlog, Cases Taken Today, Cases Closed Today
-- Add more by adding an entry to the `TRENDS_EMBEDS` / `TRENDS_EMBEDS_ROW2` arrays in `app.js` — just a title and embed URL, no other code changes needed
-- "Sign in to Looker" button on this screen (also in the wizard and Settings) — opens Looker in a popup so you can sign in via SSO if the dashboards appear blank. Unlike Google/Slack/Jira, Blink doesn't store a token for this; it just needs your browser to hold an active Looker session
-- Requires Looker embedding to be enabled and the domain allow-listed by a Looker admin; also depends on your SSO provider allowing itself to be iframed
+- **Case Backlog by Engineer** — stacked bar chart of all open Support cases by current owner and status; click a bar segment to drill into the individual cases behind it
+- **Submitted vs Solved** — monthly line chart since January 2025, hover a point for the exact count
+- **Median Resolution Time** — monthly line chart since January 2025, reproduced from a live Salesforce report and verified against it; hover a point for the exact value
+- All three are sourced from Snowflake and relayed into a Slack Canvas ("Blink Trends & Data") that Blink reads — there's no live Snowflake access from the browser, so this is refreshed occasionally on request (via the `blink-trends-refresh` skill), not real-time
+- No Looker dependency — the Looker-embedded dashboards this screen originally used were removed; see "Removed features" below
 - This is Blink's primary path for Salesforce-derived case data — there's no direct Salesforce integration; a Salesforce Cases URL quick link is still available in Settings for anyone who wants it, but it's not part of the wizard
 
 ### Google Drive
@@ -77,11 +78,10 @@ Blink is a browser-native workday dashboard for support managers. It provides a 
    - **Google** — Sign in with Google (one click)
    - **Slack** — Sign in with Slack (SSO popup)
    - **Jira** — Sign in with Atlassian (SSO popup)
-   - **Looker** — Sign in via popup so the Trends screen's embedded dashboards can pick up your session (optional; no token stored, just needs an active browser session with Looker)
-   - **Workday** — Sign in via popup, same pattern as Looker (optional; no token stored)
+   - **Workday** — Sign in via popup (optional; no token stored)
    - **Preferences** — name and color theme
 
-Salesforce isn't part of the wizard — Looker's embedded dashboards are the primary path for that data. A Salesforce URL quick link can still be added anytime in Settings if wanted.
+Salesforce isn't part of the wizard — the Support Case Trends & Data screen's Snowflake-backed charts are the primary path for that data. A Salesforce URL quick link can still be added anytime in Settings if wanted.
 
 ---
 
@@ -90,7 +90,6 @@ Salesforce isn't part of the wizard — Looker's embedded dashboards are the pri
 - Gmail excluded labels (hide labels from unread count and Mail page)
 - Slack connect/disconnect + channel list
 - Jira connect/disconnect + project key filter
-- Looker sign-in (same popup as the wizard step)
 - Workday sign-in (same popup as the wizard step)
 - Salesforce Cases URL (optional quick link, not part of the wizard)
 - 5 color themes + dark mode
@@ -107,7 +106,7 @@ Authorized origin: `https://klm-snyk.github.io`
 URL: `https://uyt-slack-digest.kar-marsten.workers.dev`
 Source: private repo `KLM-Snyk/blink-worker` (kept out of this public repo — see `.gitignore`)
 
-Handles: Slack OAuth, Jira OAuth, Slack API calls (digest, Workday DM fetch, user-name resolution), Anthropic digest categorization, Google Sheets-backed backlog data (legacy route, no longer used by the UI).
+Handles: Slack OAuth, Jira OAuth, Slack API calls (digest, Workday DM fetch, user-name resolution), Anthropic digest categorization, Google Sheets-backed backlog data (legacy route, no longer used by the UI — despite the route name, this predates and is unrelated to the Looker embeds feature that was later added and then removed; see "Removed features" below).
 
 Environment variables:
 - `ANTHROPIC_API_KEY`
@@ -115,7 +114,7 @@ Environment variables:
 - `JIRA_CLIENT_ID` / `JIRA_CLIENT_SECRET`
 - `ALLOWED_ORIGIN` = `https://klm-snyk.github.io`
 - `SLACK_MCP_TOKEN` — shared fallback Slack token
-- `GOOGLE_SHEETS_CLIENT_EMAIL` / `GOOGLE_SHEETS_PRIVATE_KEY` — legacy, only used by the unused `/looker/backlog` route
+- `GOOGLE_SHEETS_CLIENT_EMAIL` / `GOOGLE_SHEETS_PRIVATE_KEY` — legacy, only used by the unused `/looker/backlog` route (this route name predates and is unrelated to the removed Looker embeds feature)
 
 ### Slack App
 Each user signs in via OAuth popup — no token copying needed.
@@ -145,3 +144,16 @@ Add managers as Contributors on the app at developer.atlassian.com.
 ## Coming Soon
 - Per-action Workday quick-link URLs (currently all point to the home page)
 - More dashboards on Support Case Trends & Data — this screen will keep growing
+
+---
+
+## Removed Features
+
+### Looker embeds (removed)
+The Support Case Trends & Data screen originally showed live embedded Looker dashboards (Current Support Backlog, Cases Taken Today, Cases Closed Today), with a "Sign in to Looker" popup flow (wizard step, Settings section, and a banner on the Trends screen itself) to establish an active Looker browser session for the iframes to use.
+
+This was fully removed and replaced with Snowflake-sourced charts (see "Support Case Trends & Data" above). Reasons:
+- The Case Backlog by Engineer, Submitted vs Solved, and Median Resolution Time charts made the Looker dashboards redundant.
+- Two same-day Looker metrics ("Cases Taken Today", "Cases Closed Today") were dropped after building and then removing a Snowflake-based equivalent — the Snowflake replica lags Salesforce by roughly 2 hours (confirmed via the `_FIVETRAN_SYNCED` column), which makes any same-day count structurally misleading regardless of source.
+
+Nothing Looker-related remains in the frontend. The Worker's `/looker/backlog` route (see "Cloudflare Worker" above) is unrelated — an older, already-unused Google Sheets-backed route that happened to share the name, not part of the embeds feature described here.

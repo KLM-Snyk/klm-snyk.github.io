@@ -2830,15 +2830,6 @@ button, a.setup-btn-primary, a.cal-connect-btn {
 .workday-item-detail { margin:-2px 0 6px 22px; padding:8px 12px; background:var(--surface2); border-radius:var(--radius-sm); font-size:12px; display:flex; flex-direction:column; gap:4px; }
 .workday-item-detail-link { color:var(--primary); text-decoration:underline; }
 
-/* Support Case Trends & Data (Looker embeds) */
-.trends-embed-block { margin-bottom:24px; background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; }
-.trends-embed-title { padding:14px 16px; font-size:14px; font-weight:700; color:var(--text); border-bottom:1px solid var(--border); }
-.trends-embed-frame { display:block; width:100%; height:700px; border:none; }
-.trends-embed-block-centered { max-width:50%; margin:0 auto 24px; }
-.trends-embed-frame-half { height:350px; }
-.trends-embed-row { display:flex; gap:24px; align-items:flex-start; }
-.trends-embed-row .trends-embed-block { flex:1; min-width:0; }
-
 /* Mail screen */
 .mail-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:12px; padding-bottom:12px; border-bottom:1px solid var(--border); }
 .mail-meta { font-size:13px; color:var(--text-secondary); }
