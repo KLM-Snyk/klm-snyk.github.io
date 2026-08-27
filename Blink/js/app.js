@@ -1432,31 +1432,20 @@ function renderTrends() {
     '</div>';
   }
 
-  // Median resolution time trend — reproduced from a Salesforce report
-  // ("Case Resolution Time - Median"), filters verified against it exactly
-  // before building (26,200 vs 26,204 records, 12.54 vs 12.51 day median).
-  let resolutionTimeHtml = '';
-  if (trendsDataState.resolutionTimeTrend && trendsDataState.resolutionTimeTrend.length) {
-    resolutionTimeHtml = '<div class="dash-card" style="margin-bottom:20px;flex:1 1 380px;min-width:0">' +
-      '<div class="dash-card-header"><div><div class="dash-card-title">Median Resolution Time</div><div class="dash-card-sub" style="margin-top:2px">Since January 2025</div></div></div>' +
-      buildResolutionTimeLineChartSvg(trendsDataState.resolutionTimeTrend) +
-      '<div style="margin-top:12px;font-size:11px;color:var(--text-secondary)">' +
-        'Support cases, Solved/Closed, excludes Duplicate/Spam and Free tier · Not live — refreshed occasionally on request.' +
-      '</div>' +
-    '</div>';
-  }
-
   // Support Only vs R&D split — a distinct data source from everything
   // else here (two Salesforce report exports via Google Drive, not
-  // Snowflake, since the Jira-linkage field isn't synced there), so it
-  // gets its own full-width card rather than squeezing into the row above.
+  // Snowflake, since the Jira-linkage field isn't synced there). Sits
+  // side by side with Submitted vs Solved, replacing the combined Median
+  // Resolution Time chart (removed from the UI per user request — the
+  // canvas data and build function for it are left in place, unused,
+  // rather than torn out, since removal wasn't explicitly requested).
   let resolutionTimeSplitHtml = '';
   if (trendsDataState.resolutionTimeSplitTrend && trendsDataState.resolutionTimeSplitTrend.length) {
     const splitLegend = '<div style="display:flex;gap:16px;margin-bottom:8px;font-size:11px;color:var(--text-secondary)">' +
       '<span><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#6366F1;margin-right:4px;vertical-align:middle"></span>Support Only</span>' +
       '<span><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#DC2626;margin-right:4px;vertical-align:middle"></span>R&D</span>' +
     '</div>';
-    resolutionTimeSplitHtml = '<div class="dash-card" style="margin-bottom:20px">' +
+    resolutionTimeSplitHtml = '<div class="dash-card" style="margin-bottom:20px;flex:1 1 380px;min-width:0">' +
       '<div class="dash-card-header"><div><div class="dash-card-title">Median Resolution Time — Support Only vs R&D</div><div class="dash-card-sub" style="margin-top:2px">Since January 2025</div></div></div>' +
       splitLegend +
       buildResolutionTimeSplitChartSvg(trendsDataState.resolutionTimeSplitTrend) +
@@ -1468,11 +1457,11 @@ function renderTrends() {
 
   // Side by side on wide screens, stacked on narrow ones — flex-wrap
   // handles the fallback automatically without a separate mobile path.
-  const trendChartsRowHtml = (snowflakeSectionHtml || resolutionTimeHtml)
-    ? '<div style="display:flex;gap:16px;flex-wrap:wrap;align-items:flex-start">' + snowflakeSectionHtml + resolutionTimeHtml + '</div>'
+  const trendChartsRowHtml = (snowflakeSectionHtml || resolutionTimeSplitHtml)
+    ? '<div style="display:flex;gap:16px;flex-wrap:wrap;align-items:flex-start">' + snowflakeSectionHtml + resolutionTimeSplitHtml + '</div>'
     : '';
 
-  el.innerHTML = sfLinksHtml + backlogHtml + trendChartsRowHtml + resolutionTimeSplitHtml;
+  el.innerHTML = sfLinksHtml + backlogHtml + trendChartsRowHtml;
 }
 
 /* ============================================================
