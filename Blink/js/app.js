@@ -1154,9 +1154,10 @@ function buildTrendsLineChartSvg(monthlyData) {
   // each other — this was the main source of the clunky look.
   const xLabels = monthlyData.map(function(m, i) {
     const x = xFor(i);
-    // period is "YYYY-MM" — show as short month label (Jan, Feb, ...)
+    // period is "YYYY-MM" — show month + 2-digit year (Jan 25, Feb 25...),
+    // matching the Resolution Time chart's format for consistency.
     const parts = m.period.split('-');
-    const label = new Date(Number(parts[0]), Number(parts[1]) - 1, 1).toLocaleDateString('en-US', { month: 'short' });
+    const label = new Date(Number(parts[0]), Number(parts[1]) - 1, 1).toLocaleDateString('en-US', { month: 'short', year: '2-digit' });
     const labelY = padT + plotH + 14;
     return '<text x="' + x.toFixed(1) + '" y="' + labelY + '" font-size="9" fill="var(--text-secondary)" text-anchor="end" transform="rotate(-30 ' + x.toFixed(1) + ' ' + labelY + ')">' + escHtml(label) + '</text>';
   }).join('');
@@ -1280,7 +1281,6 @@ function buildBacklogStackedBarSvg(byOwner) {
     bars +
     '</svg></div>';
 }
-
 function renderTrends() {
   const el = document.getElementById('screen-trends-content');
   if (!el) return;
@@ -1329,7 +1329,7 @@ function renderTrends() {
     // chart now covers this same metric in a richer, trend-over-time form,
     // making a single flat number here redundant.
     snowflakeSectionHtml = '<div class="dash-card" style="margin-bottom:20px;flex:1 1 380px;min-width:0">' +
-      '<div class="dash-card-header"><div class="dash-card-title">Submitted vs Solved (Support) — Since Jan 2025</div></div>' +
+      '<div class="dash-card-header"><div><div class="dash-card-title">Submitted vs Solved</div><div class="dash-card-sub" style="margin-top:2px">Since January 2025</div></div></div>' +
       legendHtml +
       '<div style="margin-top:6px">' + chartSvg + '</div>' +
       '<div style="margin-top:12px;text-align:right">' +
@@ -1409,7 +1409,7 @@ function renderTrends() {
   let resolutionTimeHtml = '';
   if (trendsDataState.resolutionTimeTrend && trendsDataState.resolutionTimeTrend.length) {
     resolutionTimeHtml = '<div class="dash-card" style="margin-bottom:20px;flex:1 1 380px;min-width:0">' +
-      '<div class="dash-card-header"><div class="dash-card-title">Median Resolution Time — Last Year</div></div>' +
+      '<div class="dash-card-header"><div><div class="dash-card-title">Median Resolution Time</div><div class="dash-card-sub" style="margin-top:2px">Since January 2025</div></div></div>' +
       buildResolutionTimeLineChartSvg(trendsDataState.resolutionTimeTrend) +
       '<div style="margin-top:12px;font-size:11px;color:var(--text-secondary)">' +
         'Support cases, Solved/Closed, excludes Duplicate/Spam and Free tier · Not live — refreshed occasionally on request.' +
