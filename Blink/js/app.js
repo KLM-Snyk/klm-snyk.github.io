@@ -1001,6 +1001,7 @@ const trendsDataState = {
   monthly: null,  // [{period, submitted, solved}, ...] — period is "YYYY-MM"
   mttr: null,     // {average, median, count} — raw display strings from the canvas
   backlogByOwner: null, // [{owner, open, pending, onHold, waitingForInternal, meetingScheduled, total}, ...]
+  resolutionTimeTrend: null, // [{period, medianDays}, ...] — period is "YYYY-MM"
   error: null,
   asOf: null,
 };
@@ -1012,7 +1013,7 @@ const trendsDataState = {
 // backlog breakdown).
 function parseTrendsCanvasHtml(html) {
   const doc = new DOMParser().parseFromString(html, 'text/html');
-  const result = { monthly: [], mttr: null, backlogByOwner: [] };
+  const result = { monthly: [], mttr: null, backlogByOwner: [], resolutionTimeTrend: [] };
   let currentHeading = '';
   function walk(nodes) {
     nodes.forEach(function(node) {
@@ -1026,6 +1027,13 @@ function parseTrendsCanvasHtml(html) {
             const cells = Array.from(tr.children).map(function(c) { return c.textContent.trim(); });
             if (cells.length >= 3) {
               result.monthly.push({ period: cells[0], submitted: Number(cells[1]) || 0, solved: Number(cells[2]) || 0 });
+            }
+          });
+        } else if (/median resolution time/i.test(currentHeading)) {
+          rows.forEach(function(tr) {
+            const cells = Array.from(tr.children).map(function(c) { return c.textContent.trim(); });
+            if (cells.length >= 2) {
+              result.resolutionTimeTrend.push({ period: cells[0], medianDays: Number(cells[1]) || 0 });
             }
           });
         } else if (/mttr/i.test(currentHeading)) {
@@ -1077,6 +1085,7 @@ async function fetchTrendsData() {
     trendsDataState.monthly = parsed.monthly;
     trendsDataState.mttr = parsed.mttr;
     trendsDataState.backlogByOwner = parsed.backlogByOwner;
+    trendsDataState.resolutionTimeTrend = parsed.resolutionTimeTrend;
     trendsDataState.asOf = new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
   } catch (e) {
     trendsDataState.error = e.message;
@@ -1134,6 +1143,42 @@ function buildTrendsLineChartSvg(monthlyData) {
     '<polyline points="' + buildLine('solved') + '" fill="none" stroke="#10B981" stroke-width="2"></polyline>' +
     buildPointsAndLabels('submitted', '#6366F1', true) +
     buildPointsAndLabels('solved', '#10B981', false) +
+    xLabels +
+    '</svg>';
+}
+
+// Single-series version of buildTrendsLineChartSvg — median resolution
+// time in days (not a whole-number count, unlike the Submitted/Solved
+// chart), so labels keep one decimal place for real precision.
+function buildResolutionTimeLineChartSvg(monthlyData) {
+  const W = 700, H = 240;
+  const padL = 44, padR = 16, padT = 26, padB = 34;
+  const plotW = W - padL - padR, plotH = H - padT - padB;
+  const n = monthlyData.length;
+  const maxVal = Math.max.apply(null, monthlyData.map(function(m) { return m.medianDays; }).concat([1])) * 1.15;
+  const xFor = function(i) { return n <= 1 ? padL : padL + (i / (n - 1)) * plotW; };
+  const yFor = function(v) { return padT + plotH - (v / maxVal) * plotH; };
+
+  const linePoints = monthlyData.map(function(m, i) { return xFor(i).toFixed(1) + ',' + yFor(m.medianDays).toFixed(1); }).join(' ');
+  const pointsAndLabels = monthlyData.map(function(m, i) {
+    const x = xFor(i), y = yFor(m.medianDays);
+    return '<circle cx="' + x.toFixed(1) + '" cy="' + y.toFixed(1) + '" r="3" fill="#F59E0B"></circle>' +
+      '<text x="' + x.toFixed(1) + '" y="' + (y - 10).toFixed(1) + '" font-size="9" fill="#F59E0B" text-anchor="middle" font-weight="600">' + m.medianDays.toFixed(1) + '</text>';
+  }).join('');
+  const xLabels = monthlyData.map(function(m, i) {
+    const x = xFor(i);
+    const parts = m.period.split('-');
+    const label = new Date(Number(parts[0]), Number(parts[1]) - 1, 1).toLocaleDateString('en-US', { month: 'short', year: '2-digit' });
+    return '<text x="' + x.toFixed(1) + '" y="' + (H - 8) + '" font-size="9" fill="var(--text-secondary)" text-anchor="middle">' + escHtml(label) + '</text>';
+  }).join('');
+  const zeroY = yFor(0).toFixed(1);
+  const yAxisTitle = '<text x="14" y="' + (padT + plotH / 2) + '" font-size="10" fill="var(--text-secondary)" text-anchor="middle" transform="rotate(-90 14 ' + (padT + plotH / 2) + ')">Median Days</text>';
+
+  return '<svg viewBox="0 0 ' + W + ' ' + H + '" style="width:100%;height:auto;display:block" xmlns="http://www.w3.org/2000/svg">' +
+    yAxisTitle +
+    '<line x1="' + padL + '" y1="' + zeroY + '" x2="' + (W - padR) + '" y2="' + zeroY + '" stroke="var(--border)" stroke-width="1"></line>' +
+    '<polyline points="' + linePoints + '" fill="none" stroke="#F59E0B" stroke-width="2"></polyline>' +
+    pointsAndLabels +
     xLabels +
     '</svg>';
 }
@@ -1321,7 +1366,21 @@ function renderTrends() {
     '</div>';
   }
 
-  el.innerHTML = lookerBar + sfLinksHtml + backlogHtml + snowflakeSectionHtml + topHtml + rowHtml;
+  // Median resolution time trend — reproduced from a Salesforce report
+  // ("Case Resolution Time - Median"), filters verified against it exactly
+  // before building (26,200 vs 26,204 records, 12.54 vs 12.51 day median).
+  let resolutionTimeHtml = '';
+  if (trendsDataState.resolutionTimeTrend && trendsDataState.resolutionTimeTrend.length) {
+    resolutionTimeHtml = '<div class="dash-card" style="margin-bottom:20px">' +
+      '<div class="dash-card-header"><div class="dash-card-title">Median Resolution Time — Last Year</div></div>' +
+      buildResolutionTimeLineChartSvg(trendsDataState.resolutionTimeTrend) +
+      '<div style="margin-top:12px;font-size:11px;color:var(--text-secondary)">' +
+        'Support cases, Solved/Closed, excludes Duplicate/Spam and Free tier · Not live — refreshed occasionally on request.' +
+      '</div>' +
+    '</div>';
+  }
+
+  el.innerHTML = lookerBar + sfLinksHtml + backlogHtml + snowflakeSectionHtml + resolutionTimeHtml + topHtml + rowHtml;
 }
 
 /* ============================================================
