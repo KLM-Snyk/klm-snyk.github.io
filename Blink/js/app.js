@@ -1095,6 +1095,30 @@ async function fetchTrendsData() {
   }
 }
 
+// Custom tooltip for chart hover points — native SVG <title> tooltips
+// proved unreliable across browsers (slow, inconsistent, or not firing at
+// all even with pointer-events set correctly), so this uses a plain
+// positioned div driven by mouse events instead, which is dependable
+// everywhere. Shared by both trend charts below; one div, reused.
+function chartTooltipShow(evt, text) {
+  let el = document.getElementById('chart-tooltip');
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'chart-tooltip';
+    el.style.cssText = 'position:fixed;z-index:10000;pointer-events:none;background:var(--text);color:var(--bg);font-size:11px;font-weight:600;padding:4px 8px;border-radius:6px;white-space:nowrap;transform:translate(-50%,-130%)';
+    document.body.appendChild(el);
+  }
+  el.textContent = text;
+  el.style.left = evt.clientX + 'px';
+  el.style.top = evt.clientY + 'px';
+  el.style.display = 'block';
+}
+
+function chartTooltipHide() {
+  const el = document.getElementById('chart-tooltip');
+  if (el) el.style.display = 'none';
+}
+
 // Builds a hand-rolled SVG line chart — Blink has no charting library, and
 // pulling one in for a single chart isn't worth it. Two series (Submitted/
 // Solved), circle markers, no always-visible value labels (20 months of
@@ -1120,8 +1144,9 @@ function buildTrendsLineChartSvg(monthlyData) {
   const buildPointsAndLabels = function(key, color, label) {
     return monthlyData.map(function(m, i) {
       const x = xFor(i), y = yFor(m[key]);
+      const tipText = escHtml(m.period) + ' ' + label + ': ' + m[key];
       return '<circle cx="' + x.toFixed(1) + '" cy="' + y.toFixed(1) + '" r="2.5" fill="' + color + '"></circle>' +
-        '<circle cx="' + x.toFixed(1) + '" cy="' + y.toFixed(1) + '" r="9" fill="transparent" pointer-events="all" style="cursor:default"><title>' + escHtml(m.period) + ' ' + label + ': ' + m[key] + '</title></circle>';
+        '<circle cx="' + x.toFixed(1) + '" cy="' + y.toFixed(1) + '" r="9" fill="transparent" pointer-events="all" style="cursor:default" onmouseenter="chartTooltipShow(event,\'' + tipText + '\')" onmousemove="chartTooltipShow(event,\'' + tipText + '\')" onmouseleave="chartTooltipHide()"></circle>';
     }).join('');
   };
   // Rotated at a slight -30° slant (matching the backlog chart's approach
@@ -1169,12 +1194,13 @@ function buildResolutionTimeLineChartSvg(monthlyData) {
   // collided with each other and the line. A larger invisible circle sits
   // on top of each small visible marker purely as a hover target (the
   // visible dot alone was too small to reliably hover on a responsively
-  // scaled SVG); the <title> on that hit area is what shows the 2-decimal
-  // value on hover.
+  // scaled SVG); a custom tooltip (see chartTooltipShow) shows the
+  // 2-decimal value on hover, since native SVG <title> proved unreliable.
   const pointsAndLabels = monthlyData.map(function(m, i) {
     const x = xFor(i), y = yFor(m.medianDays);
+    const tipText = escHtml(m.period) + ': ' + m.medianDays.toFixed(2) + ' days';
     return '<circle cx="' + x.toFixed(1) + '" cy="' + y.toFixed(1) + '" r="2.5" fill="#F59E0B"></circle>' +
-      '<circle cx="' + x.toFixed(1) + '" cy="' + y.toFixed(1) + '" r="9" fill="transparent" pointer-events="all" style="cursor:default"><title>' + escHtml(m.period) + ': ' + m.medianDays.toFixed(2) + ' days</title></circle>';
+      '<circle cx="' + x.toFixed(1) + '" cy="' + y.toFixed(1) + '" r="9" fill="transparent" pointer-events="all" style="cursor:default" onmouseenter="chartTooltipShow(event,\'' + tipText + '\')" onmousemove="chartTooltipShow(event,\'' + tipText + '\')" onmouseleave="chartTooltipHide()"></circle>';
   }).join('');
   // Rotated at a slight -30° slant — 20 months in this window need it even
   // more than the 13-month Submitted/Solved chart above.
