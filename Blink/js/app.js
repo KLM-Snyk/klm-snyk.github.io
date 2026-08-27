@@ -1146,6 +1146,20 @@ const BACKLOG_STATUS_ORDER = ['open', 'pending', 'onHold', 'waitingForInternal',
 const BACKLOG_STATUS_COLORS = { open: '#67E8C4', pending: '#10B981', onHold: '#1E293B', waitingForInternal: '#F5D485', meetingScheduled: '#3B82F6' };
 const BACKLOG_STATUS_LABELS = { open: 'Open', pending: 'Pending', onHold: 'On-Hold', waitingForInternal: 'Waiting for Internal', meetingScheduled: 'Meeting Scheduled' };
 
+// Which owner+status segment is currently drilled into, if any — cleared
+// on re-render of a different selection, not persisted across screens.
+let backlogDrilldownSelection = null; // {owner, statusKey} | null
+
+function backlogDrilldownClick(owner, statusKey) {
+  backlogDrilldownSelection = { owner: owner, statusKey: statusKey };
+  renderTrends();
+}
+
+function backlogDrilldownClear() {
+  backlogDrilldownSelection = null;
+  renderTrends();
+}
+
 function buildBacklogStackedBarSvg(byOwner) {
   const barW = 26, gap = 10, padL = 40, padR = 10, padT = 16, padB = 90;
   const n = byOwner.length;
@@ -1164,7 +1178,10 @@ function buildBacklogStackedBarSvg(byOwner) {
       const yTop = padT + yFor(cumulative + val);
       const segH = yFor(cumulative) - yFor(cumulative + val);
       cumulative += val;
-      return '<rect x="' + x + '" y="' + yTop.toFixed(1) + '" width="' + barW + '" height="' + Math.max(segH, 0.5).toFixed(1) + '" fill="' + BACKLOG_STATUS_COLORS[key] + '"><title>' + BACKLOG_STATUS_LABELS[key] + ': ' + val + '</title></rect>';
+      const isSelected = backlogDrilldownSelection && backlogDrilldownSelection.owner === o.owner && backlogDrilldownSelection.statusKey === key;
+      const strokeAttrs = isSelected ? ' stroke="var(--primary)" stroke-width="2"' : '';
+      const safeOwner = o.owner.replace(/'/g, "\\'");
+      return '<rect x="' + x + '" y="' + yTop.toFixed(1) + '" width="' + barW + '" height="' + Math.max(segH, 0.5).toFixed(1) + '" fill="' + BACKLOG_STATUS_COLORS[key] + '"' + strokeAttrs + ' style="cursor:pointer" onclick="backlogDrilldownClick(\'' + safeOwner + '\',\'' + key + '\')"><title>' + escHtml(o.owner) + ' — ' + BACKLOG_STATUS_LABELS[key] + ': ' + val + ' (click to see cases)</title></rect>';
     }).join('');
     const totalLabel = '<text x="' + (x + barW / 2) + '" y="' + (padT + yFor(o.total) - 4) + '" font-size="9" fill="var(--text-secondary)" text-anchor="middle">' + o.total + '</text>';
     // Owner name rotated -45deg to fit 33 names without overlapping
@@ -1244,20 +1261,62 @@ function renderTrends() {
   // colored by status. Mirrors the Salesforce report this was built from.
   let backlogHtml = '';
   if (trendsDataState.backlogByOwner && trendsDataState.backlogByOwner.length) {
-    const sorted = trendsDataState.backlogByOwner.slice().sort(function(a, b) { return b.total - a.total; });
+    const sorted = trendsDataState.backlogByOwner.slice().sort(function(a, b) { return a.owner.localeCompare(b.owner); });
     const backlogLegend = '<div style="display:flex;gap:14px;margin-bottom:8px;font-size:11px;color:var(--text-secondary);flex-wrap:wrap">' +
       BACKLOG_STATUS_ORDER.map(function(key) {
         return '<span><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:' + BACKLOG_STATUS_COLORS[key] + ';margin-right:4px;vertical-align:middle"></span>' + BACKLOG_STATUS_LABELS[key] + '</span>';
       }).join('') +
     '</div>';
     const totalBacklog = sorted.reduce(function(sum, o) { return sum + o.total; }, 0);
+
+    // Drill-down panel — reuses case-level detail already loaded from the
+    // Support Cases canvas (which holds every owner's individual cases,
+    // not just the logged-in person's), rather than pulling fresh data.
+    // Only works for owners already populated there — says so explicitly
+    // rather than silently showing nothing for the rest.
+    let drilldownHtml = '';
+    if (backlogDrilldownSelection) {
+      const sel = backlogDrilldownSelection;
+      const statusLabel = BACKLOG_STATUS_LABELS[sel.statusKey];
+      const hasOwnerData = (supportCasesState.cases || []).some(function(c) { return c.owner === sel.owner; });
+      if (!supportCasesState.cases) {
+        drilldownHtml = '<div style="margin-top:14px;padding:12px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);font-size:12px;color:var(--text-secondary)">Loading case detail…</div>';
+        if (localStorage.getItem('uyt_slack_token') && !supportCasesState.loading) fetchSupportCases();
+      } else if (!hasOwnerData) {
+        drilldownHtml = '<div style="margin-top:14px;padding:12px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);font-size:12px;color:var(--text-secondary)">' +
+          escHtml(sel.owner) + '\'s individual cases haven\'t been loaded into the Support Cases canvas yet — this chart shows the aggregate count (' + (sorted.find(function(o){return o.owner===sel.owner;})[sel.statusKey] || 0) + '), but drill-down needs their section populated there first.' +
+          ' <button class="connect-btn" onclick="backlogDrilldownClear()" style="padding:3px 10px;font-size:11px;margin-left:6px">Close</button>' +
+        '</div>';
+      } else {
+        const matches = supportCasesState.cases.filter(function(c) { return c.owner === sel.owner && c.status === statusLabel; });
+        const rowsHtml = matches.map(function(c) {
+          const safeUrl = c.caseUrl && /^https:\/\//.test(c.caseUrl) ? c.caseUrl : null;
+          const tag = safeUrl ? 'a' : 'div';
+          const hrefAttr = safeUrl ? ' href="' + escHtml(safeUrl) + '" target="_blank" rel="noopener"' : '';
+          return '<' + tag + ' class="cases-issue"' + hrefAttr + '>' +
+            '<span class="cases-issue-key">' + escHtml(c.caseId) + '</span>' +
+            '<span class="cases-issue-summary">' + escHtml(c.subject || '(no subject)') + '</span>' +
+            '<span class="cases-issue-status">' + escHtml(c.lastModified || '') + '</span>' +
+          '</' + tag + '>';
+        }).join('') || '<div style="padding:12px;text-align:center;color:var(--text-secondary);font-size:12px">No matching cases found in the loaded canvas data.</div>';
+        drilldownHtml = '<div style="margin-top:14px;padding-top:14px;border-top:1px solid var(--border)">' +
+          '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">' +
+            '<div style="font-size:13px;font-weight:600">' + escHtml(sel.owner) + ' — ' + escHtml(statusLabel) + ' (' + matches.length + ')</div>' +
+            '<button class="connect-btn" onclick="backlogDrilldownClear()" style="padding:3px 10px;font-size:11px">Close</button>' +
+          '</div>' +
+          '<div class="cases-issue-list">' + rowsHtml + '</div>' +
+        '</div>';
+      }
+    }
+
     backlogHtml = '<div class="dash-card" style="margin-bottom:20px">' +
       '<div class="dash-card-header"><div class="dash-card-title">Case Backlog by Engineer</div></div>' +
       backlogLegend +
       buildBacklogStackedBarSvg(sorted) +
       '<div style="margin-top:12px;font-size:11px;color:var(--text-secondary)">' +
-        totalBacklog + ' open cases across ' + sorted.length + ' engineers · Not live — refreshed occasionally on request.' +
+        totalBacklog + ' open cases across ' + sorted.length + ' engineers · Not live — refreshed occasionally on request. Click a bar segment to see its cases.' +
       '</div>' +
+      drilldownHtml +
     '</div>';
   }
 
