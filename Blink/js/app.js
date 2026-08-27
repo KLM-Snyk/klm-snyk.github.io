@@ -1069,12 +1069,14 @@ async function fetchTrendsData() {
 
 // Builds a hand-rolled SVG line chart — Blink has no charting library, and
 // pulling one in for a single chart isn't worth it. Two series (Submitted/
-// Solved), circle markers, and numeric labels at each point formatted to
-// 2 decimal places as requested. Submitted labels sit above their points,
-// Solved labels below, to keep the two sets of 13 labels from overlapping.
+// Solved), circle markers, and numeric labels at each point. Values are raw
+// case counts (COUNT(*) from Snowflake) — always whole numbers, so labels
+// show plain integers rather than decimals. Submitted labels sit above
+// their points, Solved labels below, to keep the two sets of 13 labels
+// from overlapping.
 function buildTrendsLineChartSvg(monthlyData) {
   const W = 700, H = 280;
-  const padL = 44, padR = 16, padT = 34, padB = 34;
+  const padL = 56, padR = 16, padT = 34, padB = 34;
   const plotW = W - padL - padR, plotH = H - padT - padB;
   const n = monthlyData.length;
   const allVals = monthlyData.flatMap(function(m) { return [m.submitted, m.solved]; });
@@ -1090,7 +1092,7 @@ function buildTrendsLineChartSvg(monthlyData) {
       const x = xFor(i), y = yFor(m[key]);
       const labelY = labelAbove ? y - 10 : y + 18;
       return '<circle cx="' + x.toFixed(1) + '" cy="' + y.toFixed(1) + '" r="3" fill="' + color + '"></circle>' +
-        '<text x="' + x.toFixed(1) + '" y="' + labelY.toFixed(1) + '" font-size="9" fill="' + color + '" text-anchor="middle" font-weight="600">' + m[key].toFixed(2) + '</text>';
+        '<text x="' + x.toFixed(1) + '" y="' + labelY.toFixed(1) + '" font-size="9" fill="' + color + '" text-anchor="middle" font-weight="600">' + Math.round(m[key]) + '</text>';
     }).join('');
   };
   const xLabels = monthlyData.map(function(m, i) {
@@ -1102,8 +1104,12 @@ function buildTrendsLineChartSvg(monthlyData) {
   }).join('');
   // Faint horizontal gridline at zero for a visual baseline
   const zeroY = yFor(0).toFixed(1);
+  // Y-axis title, rotated — standard chart convention, in addition to the
+  // color-key legend rendered separately above the chart.
+  const yAxisTitle = '<text x="14" y="' + (padT + plotH / 2) + '" font-size="10" fill="var(--text-secondary)" text-anchor="middle" transform="rotate(-90 14 ' + (padT + plotH / 2) + ')">Number of Cases</text>';
 
   return '<svg viewBox="0 0 ' + W + ' ' + H + '" style="width:100%;height:auto;display:block" xmlns="http://www.w3.org/2000/svg">' +
+    yAxisTitle +
     '<line x1="' + padL + '" y1="' + zeroY + '" x2="' + (W - padR) + '" y2="' + zeroY + '" stroke="var(--border)" stroke-width="1"></line>' +
     '<polyline points="' + buildLine('submitted') + '" fill="none" stroke="#6366F1" stroke-width="2"></polyline>' +
     '<polyline points="' + buildLine('solved') + '" fill="none" stroke="#10B981" stroke-width="2"></polyline>' +
@@ -1158,9 +1164,7 @@ function renderTrends() {
       '<span><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#10B981;margin-right:4px;vertical-align:middle"></span>Solved</span>' +
     '</div>';
     const mttrHtml = trendsDataState.mttr ? '<div style="display:flex;gap:20px;flex-wrap:wrap;margin-top:16px;padding-top:16px;border-top:1px solid var(--border)">' +
-      '<div><div style="font-size:20px;font-weight:700">' + escHtml(trendsDataState.mttr.average) + '</div><div style="font-size:11px;color:var(--text-secondary)">Average MTTR</div></div>' +
-      '<div><div style="font-size:20px;font-weight:700">' + escHtml(trendsDataState.mttr.median) + '</div><div style="font-size:11px;color:var(--text-secondary)">Median MTTR (more typical)</div></div>' +
-      '<div><div style="font-size:20px;font-weight:700">' + escHtml(trendsDataState.mttr.count) + '</div><div style="font-size:11px;color:var(--text-secondary)">Resolved cases in window</div></div>' +
+      '<div><div style="font-size:20px;font-weight:700">' + escHtml(trendsDataState.mttr.median) + '</div><div style="font-size:11px;color:var(--text-secondary)">Median MTTR</div></div>' +
     '</div>' : '';
     snowflakeSectionHtml = '<div class="dash-card" style="margin-bottom:20px">' +
       '<div class="dash-card-header"><div class="dash-card-title">Submitted vs Solved (Support) — Last 12 Months</div></div>' +
