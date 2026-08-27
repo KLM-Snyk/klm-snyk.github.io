@@ -1121,7 +1121,7 @@ function buildTrendsLineChartSvg(monthlyData) {
     return monthlyData.map(function(m, i) {
       const x = xFor(i), y = yFor(m[key]);
       return '<circle cx="' + x.toFixed(1) + '" cy="' + y.toFixed(1) + '" r="2.5" fill="' + color + '"></circle>' +
-        '<circle cx="' + x.toFixed(1) + '" cy="' + y.toFixed(1) + '" r="9" fill="transparent" style="cursor:default"><title>' + escHtml(m.period) + ' ' + label + ': ' + m[key] + '</title></circle>';
+        '<circle cx="' + x.toFixed(1) + '" cy="' + y.toFixed(1) + '" r="9" fill="transparent" pointer-events="all" style="cursor:default"><title>' + escHtml(m.period) + ' ' + label + ': ' + m[key] + '</title></circle>';
     }).join('');
   };
   // Rotated at a slight -30° slant (matching the backlog chart's approach
@@ -1174,7 +1174,7 @@ function buildResolutionTimeLineChartSvg(monthlyData) {
   const pointsAndLabels = monthlyData.map(function(m, i) {
     const x = xFor(i), y = yFor(m.medianDays);
     return '<circle cx="' + x.toFixed(1) + '" cy="' + y.toFixed(1) + '" r="2.5" fill="#F59E0B"></circle>' +
-      '<circle cx="' + x.toFixed(1) + '" cy="' + y.toFixed(1) + '" r="9" fill="transparent" style="cursor:default"><title>' + escHtml(m.period) + ': ' + m.medianDays.toFixed(2) + ' days</title></circle>';
+      '<circle cx="' + x.toFixed(1) + '" cy="' + y.toFixed(1) + '" r="9" fill="transparent" pointer-events="all" style="cursor:default"><title>' + escHtml(m.period) + ': ' + m.medianDays.toFixed(2) + ' days</title></circle>';
   }).join('');
   // Rotated at a slight -30° slant — 20 months in this window need it even
   // more than the 13-month Submitted/Solved chart above.
