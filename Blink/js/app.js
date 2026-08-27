@@ -1295,7 +1295,7 @@ function renderTrends() {
     const mttrHtml = trendsDataState.mttr ? '<div style="display:flex;gap:20px;flex-wrap:wrap;margin-top:16px;padding-top:16px;border-top:1px solid var(--border)">' +
       '<div><div style="font-size:20px;font-weight:700">' + escHtml(trendsDataState.mttr.median) + '</div><div style="font-size:11px;color:var(--text-secondary)">Median MTTR</div></div>' +
     '</div>' : '';
-    snowflakeSectionHtml = '<div class="dash-card" style="margin-bottom:20px">' +
+    snowflakeSectionHtml = '<div class="dash-card" style="margin-bottom:20px;flex:1 1 380px;min-width:0">' +
       '<div class="dash-card-header"><div class="dash-card-title">Submitted vs Solved (Support) — Last 12 Months</div></div>' +
       legendHtml +
       '<div style="margin-top:6px">' + chartSvg + '</div>' +
@@ -1378,7 +1378,7 @@ function renderTrends() {
   // before building (26,200 vs 26,204 records, 12.54 vs 12.51 day median).
   let resolutionTimeHtml = '';
   if (trendsDataState.resolutionTimeTrend && trendsDataState.resolutionTimeTrend.length) {
-    resolutionTimeHtml = '<div class="dash-card" style="margin-bottom:20px">' +
+    resolutionTimeHtml = '<div class="dash-card" style="margin-bottom:20px;flex:1 1 380px;min-width:0">' +
       '<div class="dash-card-header"><div class="dash-card-title">Median Resolution Time — Last Year</div></div>' +
       buildResolutionTimeLineChartSvg(trendsDataState.resolutionTimeTrend) +
       '<div style="margin-top:12px;font-size:11px;color:var(--text-secondary)">' +
@@ -1387,7 +1387,13 @@ function renderTrends() {
     '</div>';
   }
 
-  el.innerHTML = lookerBar + sfLinksHtml + backlogHtml + snowflakeSectionHtml + resolutionTimeHtml + topHtml + rowHtml;
+  // Side by side on wide screens, stacked on narrow ones — flex-wrap
+  // handles the fallback automatically without a separate mobile path.
+  const trendChartsRowHtml = (snowflakeSectionHtml || resolutionTimeHtml)
+    ? '<div style="display:flex;gap:16px;flex-wrap:wrap;align-items:flex-start">' + snowflakeSectionHtml + resolutionTimeHtml + '</div>'
+    : '';
+
+  el.innerHTML = lookerBar + sfLinksHtml + backlogHtml + trendChartsRowHtml + topHtml + rowHtml;
 }
 
 /* ============================================================
