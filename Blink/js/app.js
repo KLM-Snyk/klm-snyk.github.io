@@ -990,6 +990,10 @@ const trendsDataState = {
   mttr: null,     // {average, median, count} — raw display strings from the canvas
   backlogByOwner: null, // [{owner, open, pending, onHold, waitingForInternal, meetingScheduled, total}, ...]
   resolutionTimeTrend: null, // [{period, medianDays}, ...] — period is "YYYY-MM"
+  // [{period, supportOnlyMedianDays, rdMedianDays}, ...] — sourced from two
+  // Salesforce report exports (Google Drive), not Snowflake — the Jira
+  // linkage field isn't synced there. See canvas note for details.
+  resolutionTimeSplitTrend: null,
   error: null,
   asOf: null,
 };
@@ -1001,7 +1005,7 @@ const trendsDataState = {
 // backlog breakdown).
 function parseTrendsCanvasHtml(html) {
   const doc = new DOMParser().parseFromString(html, 'text/html');
-  const result = { monthly: [], mttr: null, backlogByOwner: [], resolutionTimeTrend: [] };
+  const result = { monthly: [], mttr: null, backlogByOwner: [], resolutionTimeTrend: [], resolutionTimeSplitTrend: [] };
   let currentHeading = '';
   function walk(nodes) {
     nodes.forEach(function(node) {
@@ -1015,6 +1019,13 @@ function parseTrendsCanvasHtml(html) {
             const cells = Array.from(tr.children).map(function(c) { return c.textContent.trim(); });
             if (cells.length >= 3) {
               result.monthly.push({ period: cells[0], submitted: Number(cells[1]) || 0, solved: Number(cells[2]) || 0 });
+            }
+          });
+        } else if (/support only vs r&d/i.test(currentHeading)) {
+          rows.forEach(function(tr) {
+            const cells = Array.from(tr.children).map(function(c) { return c.textContent.trim(); });
+            if (cells.length >= 3) {
+              result.resolutionTimeSplitTrend.push({ period: cells[0], supportOnlyMedianDays: Number(cells[1]) || 0, rdMedianDays: Number(cells[2]) || 0 });
             }
           });
         } else if (/median resolution time/i.test(currentHeading)) {
@@ -1074,6 +1085,7 @@ async function fetchTrendsData() {
     trendsDataState.mttr = parsed.mttr;
     trendsDataState.backlogByOwner = parsed.backlogByOwner;
     trendsDataState.resolutionTimeTrend = parsed.resolutionTimeTrend;
+    trendsDataState.resolutionTimeSplitTrend = parsed.resolutionTimeSplitTrend;
     trendsDataState.asOf = new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
   } catch (e) {
     trendsDataState.error = e.message;
@@ -1208,6 +1220,55 @@ function buildResolutionTimeLineChartSvg(monthlyData) {
     '<line x1="' + padL + '" y1="' + zeroY + '" x2="' + (W - padR) + '" y2="' + zeroY + '" stroke="var(--border)" stroke-width="1"></line>' +
     '<polyline points="' + linePoints + '" fill="none" stroke="#F59E0B" stroke-width="2"></polyline>' +
     pointsAndLabels +
+    xLabels +
+    '</svg>';
+}
+
+// Two-series version, for Support Only vs R&D median resolution time.
+// Data source is different from the other charts here — this comes from
+// two Salesforce report exports (via Google Drive), not the Snowflake/
+// Slack-Canvas relay, since the Jira-linkage field isn't synced into
+// Snowflake. Same visual pattern as buildTrendsLineChartSvg otherwise:
+// no always-visible labels (would collide across 20 months × 2 series),
+// hover-only via the shared custom tooltip.
+function buildResolutionTimeSplitChartSvg(monthlyData) {
+  const W = 700, H = 260;
+  const padL = 42, padR = 16, padT = 24, padB = 46;
+  const plotW = W - padL - padR, plotH = H - padT - padB;
+  const n = monthlyData.length;
+  const allVals = monthlyData.flatMap(function(m) { return [m.supportOnlyMedianDays, m.rdMedianDays]; });
+  const maxVal = Math.max.apply(null, allVals.concat([1])) * 1.08;
+  const xFor = function(i) { return n <= 1 ? padL : padL + (i / (n - 1)) * plotW; };
+  const yFor = function(v) { return padT + plotH - (v / maxVal) * plotH; };
+
+  const buildLine = function(key) {
+    return monthlyData.map(function(m, i) { return xFor(i).toFixed(1) + ',' + yFor(m[key]).toFixed(1); }).join(' ');
+  };
+  const buildPoints = function(key, color, label) {
+    return monthlyData.map(function(m, i) {
+      const x = xFor(i), y = yFor(m[key]);
+      const tipText = escHtml(m.period) + ' ' + label + ': ' + m[key].toFixed(2) + ' days';
+      return '<circle cx="' + x.toFixed(1) + '" cy="' + y.toFixed(1) + '" r="2.5" fill="' + color + '"></circle>' +
+        '<circle cx="' + x.toFixed(1) + '" cy="' + y.toFixed(1) + '" r="9" fill="transparent" pointer-events="all" style="cursor:default" onmouseenter="chartTooltipShow(event,\'' + tipText + '\')" onmousemove="chartTooltipShow(event,\'' + tipText + '\')" onmouseleave="chartTooltipHide()"></circle>';
+    }).join('');
+  };
+  const xLabels = monthlyData.map(function(m, i) {
+    const x = xFor(i);
+    const parts = m.period.split('-');
+    const label = new Date(Number(parts[0]), Number(parts[1]) - 1, 1).toLocaleDateString('en-US', { month: 'short', year: '2-digit' });
+    const labelY = padT + plotH + 14;
+    return '<text x="' + x.toFixed(1) + '" y="' + labelY + '" font-size="9" fill="var(--text-secondary)" text-anchor="end" transform="rotate(-30 ' + x.toFixed(1) + ' ' + labelY + ')">' + escHtml(label) + '</text>';
+  }).join('');
+  const zeroY = yFor(0).toFixed(1);
+  const yAxisTitle = '<text x="14" y="' + (padT + plotH / 2) + '" font-size="9" fill="var(--text-secondary)" text-anchor="middle" transform="rotate(-90 14 ' + (padT + plotH / 2) + ')">Median Days</text>';
+
+  return '<svg viewBox="0 0 ' + W + ' ' + H + '" style="width:100%;height:auto;display:block" xmlns="http://www.w3.org/2000/svg">' +
+    yAxisTitle +
+    '<line x1="' + padL + '" y1="' + zeroY + '" x2="' + (W - padR) + '" y2="' + zeroY + '" stroke="var(--border)" stroke-width="1"></line>' +
+    '<polyline points="' + buildLine('supportOnlyMedianDays') + '" fill="none" stroke="#6366F1" stroke-width="2"></polyline>' +
+    '<polyline points="' + buildLine('rdMedianDays') + '" fill="none" stroke="#DC2626" stroke-width="2"></polyline>' +
+    buildPoints('supportOnlyMedianDays', '#6366F1', 'Support Only') +
+    buildPoints('rdMedianDays', '#DC2626', 'R&D') +
     xLabels +
     '</svg>';
 }
@@ -1385,13 +1446,33 @@ function renderTrends() {
     '</div>';
   }
 
+  // Support Only vs R&D split — a distinct data source from everything
+  // else here (two Salesforce report exports via Google Drive, not
+  // Snowflake, since the Jira-linkage field isn't synced there), so it
+  // gets its own full-width card rather than squeezing into the row above.
+  let resolutionTimeSplitHtml = '';
+  if (trendsDataState.resolutionTimeSplitTrend && trendsDataState.resolutionTimeSplitTrend.length) {
+    const splitLegend = '<div style="display:flex;gap:16px;margin-bottom:8px;font-size:11px;color:var(--text-secondary)">' +
+      '<span><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#6366F1;margin-right:4px;vertical-align:middle"></span>Support Only</span>' +
+      '<span><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#DC2626;margin-right:4px;vertical-align:middle"></span>R&D</span>' +
+    '</div>';
+    resolutionTimeSplitHtml = '<div class="dash-card" style="margin-bottom:20px">' +
+      '<div class="dash-card-header"><div><div class="dash-card-title">Median Resolution Time — Support Only vs R&D</div><div class="dash-card-sub" style="margin-top:2px">Since January 2025</div></div></div>' +
+      splitLegend +
+      buildResolutionTimeSplitChartSvg(trendsDataState.resolutionTimeSplitTrend) +
+      '<div style="margin-top:12px;font-size:11px;color:var(--text-secondary)">' +
+        'Sourced from Salesforce report exports, not Snowflake — split by whether the case has a linked Jira issue. Not live — refreshed occasionally on request.' +
+      '</div>' +
+    '</div>';
+  }
+
   // Side by side on wide screens, stacked on narrow ones — flex-wrap
   // handles the fallback automatically without a separate mobile path.
   const trendChartsRowHtml = (snowflakeSectionHtml || resolutionTimeHtml)
     ? '<div style="display:flex;gap:16px;flex-wrap:wrap;align-items:flex-start">' + snowflakeSectionHtml + resolutionTimeHtml + '</div>'
     : '';
 
-  el.innerHTML = sfLinksHtml + backlogHtml + trendChartsRowHtml;
+  el.innerHTML = sfLinksHtml + backlogHtml + trendChartsRowHtml + resolutionTimeSplitHtml;
 }
 
 /* ============================================================
