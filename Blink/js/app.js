@@ -999,6 +999,7 @@ const trendsDataState = {
   loading: false,
   monthly: null,  // [{period, submitted, solved}, ...] — period is "YYYY-MM"
   mttr: null,     // {average, median, count} — raw display strings from the canvas
+  backlogByOwner: null, // [{owner, open, pending, onHold, waitingForInternal, meetingScheduled, total}, ...]
   error: null,
   asOf: null,
 };
@@ -1006,10 +1007,11 @@ const trendsDataState = {
 // Structurally similar to parseCasesCanvasHtml() — walks H2 headings and
 // associates the table immediately following each with that heading, but
 // differentiates parsing by heading text since the two tables here have
-// different column shapes (monthly trend vs metric/value pairs).
+// different column shapes (monthly trend, metric/value pairs, or per-owner
+// backlog breakdown).
 function parseTrendsCanvasHtml(html) {
   const doc = new DOMParser().parseFromString(html, 'text/html');
-  const result = { monthly: [], mttr: null };
+  const result = { monthly: [], mttr: null, backlogByOwner: [] };
   let currentHeading = '';
   function walk(nodes) {
     nodes.forEach(function(node) {
@@ -1036,6 +1038,21 @@ function parseTrendsCanvasHtml(html) {
             median: metrics['median'] || '',
             count: metrics['resolved cases in window'] || '',
           };
+        } else if (/case backlog by engineer/i.test(currentHeading)) {
+          rows.forEach(function(tr) {
+            const cells = Array.from(tr.children).map(function(c) { return c.textContent.trim(); });
+            if (cells.length >= 7) {
+              result.backlogByOwner.push({
+                owner: cells[0],
+                open: Number(cells[1]) || 0,
+                pending: Number(cells[2]) || 0,
+                onHold: Number(cells[3]) || 0,
+                waitingForInternal: Number(cells[4]) || 0,
+                meetingScheduled: Number(cells[5]) || 0,
+                total: Number(cells[6]) || 0,
+              });
+            }
+          });
         }
       }
       if (node.children && node.children.length) walk(Array.from(node.children));
@@ -1058,6 +1075,7 @@ async function fetchTrendsData() {
     const parsed = parseTrendsCanvasHtml(data.html || '');
     trendsDataState.monthly = parsed.monthly;
     trendsDataState.mttr = parsed.mttr;
+    trendsDataState.backlogByOwner = parsed.backlogByOwner;
     trendsDataState.asOf = new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
   } catch (e) {
     trendsDataState.error = e.message;
@@ -1119,6 +1137,47 @@ function buildTrendsLineChartSvg(monthlyData) {
     '</svg>';
 }
 
+// Stacked bar chart for backlog-by-engineer — one bar per owner, segments
+// colored by status, matching the visual pattern of the Salesforce report
+// this was built to mirror. Horizontally scrollable rather than squeezed
+// to fit, same as that report, since 33 owners at a readable bar width
+// don't fit one screen width either way.
+const BACKLOG_STATUS_ORDER = ['open', 'pending', 'onHold', 'waitingForInternal', 'meetingScheduled'];
+const BACKLOG_STATUS_COLORS = { open: '#67E8C4', pending: '#10B981', onHold: '#1E293B', waitingForInternal: '#F5D485', meetingScheduled: '#3B82F6' };
+const BACKLOG_STATUS_LABELS = { open: 'Open', pending: 'Pending', onHold: 'On-Hold', waitingForInternal: 'Waiting for Internal', meetingScheduled: 'Meeting Scheduled' };
+
+function buildBacklogStackedBarSvg(byOwner) {
+  const barW = 26, gap = 10, padL = 40, padR = 10, padT = 16, padB = 90;
+  const n = byOwner.length;
+  const W = padL + padR + n * (barW + gap);
+  const H = 260;
+  const plotH = H - padT - padB;
+  const maxTotal = Math.max.apply(null, byOwner.map(function(o) { return o.total; }).concat([1]));
+  const yFor = function(v) { return plotH - (v / maxTotal) * plotH; };
+
+  const bars = byOwner.map(function(o, i) {
+    const x = padL + i * (barW + gap);
+    let cumulative = 0;
+    const segments = BACKLOG_STATUS_ORDER.map(function(key) {
+      const val = o[key];
+      if (!val) return '';
+      const yTop = padT + yFor(cumulative + val);
+      const segH = yFor(cumulative) - yFor(cumulative + val);
+      cumulative += val;
+      return '<rect x="' + x + '" y="' + yTop.toFixed(1) + '" width="' + barW + '" height="' + Math.max(segH, 0.5).toFixed(1) + '" fill="' + BACKLOG_STATUS_COLORS[key] + '"><title>' + BACKLOG_STATUS_LABELS[key] + ': ' + val + '</title></rect>';
+    }).join('');
+    const totalLabel = '<text x="' + (x + barW / 2) + '" y="' + (padT + yFor(o.total) - 4) + '" font-size="9" fill="var(--text-secondary)" text-anchor="middle">' + o.total + '</text>';
+    // Owner name rotated -45deg to fit 33 names without overlapping
+    const nameLabel = '<text x="' + (x + barW / 2) + '" y="' + (padT + plotH + 12) + '" font-size="9" fill="var(--text-secondary)" text-anchor="end" transform="rotate(-45 ' + (x + barW / 2) + ' ' + (padT + plotH + 12) + ')">' + escHtml(o.owner) + '</text>';
+    return segments + totalLabel + nameLabel;
+  }).join('');
+
+  return '<div style="overflow-x:auto"><svg viewBox="0 0 ' + W + ' ' + H + '" width="' + W + '" height="' + H + '" style="display:block" xmlns="http://www.w3.org/2000/svg">' +
+    '<line x1="' + padL + '" y1="' + (padT + plotH) + '" x2="' + (W - padR) + '" y2="' + (padT + plotH) + '" stroke="var(--border)" stroke-width="1"></line>' +
+    bars +
+    '</svg></div>';
+}
+
 function renderTrends() {
   const el = document.getElementById('screen-trends-content');
   if (!el) return;
@@ -1173,7 +1232,7 @@ function renderTrends() {
       mttrHtml +
       '<div style="margin-top:12px;font-size:11px;color:var(--text-secondary)">' +
         (trendsDataState.asOf ? 'Canvas last read ' + escHtml(trendsDataState.asOf) + ' · ' : '') +
-        'Not live — refreshed occasionally on request. R&D-linked views and Technical Support backlog are a planned follow-up.' +
+        'Not live — refreshed occasionally on request. R&D-linked views are a planned follow-up.' +
         ' <button class="connect-btn" onclick="fetchTrendsData()" style="padding:4px 10px;font-size:11px;margin-left:8px">↺ Reload</button>' +
       '</div>' +
     '</div>';
@@ -1181,7 +1240,28 @@ function renderTrends() {
     fetchTrendsData();
   }
 
-  el.innerHTML = lookerBar + sfLinksHtml + snowflakeSectionHtml + topHtml + rowHtml;
+  // Backlog by engineer — stacked bar, one bar per current case owner,
+  // colored by status. Mirrors the Salesforce report this was built from.
+  let backlogHtml = '';
+  if (trendsDataState.backlogByOwner && trendsDataState.backlogByOwner.length) {
+    const sorted = trendsDataState.backlogByOwner.slice().sort(function(a, b) { return b.total - a.total; });
+    const backlogLegend = '<div style="display:flex;gap:14px;margin-bottom:8px;font-size:11px;color:var(--text-secondary);flex-wrap:wrap">' +
+      BACKLOG_STATUS_ORDER.map(function(key) {
+        return '<span><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:' + BACKLOG_STATUS_COLORS[key] + ';margin-right:4px;vertical-align:middle"></span>' + BACKLOG_STATUS_LABELS[key] + '</span>';
+      }).join('') +
+    '</div>';
+    const totalBacklog = sorted.reduce(function(sum, o) { return sum + o.total; }, 0);
+    backlogHtml = '<div class="dash-card" style="margin-bottom:20px">' +
+      '<div class="dash-card-header"><div class="dash-card-title">Case Backlog by Engineer</div></div>' +
+      backlogLegend +
+      buildBacklogStackedBarSvg(sorted) +
+      '<div style="margin-top:12px;font-size:11px;color:var(--text-secondary)">' +
+        totalBacklog + ' open cases across ' + sorted.length + ' engineers · Not live — refreshed occasionally on request.' +
+      '</div>' +
+    '</div>';
+  }
+
+  el.innerHTML = lookerBar + sfLinksHtml + snowflakeSectionHtml + backlogHtml + topHtml + rowHtml;
 }
 
 /* ============================================================
