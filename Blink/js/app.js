@@ -1022,6 +1022,7 @@ const trendsDataState = {
   // Salesforce report exports (Google Drive), not Snowflake — the Jira
   // linkage field isn't synced there. See canvas note for details.
   resolutionTimeSplitTrend: null,
+  backlogTrend: null, // [{period, count}, ...] — month-over-month overlap count, not a snapshot
   error: null,
   asOf: null,
 };
@@ -1033,7 +1034,7 @@ const trendsDataState = {
 // backlog breakdown).
 function parseTrendsCanvasHtml(html) {
   const doc = new DOMParser().parseFromString(html, 'text/html');
-  const result = { monthly: [], mttr: null, backlogByOwner: [], resolutionTimeTrend: [], resolutionTimeSplitTrend: [] };
+  const result = { monthly: [], mttr: null, backlogByOwner: [], resolutionTimeTrend: [], resolutionTimeSplitTrend: [], backlogTrend: [] };
   let currentHeading = '';
   function walk(nodes) {
     nodes.forEach(function(node) {
@@ -1089,6 +1090,13 @@ function parseTrendsCanvasHtml(html) {
               });
             }
           });
+        } else if (/case backlog month-over-month/i.test(currentHeading)) {
+          rows.forEach(function(tr) {
+            const cells = Array.from(tr.children).map(function(c) { return c.textContent.trim(); });
+            if (cells.length >= 2) {
+              result.backlogTrend.push({ period: cells[0], count: Number(cells[1]) || 0 });
+            }
+          });
         }
       }
       if (node.children && node.children.length) walk(Array.from(node.children));
@@ -1114,6 +1122,7 @@ async function fetchTrendsData() {
     trendsDataState.backlogByOwner = parsed.backlogByOwner;
     trendsDataState.resolutionTimeTrend = parsed.resolutionTimeTrend;
     trendsDataState.resolutionTimeSplitTrend = parsed.resolutionTimeSplitTrend;
+    trendsDataState.backlogTrend = parsed.backlogTrend;
     trendsDataState.asOf = new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
   } catch (e) {
     trendsDataState.error = e.message;
@@ -1297,6 +1306,46 @@ function buildResolutionTimeSplitChartSvg(monthlyData) {
     '<polyline points="' + buildLine('rdMedianDays') + '" fill="none" stroke="#DC2626" stroke-width="2"></polyline>' +
     buildPoints('supportOnlyMedianDays', '#6366F1', 'Support Only') +
     buildPoints('rdMedianDays', '#DC2626', 'R&D') +
+    xLabels +
+    '</svg>';
+}
+
+// Case Backlog Month-over-Month — an overlap count (cases open at any
+// point during each month, not a snapshot), whole-number values like
+// Submitted/Solved rather than decimal days, so labels/hover show plain
+// integers. Same visual pattern as the other single-series chart above:
+// no always-visible labels, hover-only via the shared custom tooltip.
+function buildBacklogTrendChartSvg(monthlyData) {
+  const W = 700, H = 260;
+  const padL = 46, padR = 16, padT = 24, padB = 46;
+  const plotW = W - padL - padR, plotH = H - padT - padB;
+  const n = monthlyData.length;
+  const maxVal = Math.max.apply(null, monthlyData.map(function(m) { return m.count; }).concat([1])) * 1.08;
+  const xFor = function(i) { return n <= 1 ? padL : padL + (i / (n - 1)) * plotW; };
+  const yFor = function(v) { return padT + plotH - (v / maxVal) * plotH; };
+
+  const linePoints = monthlyData.map(function(m, i) { return xFor(i).toFixed(1) + ',' + yFor(m.count).toFixed(1); }).join(' ');
+  const points = monthlyData.map(function(m, i) {
+    const x = xFor(i), y = yFor(m.count);
+    const tipText = escHtml(m.period) + ': ' + m.count + ' cases';
+    return '<circle cx="' + x.toFixed(1) + '" cy="' + y.toFixed(1) + '" r="2.5" fill="#8B5CF6"></circle>' +
+      '<circle cx="' + x.toFixed(1) + '" cy="' + y.toFixed(1) + '" r="9" fill="transparent" pointer-events="all" style="cursor:default" onmouseenter="chartTooltipShow(event,\'' + tipText + '\')" onmousemove="chartTooltipShow(event,\'' + tipText + '\')" onmouseleave="chartTooltipHide()"></circle>';
+  }).join('');
+  const xLabels = monthlyData.map(function(m, i) {
+    const x = xFor(i);
+    const parts = m.period.split('-');
+    const label = new Date(Number(parts[0]), Number(parts[1]) - 1, 1).toLocaleDateString('en-US', { month: 'short', year: '2-digit' });
+    const labelY = padT + plotH + 14;
+    return '<text x="' + x.toFixed(1) + '" y="' + labelY + '" font-size="9" fill="var(--text-secondary)" text-anchor="end" transform="rotate(-30 ' + x.toFixed(1) + ' ' + labelY + ')">' + escHtml(label) + '</text>';
+  }).join('');
+  const zeroY = yFor(0).toFixed(1);
+  const yAxisTitle = '<text x="14" y="' + (padT + plotH / 2) + '" font-size="9" fill="var(--text-secondary)" text-anchor="middle" transform="rotate(-90 14 ' + (padT + plotH / 2) + ')">Cases</text>';
+
+  return '<svg viewBox="0 0 ' + W + ' ' + H + '" style="width:100%;height:auto;display:block" xmlns="http://www.w3.org/2000/svg">' +
+    yAxisTitle +
+    '<line x1="' + padL + '" y1="' + zeroY + '" x2="' + (W - padR) + '" y2="' + zeroY + '" stroke="var(--border)" stroke-width="1"></line>' +
+    '<polyline points="' + linePoints + '" fill="none" stroke="#8B5CF6" stroke-width="2"></polyline>' +
+    points +
     xLabels +
     '</svg>';
 }
@@ -1489,7 +1538,23 @@ function renderTrends() {
     ? '<div style="display:flex;gap:16px;flex-wrap:wrap;align-items:flex-start">' + snowflakeSectionHtml + resolutionTimeSplitHtml + '</div>'
     : '';
 
-  el.innerHTML = sfLinksHtml + backlogHtml + trendChartsRowHtml;
+  // Case Backlog Month-over-Month — an overlap count (any case open at
+  // some point during the month), distinct from the Case Backlog by
+  // Engineer snapshot above. Full-width card, placed right after that
+  // snapshot since both are "backlog" concepts, before the side-by-side
+  // trend row.
+  let backlogTrendHtml = '';
+  if (trendsDataState.backlogTrend && trendsDataState.backlogTrend.length) {
+    backlogTrendHtml = '<div class="dash-card" style="margin-bottom:20px">' +
+      '<div class="dash-card-header"><div><div class="dash-card-title">Case Backlog Month-over-Month</div><div class="dash-card-sub" style="margin-top:2px">Since January 2025</div></div></div>' +
+      buildBacklogTrendChartSvg(trendsDataState.backlogTrend) +
+      '<div style="margin-top:12px;font-size:11px;color:var(--text-secondary)">' +
+        'Cases open at any point during each month (not a snapshot) — includes cases opened and closed within the same month. Not live — refreshed occasionally on request.' +
+      '</div>' +
+    '</div>';
+  }
+
+  el.innerHTML = sfLinksHtml + backlogHtml + backlogTrendHtml + trendChartsRowHtml;
 }
 
 /* ============================================================
