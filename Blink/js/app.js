@@ -232,7 +232,11 @@ function navigate(screen) {
   if (screen === 'slack')     renderSlackAndAutoFetch();
   if (screen === 'mail') {
     renderMail();
-    if (!mailState.messages && !mailState.loading && calIsConnected()) fetchMailMessages();
+    // Always refresh on navigating here — silently (no overlay) if there's
+    // cached data to show meanwhile, with the full loading state only for
+    // a genuine first load. Keeps the unread count from going stale
+    // indefinitely, which is what silently broke before this.
+    if (!mailState.loading && calIsConnected()) fetchMailMessages(!!mailState.messages);
   }
   if (screen === 'cases') {
     renderCases();
@@ -584,12 +588,17 @@ async function fetchMailPage(pageToken, extraQuery) {
   return { messages, nextPageToken: listData.nextPageToken || null };
 }
 
-async function fetchMailMessages() {
+// silent=true skips the full-screen loading overlay — used for background
+// refreshes (navigating to the screen, returning focus after reading an
+// email elsewhere) where cached data is already on screen and a disruptive
+// overlay would be unwelcome. The explicit "Refresh" button still calls
+// this with silent=false for its visible, deliberate loading state.
+async function fetchMailMessages(silent) {
   if (!calState.token) return;
   mailState.loading = true;
   mailState.error = null;
   renderMail();
-  toggleLoadingOverlay(true);
+  if (!silent) toggleLoadingOverlay(true);
   try {
     // Fetch Inbox on its own, guaranteed — a noisy high-volume label (an
     // archive folder with constant automated traffic, say) can otherwise
@@ -620,7 +629,7 @@ async function fetchMailMessages() {
     mailState.error = e.message;
   } finally {
     mailState.loading = false;
-    toggleLoadingOverlay(false);
+    if (!silent) toggleLoadingOverlay(false);
     renderMail();
   }
 }
@@ -740,7 +749,7 @@ function renderMail() {
     el.innerHTML = '<div class="cal-connect-prompt"><div class="cal-connect-icon">📬</div><h3>Connect Google</h3><p>Sign in with Google to see your mail.</p><button class="connect-btn" onclick="openSettings()">Connect</button></div>';
     return;
   }
-  if (mailState.loading) {
+  if (mailState.loading && !mailState.messages) {
     el.innerHTML = '<div class="cal-connect-prompt"><div class="cal-connect-icon">⏳</div><h3>Loading mail…</h3></div>';
     return;
   }
@@ -3907,6 +3916,18 @@ document.addEventListener('DOMContentLoaded', async () => {
   // Nav
   document.querySelectorAll('.nav-item[data-screen]').forEach(el => {
     el.addEventListener('click', () => navigate(el.dataset.screen));
+  });
+
+  // Refresh Mail silently when the window regains focus while the Mail
+  // screen is active — covers "clicked an email to read it in Gmail (a new
+  // tab/window), then came back to Blink," which otherwise left the unread
+  // count stale until the next explicit navigation or manual refresh.
+  // Silent (no overlay) since mailState.messages is already populated in
+  // this scenario — see fetchMailMessages's silent param.
+  window.addEventListener('focus', () => {
+    if (state.screen === 'mail' && !mailState.loading && calIsConnected()) {
+      fetchMailMessages(!!mailState.messages);
+    }
   });
 
   // Settings
