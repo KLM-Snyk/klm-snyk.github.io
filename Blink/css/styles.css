@@ -2579,7 +2579,7 @@ html, body {
   color: var(--primary);
 }
 
-/* Tardis easter egg backgrounds — dark mode only */
+/* Tardis dark-mode background themes */
 [data-dark="true"][data-tardis="tardis"] {
   background-image: linear-gradient(rgba(0,0,15,0.75), rgba(0,0,15,0.75)), url('../tardis1.png');
   background-size: cover;

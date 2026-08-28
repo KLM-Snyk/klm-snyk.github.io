@@ -2724,8 +2724,8 @@ async function fetchSlackDigest(silent) {
     };
     slackDigestState.counts = {
       people:    countSection(digestHtml, 'Companions'),
-      work:      countSection(digestHtml, 'Work Items'),
-      incidents: countSection(digestHtml, 'Incidents'),
+      work:      countSection(digestHtml, 'Adventures'),
+      incidents: countSection(digestHtml, 'Distress Signals'),
     };
     // Persist to localStorage so it shows instantly on next page load
     localStorage.setItem('uyt_digest_html', slackDigestState.html);
@@ -2930,11 +2930,11 @@ function renderDashboard() {
                 <span class="sf-tier-stat">${slackDigestState.counts?.people || 0} item${(slackDigestState.counts?.people || 0) === 1 ? '' : 's'}</span>
               </div>
               <div class="sf-tier-row">
-                <span class="sf-tier-label" style="background:#D1FAE5;color:#065F46;font-size:10px">🔧 Work Items</span>
+                <span class="sf-tier-label" style="background:#D1FAE5;color:#065F46;font-size:10px">🔧 Adventures</span>
                 <span class="sf-tier-stat">${slackDigestState.counts?.work || 0} item${(slackDigestState.counts?.work || 0) === 1 ? '' : 's'}</span>
               </div>
               <div class="sf-tier-row">
-                <span class="sf-tier-label" style="background:#FEE2E2;color:#991B1B;font-size:10px">🚨 Escalations</span>
+                <span class="sf-tier-label" style="background:#FEE2E2;color:#991B1B;font-size:10px">🚨 Distress Signals</span>
                 <span class="sf-tier-stat">${slackDigestState.counts?.incidents || 0} item${(slackDigestState.counts?.incidents || 0) === 1 ? '' : 's'}</span>
               </div>
               <div class="dash-card-action" style="margin-top:8px">View digest ${ICONS.arrowRight}</div>
