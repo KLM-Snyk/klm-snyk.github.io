@@ -2723,7 +2723,7 @@ async function fetchSlackDigest(silent) {
       return (sec.match(/<li(?![^>]*digest-empty)/g) || []).length;
     };
     slackDigestState.counts = {
-      people:    countSection(digestHtml, 'Onboarding'),
+      people:    countSection(digestHtml, 'Companions'),
       work:      countSection(digestHtml, 'Work Items'),
       incidents: countSection(digestHtml, 'Incidents'),
     };
@@ -2926,7 +2926,7 @@ function renderDashboard() {
               <div class="dash-card-sub" style="margin-top:8px">⏳ Loading digest…</div>
             ` : (slackIsConnected() && slackDigestState.html) ? `
               <div class="sf-tier-row" style="margin-top:8px">
-                <span class="sf-tier-label" style="background:#DBEAFE;color:#1E40AF;font-size:10px">👥 Onboarding</span>
+                <span class="sf-tier-label" style="background:#DBEAFE;color:#1E40AF;font-size:10px">👥 Companions</span>
                 <span class="sf-tier-stat">${slackDigestState.counts?.people || 0} item${(slackDigestState.counts?.people || 0) === 1 ? '' : 's'}</span>
               </div>
               <div class="sf-tier-row">
