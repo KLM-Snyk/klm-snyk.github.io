@@ -2286,6 +2286,8 @@ html, body {
 .slack-digest-full .digest-list li { padding:8px 12px; background:var(--surface); border-radius:var(--radius-sm); border:1px solid var(--border); font-size:13px; color:var(--text); line-height:1.5; }
 .slack-digest-full .digest-list a { color:var(--primary); font-weight:500; }
 .slack-digest-full .digest-list a:hover { text-decoration:underline; }
+.slack-digest-full .digest-list a.digest-citation { font-weight:600; font-size:11px; color:var(--text-secondary); margin-left:2px; vertical-align:super; }
+.slack-digest-full .digest-list a.digest-citation:hover { color:var(--primary); }
 .slack-digest-full .digest-empty { color:var(--text-secondary); font-style:italic; background:none; border:none; padding:4px 0; }
 .slack-digest-timestamp { font-size:12px; color:var(--text-secondary); margin-top:24px; }
 
