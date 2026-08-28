@@ -834,8 +834,7 @@ function renderMail() {
   }).join('');
 
   const headerHtml = '<div class="mail-header">' +
-    '<div class="mail-meta">Last updated ' + escHtml(mailState.asOf || '') + ' · ' + msgs.length + ' messages' + (mailState.nextPageToken ? ' (more available)' : '') + '</div>' +
-    '<div class="mail-meta" style="font-size:11px;color:var(--text-secondary);margin-top:2px" title="This list reads from Gmail\'s search index (is:unread), which can lag a few minutes behind the actual mailbox state. The Dashboard\'s Inbox count uses a more reliable, real-time source and may disagree with this count briefly.">ⓘ Count may lag briefly behind the Dashboard\'s Inbox count</div>' +
+    '<div class="mail-meta">Last updated ' + escHtml(mailState.asOf || '') + (mailState.nextPageToken ? ' · more available' : '') + '</div>' +
     '<button class="connect-btn" onclick="fetchMailMessages()" style="padding:8px 16px;font-size:13px">↺ Refresh</button>' +
     '</div>';
 
