@@ -1156,6 +1156,32 @@ function chartTooltipHide() {
   if (el) el.style.display = 'none';
 }
 
+// Picks a "nice" gridline step (1, 2, or 5 × a power of ten) targeting
+// roughly 5 gridlines, then builds the horizontal gridlines + value labels
+// for a chart's Y axis. Shared by every line chart below so the axis scale
+// reads the same way (and at the same rough density) across all of them,
+// rather than each hardcoding its own step.
+function buildYAxisGridlines(maxVal, yFor, padL, padR, W) {
+  const roughStep = maxVal / 5;
+  const magnitude = Math.pow(10, Math.floor(Math.log10(roughStep || 1)));
+  const normalized = roughStep / magnitude;
+  let niceNormalized;
+  if (normalized <= 1) niceNormalized = 1;
+  else if (normalized <= 2) niceNormalized = 2;
+  else if (normalized <= 5) niceNormalized = 5;
+  else niceNormalized = 10;
+  const step = niceNormalized * magnitude;
+  const lines = [];
+  for (let v = step; v <= maxVal; v += step) {
+    const y = yFor(v).toFixed(1);
+    lines.push(
+      '<line x1="' + padL + '" y1="' + y + '" x2="' + (W - padR) + '" y2="' + y + '" stroke="var(--border)" stroke-width="1" stroke-dasharray="2,3" opacity="0.6"></line>' +
+      '<text x="' + (padL - 6) + '" y="' + (parseFloat(y) + 3).toFixed(1) + '" font-size="8" fill="var(--text-secondary)" text-anchor="end">' + Math.round(v) + '</text>'
+    );
+  }
+  return lines.join('');
+}
+
 // Builds a hand-rolled SVG line chart — Blink has no charting library, and
 // pulling one in for a single chart isn't worth it. Two series (Submitted/
 // Solved), circle markers, no always-visible value labels (20 months of
@@ -1203,9 +1229,11 @@ function buildTrendsLineChartSvg(monthlyData) {
   // Y-axis title, rotated — standard chart convention, in addition to the
   // color-key legend rendered separately above the chart.
   const yAxisTitle = '<text x="14" y="' + (padT + plotH / 2) + '" font-size="9" fill="var(--text-secondary)" text-anchor="middle" transform="rotate(-90 14 ' + (padT + plotH / 2) + ')">Number of Cases</text>';
+  const gridlines = buildYAxisGridlines(maxVal, yFor, padL, padR, W);
 
   return '<svg viewBox="0 0 ' + W + ' ' + H + '" style="width:100%;height:auto;display:block" xmlns="http://www.w3.org/2000/svg">' +
     yAxisTitle +
+    gridlines +
     '<line x1="' + padL + '" y1="' + zeroY + '" x2="' + (W - padR) + '" y2="' + zeroY + '" stroke="var(--border)" stroke-width="1"></line>' +
     '<polyline points="' + buildLine('submitted') + '" fill="none" stroke="#6366F1" stroke-width="2"></polyline>' +
     '<polyline points="' + buildLine('solved') + '" fill="none" stroke="#10B981" stroke-width="2"></polyline>' +
@@ -1298,9 +1326,11 @@ function buildResolutionTimeSplitChartSvg(monthlyData) {
   }).join('');
   const zeroY = yFor(0).toFixed(1);
   const yAxisTitle = '<text x="14" y="' + (padT + plotH / 2) + '" font-size="9" fill="var(--text-secondary)" text-anchor="middle" transform="rotate(-90 14 ' + (padT + plotH / 2) + ')">Median Days</text>';
+  const gridlines = buildYAxisGridlines(maxVal, yFor, padL, padR, W);
 
   return '<svg viewBox="0 0 ' + W + ' ' + H + '" style="width:100%;height:auto;display:block" xmlns="http://www.w3.org/2000/svg">' +
     yAxisTitle +
+    gridlines +
     '<line x1="' + padL + '" y1="' + zeroY + '" x2="' + (W - padR) + '" y2="' + zeroY + '" stroke="var(--border)" stroke-width="1"></line>' +
     '<polyline points="' + buildLine('supportOnlyMedianDays') + '" fill="none" stroke="#6366F1" stroke-width="2"></polyline>' +
     '<polyline points="' + buildLine('rdMedianDays') + '" fill="none" stroke="#DC2626" stroke-width="2"></polyline>' +
@@ -1348,9 +1378,11 @@ function buildBacklogTrendChartSvg(monthlyData) {
   }).join('');
   const zeroY = yFor(0).toFixed(1);
   const yAxisTitle = '<text x="14" y="' + (padT + plotH / 2) + '" font-size="9" fill="var(--text-secondary)" text-anchor="middle" transform="rotate(-90 14 ' + (padT + plotH / 2) + ')">Cases</text>';
+  const gridlines = buildYAxisGridlines(maxVal, yFor, padL, padR, W);
 
   return '<svg viewBox="0 0 ' + W + ' ' + H + '" style="width:100%;height:auto;display:block" xmlns="http://www.w3.org/2000/svg">' +
     yAxisTitle +
+    gridlines +
     '<line x1="' + padL + '" y1="' + zeroY + '" x2="' + (W - padR) + '" y2="' + zeroY + '" stroke="var(--border)" stroke-width="1"></line>' +
     '<polyline points="' + buildLine('allOpen') + '" fill="none" stroke="#8B5CF6" stroke-width="2"></polyline>' +
     '<polyline points="' + buildLine('withRnd') + '" fill="none" stroke="#F59E0B" stroke-width="2"></polyline>' +
@@ -1413,6 +1445,10 @@ function buildBacklogStackedBarSvg(byOwner) {
   }).join('');
 
   return '<div style="overflow-x:auto"><svg viewBox="0 0 ' + W + ' ' + H + '" width="' + W + '" height="' + H + '" style="display:block" xmlns="http://www.w3.org/2000/svg">' +
+    // buildYAxisGridlines expects a yFor that already folds in padT (the
+    // line charts' convention) — this chart's own yFor doesn't, so it's
+    // wrapped here rather than changing the shared helper's contract.
+    buildYAxisGridlines(maxTotal, function(v) { return padT + yFor(v); }, padL, padR, W) +
     '<line x1="' + padL + '" y1="' + (padT + plotH) + '" x2="' + (W - padR) + '" y2="' + (padT + plotH) + '" stroke="var(--border)" stroke-width="1"></line>' +
     bars +
     '</svg></div>';
