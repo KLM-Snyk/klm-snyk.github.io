@@ -1579,10 +1579,16 @@ const supportCasesState = {
   asOf: null,
   search: '',
   escalatedOnly: false,
+  expanded: {},     // status -> bool; default collapsed, same as Jira/Mail
 };
 
 function supportCasesToggleEscalatedOnly() {
   supportCasesState.escalatedOnly = !supportCasesState.escalatedOnly;
+  renderSupportCases();
+}
+
+function supportCasesToggle(status, expand) {
+  supportCasesState.expanded[status] = expand;
   renderSupportCases();
 }
 
@@ -1720,7 +1726,7 @@ function renderSupportCases() {
     if (!byStatus[s]) byStatus[s] = [];
     byStatus[s].push(c);
   });
-  const STATUS_ORDER = ['New', 'Open', 'Pending', 'Waiting for Internal', 'On-Hold', 'Scheduled', 'Meeting Scheduled', 'Submitted'];
+  const STATUS_ORDER = ['Open', 'New', 'Pending', 'Waiting for Internal', 'On-Hold', 'Scheduled', 'Meeting Scheduled', 'Submitted'];
   const statusEntries = Object.entries(byStatus).sort(function(a, b) {
     const ai = STATUS_ORDER.indexOf(a[0]), bi = STATUS_ORDER.indexOf(b[0]);
     if (ai === -1 && bi === -1) return b[1].length - a[1].length;
@@ -1738,7 +1744,16 @@ function renderSupportCases() {
 
   const groupsHtml = statusEntries.map(function(entry) {
     const status = entry[0], list = entry[1];
-    const rows = list.map(function(c) {
+    // "Open" defaults to expanded (the most actionable status); every
+    // other status defaults to collapsed. An explicit user toggle always
+    // wins over the default, regardless of status.
+    const defaultExpanded = status === 'Open';
+    const isExpanded = supportCasesState.expanded[status] !== undefined ? supportCasesState.expanded[status] : defaultExpanded;
+    const safeStatus = status.replace(/'/g, "\\'");
+    const toggle = isExpanded
+      ? '<button class="mail-label-toggle" onclick="supportCasesToggle(\'' + safeStatus + '\',false)">▾</button>'
+      : '<button class="mail-label-toggle" onclick="supportCasesToggle(\'' + safeStatus + '\',true)">▸</button>';
+    const rows = isExpanded ? list.map(function(c) {
       // Older canvas rows populated before the Salesforce link was added
       // won't have caseUrl — falls back to a plain, non-clickable div.
       const safeUrl = c.caseUrl && /^https:\/\//.test(c.caseUrl) ? c.caseUrl : null;
@@ -1750,10 +1765,10 @@ function renderSupportCases() {
         '<span class="cases-issue-summary">' + escHtml(c.subject || '(no subject)') + escalatedBadge + '</span>' +
         '<span class="cases-issue-status">' + escHtml(c.lastModified || '') + '</span>' +
         '</' + tag + '>';
-    }).join('');
+    }).join('') : '';
     return '<div class="mail-label-group">' +
-      '<div class="mail-label-header"><span class="mail-label-name">' + escHtml(status) + '</span><span class="mail-label-badge" style="background:var(--primary)">' + list.length + '</span></div>' +
-      '<div class="cases-issue-list">' + rows + '</div>' +
+      '<div class="mail-label-header">' + toggle + '<span class="mail-label-name">' + escHtml(status) + '</span><span class="mail-label-badge" style="background:var(--primary)">' + list.length + '</span></div>' +
+      (isExpanded ? '<div class="cases-issue-list">' + rows + '</div>' : '') +
       '</div>';
   }).join('') || '<div style="padding:24px;text-align:center;color:var(--text-secondary)">No open cases match' + (myName ? ' for "' + escHtml(myName) + '"' : '') + '</div>';
 
@@ -2942,7 +2957,11 @@ function renderDashboard() {
               jiraState.issues && jiraState.issues.length > 0 ? (() => {
                 const byProj = {};
                 jiraState.issues.forEach(i => { const k = i.fields.project.key; byProj[k] = (byProj[k]||0)+1; });
-                return Object.entries(byProj).map(([k,c]) => '<div class="sf-tier-row"><span class="sf-tier-label">' + escHtml(k) + '</span><span class="sf-tier-stat">' + c + ' open</span></div>').join('') +
+                const projEntries = Object.entries(byProj);
+                const shown = projEntries.slice(0, 5);
+                const remaining = projEntries.length - shown.length;
+                return shown.map(([k,c]) => '<div class="sf-tier-row"><span class="sf-tier-label">' + escHtml(k) + '</span><span class="sf-tier-stat">' + c + ' open</span></div>').join('') +
+                  (remaining > 0 ? '<div class="dash-card-sub" style="margin-top:4px">+' + remaining + ' more project' + (remaining === 1 ? '' : 's') + ' — view all</div>' : '') +
                   '<div class="dash-card-action" style="margin-top:6px">View all ' + ICONS.arrowRight + '</div>';
               })() :
               jiraState.issues ? '<div class="dash-card-sub">No open cases ✅</div>' :
@@ -2964,7 +2983,8 @@ function renderDashboard() {
                 if (mine.length === 0) return '<div class="dash-card-sub">No open cases ✅</div>';
                 const byStatus = {};
                 mine.forEach(c => { const s = c.status || 'Unknown'; byStatus[s] = (byStatus[s]||0)+1; });
-                return Object.entries(byStatus).map(([s,c]) => '<div class="sf-tier-row"><span class="sf-tier-label">' + escHtml(s) + '</span><span class="sf-tier-stat">' + c + '</span></div>').join('') +
+                const statusEntries = Object.entries(byStatus).sort(([a],[b]) => (a === 'Open' ? -1 : b === 'Open' ? 1 : 0));
+                return statusEntries.map(([s,c]) => '<div class="sf-tier-row"><span class="sf-tier-label">' + escHtml(s) + '</span><span class="sf-tier-stat">' + c + '</span></div>').join('') +
                   '<div class="dash-card-action" style="margin-top:6px">View all ' + ICONS.arrowRight + '</div>';
               })()}
           </div>
