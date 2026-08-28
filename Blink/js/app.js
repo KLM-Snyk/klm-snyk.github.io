@@ -1896,7 +1896,7 @@ function renderCases() {
 
   const groupsHtml = Object.entries(byProject).map(function(entry) {
     const key = entry[0], proj = entry[1];
-    const isExpanded = jiraState.expanded[key] !== false; // default expanded
+    const isExpanded = jiraState.expanded[key] === true; // default collapsed
     const safeKey = key.replace(/'/g,'');
     const toggle = isExpanded
       ? '<button class="mail-label-toggle" onclick="casesToggle(\'' + safeKey + '\',false)">▾</button>'
