@@ -1022,7 +1022,12 @@ const trendsDataState = {
   // Salesforce report exports (Google Drive), not Snowflake — the Jira
   // linkage field isn't synced there. See canvas note for details.
   resolutionTimeSplitTrend: null,
-  backlogTrend: null, // [{period, count}, ...] — month-over-month overlap count, not a snapshot
+  backlogTrend: null, // [{period, allOpen, withRnd}, ...] — month-over-month overlap count, not a snapshot; withRnd sourced from Jira, not Snowflake
+  // [{period, supportOnly, rd}, ...] — replaced the old combined "monthly"
+  // (Submitted vs Solved) field above, which is no longer populated by the
+  // canvas (heading changed) but left defined rather than removed.
+  submittedSplitTrend: null,
+  solvedSplitTrend: null,
   error: null,
   asOf: null,
 };
@@ -1034,7 +1039,7 @@ const trendsDataState = {
 // backlog breakdown).
 function parseTrendsCanvasHtml(html) {
   const doc = new DOMParser().parseFromString(html, 'text/html');
-  const result = { monthly: [], mttr: null, backlogByOwner: [], resolutionTimeTrend: [], resolutionTimeSplitTrend: [], backlogTrend: [] };
+  const result = { monthly: [], mttr: null, backlogByOwner: [], resolutionTimeTrend: [], resolutionTimeSplitTrend: [], backlogTrend: [], submittedSplitTrend: [], solvedSplitTrend: [] };
   let currentHeading = '';
   function walk(nodes) {
     nodes.forEach(function(node) {
@@ -1050,7 +1055,21 @@ function parseTrendsCanvasHtml(html) {
               result.monthly.push({ period: cells[0], submitted: Number(cells[1]) || 0, solved: Number(cells[2]) || 0 });
             }
           });
-        } else if (/support only vs r&d/i.test(currentHeading)) {
+        } else if (/^submitted/i.test(currentHeading) && /support only vs r&d/i.test(currentHeading)) {
+          rows.forEach(function(tr) {
+            const cells = Array.from(tr.children).map(function(c) { return c.textContent.trim(); });
+            if (cells.length >= 3) {
+              result.submittedSplitTrend.push({ period: cells[0], supportOnly: Number(cells[1]) || 0, rd: Number(cells[2]) || 0 });
+            }
+          });
+        } else if (/^solved/i.test(currentHeading) && /support only vs r&d/i.test(currentHeading)) {
+          rows.forEach(function(tr) {
+            const cells = Array.from(tr.children).map(function(c) { return c.textContent.trim(); });
+            if (cells.length >= 3) {
+              result.solvedSplitTrend.push({ period: cells[0], supportOnly: Number(cells[1]) || 0, rd: Number(cells[2]) || 0 });
+            }
+          });
+        } else if (/median resolution time/i.test(currentHeading) && /support only vs r&d/i.test(currentHeading)) {
           rows.forEach(function(tr) {
             const cells = Array.from(tr.children).map(function(c) { return c.textContent.trim(); });
             if (cells.length >= 3) {
@@ -1123,6 +1142,8 @@ async function fetchTrendsData() {
     trendsDataState.resolutionTimeTrend = parsed.resolutionTimeTrend;
     trendsDataState.resolutionTimeSplitTrend = parsed.resolutionTimeSplitTrend;
     trendsDataState.backlogTrend = parsed.backlogTrend;
+    trendsDataState.submittedSplitTrend = parsed.submittedSplitTrend;
+    trendsDataState.solvedSplitTrend = parsed.solvedSplitTrend;
     trendsDataState.asOf = new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
   } catch (e) {
     trendsDataState.error = e.message;
@@ -1392,6 +1413,58 @@ function buildBacklogTrendChartSvg(monthlyData) {
     '</svg>';
 }
 
+// Generic two-series whole-number line chart — factored out after building
+// three near-identical ones (Median Resolution Time split, Case Backlog
+// Month-over-Month, and now Submitted/Solved split) that differed only in
+// field names, colors, and labels. Takes those as parameters instead of
+// hardcoding them, so a fourth split chart doesn't mean copy-pasting this
+// again. Whole-number counts (like Submitted/Solved), not decimal days —
+// see buildResolutionTimeSplitChartSvg for that variant, kept separate
+// since its tooltip needs 2-decimal precision the other charts don't.
+function buildGenericSplitChartSvg(monthlyData, keyA, keyB, colorA, colorB, labelA, labelB, yAxisLabel, unitSuffix) {
+  const W = 700, H = 260;
+  const padL = 46, padR = 16, padT = 24, padB = 46;
+  const plotW = W - padL - padR, plotH = H - padT - padB;
+  const n = monthlyData.length;
+  const allVals = monthlyData.flatMap(function(m) { return [m[keyA], m[keyB]]; });
+  const maxVal = Math.max.apply(null, allVals.concat([1])) * 1.08;
+  const xFor = function(i) { return n <= 1 ? padL : padL + (i / (n - 1)) * plotW; };
+  const yFor = function(v) { return padT + plotH - (v / maxVal) * plotH; };
+
+  const buildLine = function(key) {
+    return monthlyData.map(function(m, i) { return xFor(i).toFixed(1) + ',' + yFor(m[key]).toFixed(1); }).join(' ');
+  };
+  const buildPoints = function(key, color, label) {
+    return monthlyData.map(function(m, i) {
+      const x = xFor(i), y = yFor(m[key]);
+      const tipText = escHtml(m.period) + ' ' + label + ': ' + m[key] + unitSuffix;
+      return '<circle cx="' + x.toFixed(1) + '" cy="' + y.toFixed(1) + '" r="2.5" fill="' + color + '"></circle>' +
+        '<circle cx="' + x.toFixed(1) + '" cy="' + y.toFixed(1) + '" r="9" fill="transparent" pointer-events="all" style="cursor:default" onmouseenter="chartTooltipShow(event,\'' + tipText + '\')" onmousemove="chartTooltipShow(event,\'' + tipText + '\')" onmouseleave="chartTooltipHide()"></circle>';
+    }).join('');
+  };
+  const xLabels = monthlyData.map(function(m, i) {
+    const x = xFor(i);
+    const parts = m.period.split('-');
+    const label = new Date(Number(parts[0]), Number(parts[1]) - 1, 1).toLocaleDateString('en-US', { month: 'short', year: '2-digit' });
+    const labelY = padT + plotH + 14;
+    return '<text x="' + x.toFixed(1) + '" y="' + labelY + '" font-size="9" fill="var(--text-secondary)" text-anchor="end" transform="rotate(-30 ' + x.toFixed(1) + ' ' + labelY + ')">' + escHtml(label) + '</text>';
+  }).join('');
+  const zeroY = yFor(0).toFixed(1);
+  const yAxisTitle = '<text x="14" y="' + (padT + plotH / 2) + '" font-size="9" fill="var(--text-secondary)" text-anchor="middle" transform="rotate(-90 14 ' + (padT + plotH / 2) + ')">' + escHtml(yAxisLabel) + '</text>';
+  const gridlines = buildYAxisGridlines(maxVal, yFor, padL, padR, W);
+
+  return '<svg viewBox="0 0 ' + W + ' ' + H + '" style="width:100%;height:auto;display:block" xmlns="http://www.w3.org/2000/svg">' +
+    yAxisTitle +
+    gridlines +
+    '<line x1="' + padL + '" y1="' + zeroY + '" x2="' + (W - padR) + '" y2="' + zeroY + '" stroke="var(--border)" stroke-width="1"></line>' +
+    '<polyline points="' + buildLine(keyA) + '" fill="none" stroke="' + colorA + '" stroke-width="2"></polyline>' +
+    '<polyline points="' + buildLine(keyB) + '" fill="none" stroke="' + colorB + '" stroke-width="2"></polyline>' +
+    buildPoints(keyA, colorA, labelA) +
+    buildPoints(keyB, colorB, labelB) +
+    xLabels +
+    '</svg>';
+}
+
 // Stacked bar chart for backlog-by-engineer — one bar per owner, segments
 // colored by status, matching the visual pattern of the Salesforce report
 // this was built to mirror. Horizontally scrollable rather than squeezed
@@ -1461,33 +1534,46 @@ function renderTrends() {
     '<a href="https://snyksec.lightning.force.com/lightning/o/Case/list?filterName=All_Unassigned_Cases" target="_blank" class="cases-sf-btn">📋 All Unassigned Cases</a>' +
     '</div>';
 
-  // Submitted vs Solved + MTTR — relayed from Snowflake via Slack Canvas,
-  // not live. Rendered as a hand-rolled SVG line chart (see
-  // buildTrendsLineChartSvg) since Blink has no charting library.
+  // Submitted and Solved, each split Support Only vs R&D — replaced the
+  // former single combined "Submitted vs Solved" chart (that heading no
+  // longer exists in the canvas, so trendsDataState.monthly is never
+  // populated again; buildTrendsLineChartSvg is left defined but unused
+  // rather than removed, same conservative pattern as elsewhere here).
+  // Sourced from Salesforce report exports (Google Drive), not Snowflake —
+  // same reason as the other Support-Only-vs-R&D splits on this screen.
   let snowflakeSectionHtml = '';
   if (!localStorage.getItem('uyt_slack_token')) {
     snowflakeSectionHtml = '';
-  } else if (trendsDataState.loading && !trendsDataState.monthly) {
+  } else if (trendsDataState.loading && !trendsDataState.submittedSplitTrend) {
     snowflakeSectionHtml = '<div class="cal-connect-prompt" style="margin-bottom:20px"><div class="cal-connect-icon">⏳</div><h3>Loading trends…</h3></div>';
   } else if (trendsDataState.error) {
     snowflakeSectionHtml = '<div class="cal-connect-prompt" style="margin-bottom:20px"><div class="cal-connect-icon">⚠️</div><h3>Error loading trends</h3><p>' + escHtml(trendsDataState.error) + '</p><button class="connect-btn" onclick="fetchTrendsData()">Try again</button></div>';
-  } else if (trendsDataState.monthly && trendsDataState.monthly.length) {
-    const chartSvg = buildTrendsLineChartSvg(trendsDataState.monthly);
-    const legendHtml = '<div style="display:flex;gap:16px;margin-bottom:8px;font-size:11px;color:var(--text-secondary)">' +
-      '<span><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#6366F1;margin-right:4px;vertical-align:middle"></span>Submitted</span>' +
-      '<span><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#10B981;margin-right:4px;vertical-align:middle"></span>Solved</span>' +
-    '</div>';
-    // Median MTTR callout removed — the separate Median Resolution Time
-    // chart now covers this same metric in a richer, trend-over-time form,
-    // making a single flat number here redundant.
-    snowflakeSectionHtml = '<div class="dash-card" style="margin-bottom:20px">' +
-      '<div class="dash-card-header"><div><div class="dash-card-title">Submitted vs Solved</div><div class="dash-card-sub" style="margin-top:2px">Since January 2025</div></div></div>' +
-      legendHtml +
-      '<div style="margin-top:6px">' + chartSvg + '</div>' +
-      '<div style="margin-top:12px;text-align:right">' +
-        '<button class="connect-btn" onclick="fetchTrendsData()" style="padding:4px 10px;font-size:11px">↺ Reload</button>' +
+  } else if (trendsDataState.submittedSplitTrend && trendsDataState.submittedSplitTrend.length) {
+    const splitLegendHtml = function(colorA, colorB) {
+      return '<div style="display:flex;gap:16px;margin-bottom:8px;font-size:11px;color:var(--text-secondary)">' +
+        '<span><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:' + colorA + ';margin-right:4px;vertical-align:middle"></span>Support Only</span>' +
+        '<span><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:' + colorB + ';margin-right:4px;vertical-align:middle"></span>R&D</span>' +
+      '</div>';
+    };
+    const submittedCard = '<div class="dash-card" style="margin-bottom:20px;flex:1 1 380px;min-width:0">' +
+      '<div class="dash-card-header"><div><div class="dash-card-title">Submitted — Support Only vs R&D</div><div class="dash-card-sub" style="margin-top:2px">Since January 2025</div></div></div>' +
+      splitLegendHtml('#6366F1', '#DC2626') +
+      buildGenericSplitChartSvg(trendsDataState.submittedSplitTrend, 'supportOnly', 'rd', '#6366F1', '#DC2626', 'Support Only', 'R&D', 'Number of Cases', ' cases') +
+      '<div style="margin-top:12px;font-size:11px;color:var(--text-secondary)">' +
+        'Sourced from Salesforce report exports, not Snowflake — split by whether the case needed R&D. Not live — refreshed occasionally on request.' +
       '</div>' +
     '</div>';
+    const solvedCard = (trendsDataState.solvedSplitTrend && trendsDataState.solvedSplitTrend.length)
+      ? '<div class="dash-card" style="margin-bottom:20px;flex:1 1 380px;min-width:0">' +
+        '<div class="dash-card-header"><div><div class="dash-card-title">Solved — Support Only vs R&D</div><div class="dash-card-sub" style="margin-top:2px">Since January 2025</div></div></div>' +
+        splitLegendHtml('#10B981', '#DC2626') +
+        buildGenericSplitChartSvg(trendsDataState.solvedSplitTrend, 'supportOnly', 'rd', '#10B981', '#DC2626', 'Support Only', 'R&D', 'Number of Cases', ' cases') +
+        '<div style="margin-top:12px;font-size:11px;color:var(--text-secondary)">' +
+          'Sourced from Salesforce report exports, not Snowflake — split by whether the case needed R&D. Not live — refreshed occasionally on request.' +
+        '</div>' +
+      '</div>'
+      : '';
+    snowflakeSectionHtml = '<div style="display:flex;gap:16px;flex-wrap:wrap;align-items:flex-start">' + submittedCard + solvedCard + '</div>';
   } else if (!trendsDataState.loading) {
     fetchTrendsData();
   }
