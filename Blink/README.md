@@ -53,9 +53,12 @@ Blink is a browser-native workday dashboard for support managers. It provides a 
 
 ### Support Case Trends & Data
 - **Case Backlog by Engineer** — stacked bar chart of all open Support cases by current owner and status; click a bar segment to drill into the individual cases behind it
-- **Submitted vs Solved** — monthly line chart since January 2025, hover a point for the exact count
-- **Median Resolution Time** — monthly line chart since January 2025, reproduced from a live Salesforce report and verified against it; hover a point for the exact value
-- All three are sourced from Snowflake and relayed into a Slack Canvas ("Blink Trends & Data") that Blink reads — there's no live Snowflake access from the browser, so this is refreshed occasionally on request (via the `blink-trends-refresh` skill), not real-time
+- **Case Backlog Month-over-Month** — overlap count of cases open at any point during each month (not a snapshot), split All Open vs With R&D (cases linked to a Jira issue)
+- **Median Resolution Time** — monthly line chart since January 2025, reproduced from a live Salesforce report and verified against it, plus a Support Only vs R&D split
+- **Submitted** and **Solved** — each split Support Only vs R&D as its own chart
+- Consistent color coding across every chart on this screen: purple for Support Only / All Open, red for R&D
+- Y-axis gridlines with auto-scaled value labels on every chart, hover any point for the exact value
+- Most of this is sourced from Snowflake and relayed into a Slack Canvas ("Blink Trends & Data") that Blink reads — there's no live Snowflake access from the browser, so this is refreshed occasionally on request (via the `blink-trends-refresh` skill), not real-time. The Support Only/R&D splits (Submitted, Solved, and Median Resolution Time) come from Salesforce report exports instead, and the With R&D series in Case Backlog Month-over-Month comes from Jira — none of that linkage data is synced into Snowflake
 - No Looker dependency — the Looker-embedded dashboards this screen originally used were removed; see "Removed features" below
 - This is Blink's primary path for Salesforce-derived case data — there's no direct Salesforce integration; a Salesforce Cases URL quick link is still available in Settings for anyone who wants it, but it's not part of the wizard
 
