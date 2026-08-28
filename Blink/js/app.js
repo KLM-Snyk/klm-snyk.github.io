@@ -278,6 +278,20 @@ async function refreshApp() {
   if (state.screen === 'calendar') renderCalendar();
   if (state.screen === 'drive') renderDrive();
 
+  // Mail, Jira, Support Cases, and Workday were previously never refreshed
+  // by this button at all — it only ever touched Calendar/Drive-related
+  // data, so clicking Refresh while on any of those four screens did
+  // nothing visible. Each fetch is called silently (its own loading
+  // overlay suppressed via the silent param) since this function already
+  // shows one overlay for the whole duration; each only runs when that
+  // screen is the one currently active, matching calendar/drive above.
+  const screenSpecificFetches = [
+    state.screen === 'mail' ? fetchMailMessages(true) : null,
+    state.screen === 'cases' ? fetchJiraIssues(true) : null,
+    state.screen === 'supportcases' ? fetchSupportCases() : null,
+    state.screen === 'workday' ? fetchSlackDigest(true) : null,
+  ].filter(Boolean);
+
   await Promise.all([
     calFetchUpcoming().catch(e => console.warn(e)),
     calFetchUnreadCount(),
@@ -286,6 +300,7 @@ async function refreshApp() {
     calFetchUpcomingEvents(),
     calFetchDriveShared(),
     calFetchDriveCreated(),
+    ...screenSpecificFetches,
   ]);
   await calFetchDriveMentions();
   calState.driveLoading = false;
@@ -295,6 +310,10 @@ async function refreshApp() {
   renderDashboard();
   if (state.screen === 'calendar') renderCalendar();
   if (state.screen === 'drive') renderDrive();
+  if (state.screen === 'mail') renderMail();
+  if (state.screen === 'cases') renderCases();
+  if (state.screen === 'supportcases') renderSupportCases();
+  if (state.screen === 'workday') renderWorkday();
 }
 
 
@@ -927,14 +946,14 @@ async function refreshJiraToken() {
   return false;
 }
 
-async function fetchJiraIssues() {
+async function fetchJiraIssues(silent) {
   let token = localStorage.getItem('uyt_jira_token');
   const cloud = localStorage.getItem('uyt_jira_cloud');
   if (!token || !cloud) return;
   jiraState.loading = true;
   jiraState.error = null;
   renderCases();
-  toggleLoadingOverlay(true);
+  if (!silent) toggleLoadingOverlay(true);
   const projects = getJiraProjects().map(function(p) { return p.key; }).join(',');
   // Also matches issues linked (via customfield_12416, confirmed live
   // against real data) to one of the person's own open Salesforce cases —
@@ -973,7 +992,7 @@ async function fetchJiraIssues() {
     jiraState.error = e.message;
   } finally {
     jiraState.loading = false;
-    toggleLoadingOverlay(false);
+    if (!silent) toggleLoadingOverlay(false);
     renderCases();
     renderDashboard();
   }
@@ -2646,7 +2665,7 @@ async function refreshSlackToken() {
   return false;
 }
 
-async function fetchSlackDigest() {
+async function fetchSlackDigest(silent) {
   const workerUrl = 'https://uyt-slack-digest.kar-marsten.workers.dev';
   if (!workerUrl) {
     slackDigestState.error = 'Add your Worker URL in Settings first.';
@@ -2658,7 +2677,7 @@ async function fetchSlackDigest() {
   slackDigestState.loading = true;
   slackDigestState.error = null;
   renderDashboard();
-  toggleLoadingOverlay(true);
+  if (!silent) toggleLoadingOverlay(true);
 
   try {
     const channels = getSlackChannels();
@@ -2719,7 +2738,7 @@ async function fetchSlackDigest() {
     slackDigestState.html = null;
   } finally {
     slackDigestState.loading = false;
-    toggleLoadingOverlay(false);
+    if (!silent) toggleLoadingOverlay(false);
     renderDashboard();
   }
 }
