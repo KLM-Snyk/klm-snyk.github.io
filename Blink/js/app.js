@@ -1533,6 +1533,15 @@ function renderTrends() {
     '<a href="https://snyksec.lightning.force.com/lightning/r/Dashboard/01ZPU000004pbPp2AI/view?queryScope=userFolders" target="_blank" class="cases-sf-btn">📊 Case Trends &amp; Data</a>' +
     '<a href="https://snyksec.lightning.force.com/lightning/o/Case/list?filterName=All_Unassigned_Cases" target="_blank" class="cases-sf-btn">📋 All Unassigned Cases</a>' +
     '</div>';
+  // Screen-level reload button — was previously only on the old combined
+  // Submitted vs Solved card, and got silently lost in v19.58 when that
+  // card was replaced with the Submitted/Solved split cards. Moved here,
+  // independent of any single card, so it can't be lost again the next
+  // time a card on this screen changes. Refreshes all Trends data at
+  // once (fetchTrendsData covers every section on this screen).
+  const trendsReloadHtml = '<div style="text-align:right;margin-bottom:12px">' +
+    '<button class="connect-btn" onclick="fetchTrendsData()" style="padding:4px 10px;font-size:11px">↺ Reload</button>' +
+  '</div>';
 
   // Submitted and Solved, each split Support Only vs R&D — replaced the
   // former single combined "Submitted vs Solved" chart (that heading no
@@ -1692,7 +1701,7 @@ function renderTrends() {
     ? '<div style="display:flex;gap:16px;flex-wrap:wrap;align-items:flex-start">' + backlogTrendHtml + resolutionTimeSplitHtml + '</div>'
     : '';
 
-  el.innerHTML = sfLinksHtml + backlogHtml + backlogAndSplitRowHtml + snowflakeSectionHtml;
+  el.innerHTML = sfLinksHtml + trendsReloadHtml + backlogHtml + backlogAndSplitRowHtml + snowflakeSectionHtml;
 }
 
 /* ============================================================
