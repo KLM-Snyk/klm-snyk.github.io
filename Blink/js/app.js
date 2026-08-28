@@ -1093,8 +1093,8 @@ function parseTrendsCanvasHtml(html) {
         } else if (/case backlog month-over-month/i.test(currentHeading)) {
           rows.forEach(function(tr) {
             const cells = Array.from(tr.children).map(function(c) { return c.textContent.trim(); });
-            if (cells.length >= 2) {
-              result.backlogTrend.push({ period: cells[0], count: Number(cells[1]) || 0 });
+            if (cells.length >= 3) {
+              result.backlogTrend.push({ period: cells[0], allOpen: Number(cells[1]) || 0, withRnd: Number(cells[2]) || 0 });
             }
           });
         }
@@ -1313,24 +1313,32 @@ function buildResolutionTimeSplitChartSvg(monthlyData) {
 // Case Backlog Month-over-Month — an overlap count (cases open at any
 // point during each month, not a snapshot), whole-number values like
 // Submitted/Solved rather than decimal days, so labels/hover show plain
-// integers. Same visual pattern as the other single-series chart above:
-// no always-visible labels, hover-only via the shared custom tooltip.
+// integers. Two series: All Open (Snowflake, every Support case) and
+// With R&D (Jira issues with a populated Case Number field, since that
+// linkage isn't synced into Snowflake — a different data source, same
+// overlap-counting logic). No always-visible labels, hover-only via the
+// shared custom tooltip, same as the other multi-series charts here.
 function buildBacklogTrendChartSvg(monthlyData) {
   const W = 700, H = 260;
   const padL = 46, padR = 16, padT = 24, padB = 46;
   const plotW = W - padL - padR, plotH = H - padT - padB;
   const n = monthlyData.length;
-  const maxVal = Math.max.apply(null, monthlyData.map(function(m) { return m.count; }).concat([1])) * 1.08;
+  const allVals = monthlyData.flatMap(function(m) { return [m.allOpen, m.withRnd]; });
+  const maxVal = Math.max.apply(null, allVals.concat([1])) * 1.08;
   const xFor = function(i) { return n <= 1 ? padL : padL + (i / (n - 1)) * plotW; };
   const yFor = function(v) { return padT + plotH - (v / maxVal) * plotH; };
 
-  const linePoints = monthlyData.map(function(m, i) { return xFor(i).toFixed(1) + ',' + yFor(m.count).toFixed(1); }).join(' ');
-  const points = monthlyData.map(function(m, i) {
-    const x = xFor(i), y = yFor(m.count);
-    const tipText = escHtml(m.period) + ': ' + m.count + ' cases';
-    return '<circle cx="' + x.toFixed(1) + '" cy="' + y.toFixed(1) + '" r="2.5" fill="#8B5CF6"></circle>' +
-      '<circle cx="' + x.toFixed(1) + '" cy="' + y.toFixed(1) + '" r="9" fill="transparent" pointer-events="all" style="cursor:default" onmouseenter="chartTooltipShow(event,\'' + tipText + '\')" onmousemove="chartTooltipShow(event,\'' + tipText + '\')" onmouseleave="chartTooltipHide()"></circle>';
-  }).join('');
+  const buildLine = function(key) {
+    return monthlyData.map(function(m, i) { return xFor(i).toFixed(1) + ',' + yFor(m[key]).toFixed(1); }).join(' ');
+  };
+  const buildPoints = function(key, color, label) {
+    return monthlyData.map(function(m, i) {
+      const x = xFor(i), y = yFor(m[key]);
+      const tipText = escHtml(m.period) + ' ' + label + ': ' + m[key] + ' cases';
+      return '<circle cx="' + x.toFixed(1) + '" cy="' + y.toFixed(1) + '" r="2.5" fill="' + color + '"></circle>' +
+        '<circle cx="' + x.toFixed(1) + '" cy="' + y.toFixed(1) + '" r="9" fill="transparent" pointer-events="all" style="cursor:default" onmouseenter="chartTooltipShow(event,\'' + tipText + '\')" onmousemove="chartTooltipShow(event,\'' + tipText + '\')" onmouseleave="chartTooltipHide()"></circle>';
+    }).join('');
+  };
   const xLabels = monthlyData.map(function(m, i) {
     const x = xFor(i);
     const parts = m.period.split('-');
@@ -1344,8 +1352,10 @@ function buildBacklogTrendChartSvg(monthlyData) {
   return '<svg viewBox="0 0 ' + W + ' ' + H + '" style="width:100%;height:auto;display:block" xmlns="http://www.w3.org/2000/svg">' +
     yAxisTitle +
     '<line x1="' + padL + '" y1="' + zeroY + '" x2="' + (W - padR) + '" y2="' + zeroY + '" stroke="var(--border)" stroke-width="1"></line>' +
-    '<polyline points="' + linePoints + '" fill="none" stroke="#8B5CF6" stroke-width="2"></polyline>' +
-    points +
+    '<polyline points="' + buildLine('allOpen') + '" fill="none" stroke="#8B5CF6" stroke-width="2"></polyline>' +
+    '<polyline points="' + buildLine('withRnd') + '" fill="none" stroke="#F59E0B" stroke-width="2"></polyline>' +
+    buildPoints('allOpen', '#8B5CF6', 'All Open') +
+    buildPoints('withRnd', '#F59E0B', 'With R&D') +
     xLabels +
     '</svg>';
 }
@@ -1545,11 +1555,16 @@ function renderTrends() {
   // trend row.
   let backlogTrendHtml = '';
   if (trendsDataState.backlogTrend && trendsDataState.backlogTrend.length) {
+    const backlogTrendLegend = '<div style="display:flex;gap:16px;margin-bottom:8px;font-size:11px;color:var(--text-secondary)">' +
+      '<span><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#8B5CF6;margin-right:4px;vertical-align:middle"></span>All Open</span>' +
+      '<span><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#F59E0B;margin-right:4px;vertical-align:middle"></span>With R&D</span>' +
+    '</div>';
     backlogTrendHtml = '<div class="dash-card" style="margin-bottom:20px">' +
       '<div class="dash-card-header"><div><div class="dash-card-title">Case Backlog Month-over-Month</div><div class="dash-card-sub" style="margin-top:2px">Since January 2025</div></div></div>' +
+      backlogTrendLegend +
       buildBacklogTrendChartSvg(trendsDataState.backlogTrend) +
       '<div style="margin-top:12px;font-size:11px;color:var(--text-secondary)">' +
-        'Cases open at any point during each month (not a snapshot) — includes cases opened and closed within the same month. Not live — refreshed occasionally on request.' +
+        'Cases open at any point during each month (not a snapshot) — includes cases opened and closed within the same month. With R&D is sourced from Jira (issues with a linked Case Number), a different source than All Open (Snowflake). Not live — refreshed occasionally on request.' +
       '</div>' +
     '</div>';
   }
