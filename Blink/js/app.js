@@ -2507,7 +2507,12 @@ function categorizeWorkdayItems(items) {
   const result = { pending: [], confirmations: [], updates: [], other: [] };
   (items || []).forEach(function(w) {
     const t = (w.text || '').trim();
-    if (CONFIRM_PREFIXES.some(function(p) { return t.startsWith(p); })) result.confirmations.push(w);
+    // Checked before the emoji-prefix rules below — an actual approval
+    // (e.g. "Your time off request has been approved.") was landing in
+    // Updates just because Workday prefixes it with ✨, which otherwise
+    // reads as a generic status update rather than the approval it is.
+    if (/\bhas been approved\b/i.test(t)) result.confirmations.push(w);
+    else if (CONFIRM_PREFIXES.some(function(p) { return t.startsWith(p); })) result.confirmations.push(w);
     else if (UPDATE_PREFIXES.some(function(p) { return t.startsWith(p); })) result.updates.push(w);
     else if (/\bapprove\b/i.test(t) && /\bdeny\b/i.test(t)) result.pending.push(w);
     else result.other.push(w);
