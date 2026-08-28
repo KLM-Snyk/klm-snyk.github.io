@@ -1353,9 +1353,9 @@ function buildResolutionTimeSplitChartSvg(monthlyData) {
     yAxisTitle +
     gridlines +
     '<line x1="' + padL + '" y1="' + zeroY + '" x2="' + (W - padR) + '" y2="' + zeroY + '" stroke="var(--border)" stroke-width="1"></line>' +
-    '<polyline points="' + buildLine('supportOnlyMedianDays') + '" fill="none" stroke="#6366F1" stroke-width="2"></polyline>' +
+    '<polyline points="' + buildLine('supportOnlyMedianDays') + '" fill="none" stroke="#8B5CF6" stroke-width="2"></polyline>' +
     '<polyline points="' + buildLine('rdMedianDays') + '" fill="none" stroke="#DC2626" stroke-width="2"></polyline>' +
-    buildPoints('supportOnlyMedianDays', '#6366F1', 'Support Only') +
+    buildPoints('supportOnlyMedianDays', '#8B5CF6', 'Support Only') +
     buildPoints('rdMedianDays', '#DC2626', 'R&D') +
     xLabels +
     '</svg>';
@@ -1406,9 +1406,9 @@ function buildBacklogTrendChartSvg(monthlyData) {
     gridlines +
     '<line x1="' + padL + '" y1="' + zeroY + '" x2="' + (W - padR) + '" y2="' + zeroY + '" stroke="var(--border)" stroke-width="1"></line>' +
     '<polyline points="' + buildLine('allOpen') + '" fill="none" stroke="#8B5CF6" stroke-width="2"></polyline>' +
-    '<polyline points="' + buildLine('withRnd') + '" fill="none" stroke="#F59E0B" stroke-width="2"></polyline>' +
+    '<polyline points="' + buildLine('withRnd') + '" fill="none" stroke="#DC2626" stroke-width="2"></polyline>' +
     buildPoints('allOpen', '#8B5CF6', 'All Open') +
-    buildPoints('withRnd', '#F59E0B', 'With R&D') +
+    buildPoints('withRnd', '#DC2626', 'With R&D') +
     xLabels +
     '</svg>';
 }
@@ -1566,8 +1566,8 @@ function renderTrends() {
     };
     const submittedCard = '<div class="dash-card" style="margin-bottom:20px;flex:1 1 380px;min-width:0">' +
       '<div class="dash-card-header"><div><div class="dash-card-title">Submitted — Support Only vs R&D</div><div class="dash-card-sub" style="margin-top:2px">Since January 2025</div></div></div>' +
-      splitLegendHtml('#6366F1', '#DC2626') +
-      buildGenericSplitChartSvg(trendsDataState.submittedSplitTrend, 'supportOnly', 'rd', '#6366F1', '#DC2626', 'Support Only', 'R&D', 'Number of Cases', ' cases') +
+      splitLegendHtml('#8B5CF6', '#DC2626') +
+      buildGenericSplitChartSvg(trendsDataState.submittedSplitTrend, 'supportOnly', 'rd', '#8B5CF6', '#DC2626', 'Support Only', 'R&D', 'Number of Cases', ' cases') +
       '<div style="margin-top:12px;font-size:11px;color:var(--text-secondary)">' +
         'Sourced from Salesforce report exports, not Snowflake — split by whether the case needed R&D. Not live — refreshed occasionally on request.' +
       '</div>' +
@@ -1575,8 +1575,8 @@ function renderTrends() {
     const solvedCard = (trendsDataState.solvedSplitTrend && trendsDataState.solvedSplitTrend.length)
       ? '<div class="dash-card" style="margin-bottom:20px;flex:1 1 380px;min-width:0">' +
         '<div class="dash-card-header"><div><div class="dash-card-title">Solved — Support Only vs R&D</div><div class="dash-card-sub" style="margin-top:2px">Since January 2025</div></div></div>' +
-        splitLegendHtml('#10B981', '#DC2626') +
-        buildGenericSplitChartSvg(trendsDataState.solvedSplitTrend, 'supportOnly', 'rd', '#10B981', '#DC2626', 'Support Only', 'R&D', 'Number of Cases', ' cases') +
+        splitLegendHtml('#8B5CF6', '#DC2626') +
+        buildGenericSplitChartSvg(trendsDataState.solvedSplitTrend, 'supportOnly', 'rd', '#8B5CF6', '#DC2626', 'Support Only', 'R&D', 'Number of Cases', ' cases') +
         '<div style="margin-top:12px;font-size:11px;color:var(--text-secondary)">' +
           'Sourced from Salesforce report exports, not Snowflake — split by whether the case needed R&D. Not live — refreshed occasionally on request.' +
         '</div>' +
@@ -1657,7 +1657,7 @@ function renderTrends() {
   let resolutionTimeSplitHtml = '';
   if (trendsDataState.resolutionTimeSplitTrend && trendsDataState.resolutionTimeSplitTrend.length) {
     const splitLegend = '<div style="display:flex;gap:16px;margin-bottom:8px;font-size:11px;color:var(--text-secondary)">' +
-      '<span><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#6366F1;margin-right:4px;vertical-align:middle"></span>Support Only</span>' +
+      '<span><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#8B5CF6;margin-right:4px;vertical-align:middle"></span>Support Only</span>' +
       '<span><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#DC2626;margin-right:4px;vertical-align:middle"></span>R&D</span>' +
     '</div>';
     resolutionTimeSplitHtml = '<div class="dash-card" style="margin-bottom:20px;flex:1 1 380px;min-width:0">' +
@@ -1677,7 +1677,7 @@ function renderTrends() {
   if (trendsDataState.backlogTrend && trendsDataState.backlogTrend.length) {
     const backlogTrendLegend = '<div style="display:flex;gap:16px;margin-bottom:8px;font-size:11px;color:var(--text-secondary)">' +
       '<span><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#8B5CF6;margin-right:4px;vertical-align:middle"></span>All Open</span>' +
-      '<span><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#F59E0B;margin-right:4px;vertical-align:middle"></span>With R&D</span>' +
+      '<span><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#DC2626;margin-right:4px;vertical-align:middle"></span>With R&D</span>' +
     '</div>';
     backlogTrendHtml = '<div class="dash-card" style="margin-bottom:20px;flex:1 1 380px;min-width:0">' +
       '<div class="dash-card-header"><div><div class="dash-card-title">Case Backlog Month-over-Month</div><div class="dash-card-sub" style="margin-top:2px">Since January 2025</div></div></div>' +
