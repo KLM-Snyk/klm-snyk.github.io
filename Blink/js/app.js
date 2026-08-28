@@ -1563,6 +1563,12 @@ function renderTrends() {
       '<div class="dash-card-header"><div><div class="dash-card-title">Case Backlog Month-over-Month</div><div class="dash-card-sub" style="margin-top:2px">Since January 2025</div></div></div>' +
       backlogTrendLegend +
       buildBacklogTrendChartSvg(trendsDataState.backlogTrend) +
+      // Explains the Jan 2026 dip in With R&D — a confirmed one-time event,
+      // not a trend, traced to a specific person, count, and date via the
+      // Jira changelog (see conversation history for how this was found).
+      '<div style="margin-top:12px;padding:10px 12px;background:var(--surface2);border-left:3px solid #F59E0B;border-radius:var(--radius-sm);font-size:12px;color:var(--text)">' +
+        '<strong>Why With R&D drops in Jan 2026:</strong> Owen Feehan resolved 218 Code Analysis (CA) project issues on Dec 9, 2025, while migrating them from the Goose project — a one-time cleanup, not an ongoing trend.' +
+      '</div>' +
       '<div style="margin-top:12px;font-size:11px;color:var(--text-secondary)">' +
         'Cases open at any point during each month (not a snapshot) — includes cases opened and closed within the same month. With R&D is sourced from Jira (issues with a linked Case Number), a different source than All Open (Snowflake). Not live — refreshed occasionally on request.' +
       '</div>' +
