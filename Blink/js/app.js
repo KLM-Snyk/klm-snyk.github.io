@@ -783,9 +783,9 @@ function renderMail() {
 
   // Search bar
   const searchHtml = '<div class="mail-search-bar">' +
-    '<input class="mail-search-input" placeholder="🔍 Keyword search…" value="' + escHtml(mailState.search) + '" oninput="mailState.search=this.value;renderMail()">' +
-    '<input class="mail-search-input" placeholder="👤 Sender…" value="' + escHtml(mailState.searchSender) + '" oninput="mailState.searchSender=this.value;renderMail()">' +
-    '<input class="mail-search-input" placeholder="📅 Date (e.g. Jun)…" value="' + escHtml(mailState.searchDate) + '" oninput="mailState.searchDate=this.value;renderMail()">' +
+    '<input class="mail-search-input" data-search-key="mail-keyword" placeholder="🔍 Keyword search…" value="' + escHtml(mailState.search) + '" oninput="mailState.search=this.value;preserveFocusAndRerender(renderMail)">' +
+    '<input class="mail-search-input" data-search-key="mail-sender" placeholder="👤 Sender…" value="' + escHtml(mailState.searchSender) + '" oninput="mailState.searchSender=this.value;preserveFocusAndRerender(renderMail)">' +
+    '<input class="mail-search-input" data-search-key="mail-date" placeholder="📅 Date (e.g. Jun)…" value="' + escHtml(mailState.searchDate) + '" oninput="mailState.searchDate=this.value;preserveFocusAndRerender(renderMail)">' +
     '</div>';
 
   // Group by label, INBOX first
@@ -1764,7 +1764,7 @@ function renderSupportCases() {
   });
 
   const searchHtml = '<div class="mail-search-bar">' +
-    '<input class="mail-search-input" placeholder="🔍 Subject or case number…" value="' + escHtml(supportCasesState.search) + '" oninput="supportCasesState.search=this.value;renderSupportCases()">' +
+    '<input class="mail-search-input" data-search-key="supportcases-keyword" placeholder="🔍 Subject or case number…" value="' + escHtml(supportCasesState.search) + '" oninput="supportCasesState.search=this.value;preserveFocusAndRerender(renderSupportCases)">' +
     '</div>' +
     '<div class="drive-filters" style="margin-bottom:12px">' +
       '<button class="drive-filter ' + (supportCasesState.escalatedOnly ? 'active' : '') + '" onclick="supportCasesToggleEscalatedOnly()">🔥 Escalated only</button>' +
@@ -1918,8 +1918,8 @@ function renderCases() {
 
   // Search bar
   const searchHtml = '<div class="mail-search-bar">' +
-    '<input class="mail-search-input" placeholder="🔍 Keyword…" value="' + escHtml(jiraState.search) + '" oninput="jiraState.search=this.value;renderCases()">' +
-    '<input class="mail-search-input" placeholder="📁 Project (e.g. OSM)…" value="' + escHtml(jiraState.searchProject) + '" oninput="jiraState.searchProject=this.value;renderCases()">' +
+    '<input class="mail-search-input" data-search-key="jira-keyword" placeholder="🔍 Keyword…" value="' + escHtml(jiraState.search) + '" oninput="jiraState.search=this.value;preserveFocusAndRerender(renderCases)">' +
+    '<input class="mail-search-input" data-search-key="jira-project" placeholder="📁 Project (e.g. OSM)…" value="' + escHtml(jiraState.searchProject) + '" oninput="jiraState.searchProject=this.value;preserveFocusAndRerender(renderCases)">' +
     '</div>';
 
   // Toggle-pill filters — status options are whatever's actually in the
@@ -3625,6 +3625,34 @@ function escHtml(str) {
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;');
+}
+
+// Every screen re-renders by replacing a container's innerHTML wholesale
+// (no virtual-DOM diffing anywhere in this app), which destroys and
+// recreates every element on each call — including whatever input the
+// person is actively typing into. A plain oninput="...;renderX()" handler
+// therefore drops focus after a single keystroke, since the "same" input
+// is actually a brand-new DOM node once the rebuild finishes. This wraps
+// a render call to save focus + cursor position beforehand and restore
+// both afterward, matched via a stable data-search-key attribute (a
+// shared CSS class isn't enough when multiple inputs share one, e.g. the
+// Jira screen's Keyword and Project fields). Any input meant to survive
+// its own oninput re-render needs a unique data-search-key.
+function preserveFocusAndRerender(renderFn) {
+  const active = document.activeElement;
+  const key = active && active.dataset ? active.dataset.searchKey : null;
+  const selStart = active && typeof active.selectionStart === 'number' ? active.selectionStart : null;
+  const selEnd = active && typeof active.selectionEnd === 'number' ? active.selectionEnd : null;
+  renderFn();
+  if (key) {
+    const el = document.querySelector('[data-search-key="' + key + '"]');
+    if (el) {
+      el.focus();
+      if (selStart !== null && el.setSelectionRange) {
+        try { el.setSelectionRange(selStart, selEnd); } catch (e) { /* not all input types support this */ }
+      }
+    }
+  }
 }
 
 /* ============================================================
