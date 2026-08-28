@@ -1444,7 +1444,7 @@ function renderTrends() {
     // Median MTTR callout removed — the separate Median Resolution Time
     // chart now covers this same metric in a richer, trend-over-time form,
     // making a single flat number here redundant.
-    snowflakeSectionHtml = '<div class="dash-card" style="margin-bottom:20px;flex:1 1 380px;min-width:0">' +
+    snowflakeSectionHtml = '<div class="dash-card" style="margin-bottom:20px">' +
       '<div class="dash-card-header"><div><div class="dash-card-title">Submitted vs Solved</div><div class="dash-card-sub" style="margin-top:2px">Since January 2025</div></div></div>' +
       legendHtml +
       '<div style="margin-top:6px">' + chartSvg + '</div>' +
@@ -1522,10 +1522,7 @@ function renderTrends() {
   // Support Only vs R&D split — a distinct data source from everything
   // else here (two Salesforce report exports via Google Drive, not
   // Snowflake, since the Jira-linkage field isn't synced there). Sits
-  // side by side with Submitted vs Solved, replacing the combined Median
-  // Resolution Time chart (removed from the UI per user request — the
-  // canvas data and build function for it are left in place, unused,
-  // rather than torn out, since removal wasn't explicitly requested).
+  // side by side with Case Backlog Month-over-Month, below.
   let resolutionTimeSplitHtml = '';
   if (trendsDataState.resolutionTimeSplitTrend && trendsDataState.resolutionTimeSplitTrend.length) {
     const splitLegend = '<div style="display:flex;gap:16px;margin-bottom:8px;font-size:11px;color:var(--text-secondary)">' +
@@ -1542,24 +1539,16 @@ function renderTrends() {
     '</div>';
   }
 
-  // Side by side on wide screens, stacked on narrow ones — flex-wrap
-  // handles the fallback automatically without a separate mobile path.
-  const trendChartsRowHtml = (snowflakeSectionHtml || resolutionTimeSplitHtml)
-    ? '<div style="display:flex;gap:16px;flex-wrap:wrap;align-items:flex-start">' + snowflakeSectionHtml + resolutionTimeSplitHtml + '</div>'
-    : '';
-
   // Case Backlog Month-over-Month — an overlap count (any case open at
   // some point during the month), distinct from the Case Backlog by
-  // Engineer snapshot above. Full-width card, placed right after that
-  // snapshot since both are "backlog" concepts, before the side-by-side
-  // trend row.
+  // Engineer snapshot above.
   let backlogTrendHtml = '';
   if (trendsDataState.backlogTrend && trendsDataState.backlogTrend.length) {
     const backlogTrendLegend = '<div style="display:flex;gap:16px;margin-bottom:8px;font-size:11px;color:var(--text-secondary)">' +
       '<span><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#8B5CF6;margin-right:4px;vertical-align:middle"></span>All Open</span>' +
       '<span><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#F59E0B;margin-right:4px;vertical-align:middle"></span>With R&D</span>' +
     '</div>';
-    backlogTrendHtml = '<div class="dash-card" style="margin-bottom:20px">' +
+    backlogTrendHtml = '<div class="dash-card" style="margin-bottom:20px;flex:1 1 380px;min-width:0">' +
       '<div class="dash-card-header"><div><div class="dash-card-title">Case Backlog Month-over-Month</div><div class="dash-card-sub" style="margin-top:2px">Since January 2025</div></div></div>' +
       backlogTrendLegend +
       buildBacklogTrendChartSvg(trendsDataState.backlogTrend) +
@@ -1575,7 +1564,13 @@ function renderTrends() {
     '</div>';
   }
 
-  el.innerHTML = sfLinksHtml + backlogHtml + backlogTrendHtml + trendChartsRowHtml;
+  // Case Backlog Month-over-Month + Median Resolution Time Support Only
+  // vs R&D, side by side — flex-wrap handles narrow screens automatically.
+  const backlogAndSplitRowHtml = (backlogTrendHtml || resolutionTimeSplitHtml)
+    ? '<div style="display:flex;gap:16px;flex-wrap:wrap;align-items:flex-start">' + backlogTrendHtml + resolutionTimeSplitHtml + '</div>'
+    : '';
+
+  el.innerHTML = sfLinksHtml + backlogHtml + backlogAndSplitRowHtml + snowflakeSectionHtml;
 }
 
 /* ============================================================
