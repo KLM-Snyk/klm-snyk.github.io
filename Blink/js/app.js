@@ -1016,6 +1016,7 @@ const trendsDataState = {
   loading: false,
   monthly: null,  // [{period, submitted, solved}, ...] — period is "YYYY-MM"
   mttr: null,     // {average, median, count} — raw display strings from the canvas
+  mttrByOwner: null, // [{owner, medianHours, resolvedCount}, ...] — for the My Data/Team toggle
   backlogByOwner: null, // [{owner, open, pending, onHold, waitingForInternal, meetingScheduled, total}, ...]
   // ISO timestamp string parsed from a "Last automated refresh: <ISO>" line
   // in the canvas, set by the scheduled task that refreshes this section
@@ -1076,7 +1077,7 @@ function buildTrendsScopeToggleHtml() {
 // backlog breakdown).
 function parseTrendsCanvasHtml(html) {
   const doc = new DOMParser().parseFromString(html, 'text/html');
-  const result = { monthly: [], mttr: null, backlogByOwner: [], backlogByOwnerLastRefresh: null, resolutionTimeTrend: [], resolutionTimeSplitTrend: [], backlogTrend: [], submittedSplitTrend: [], solvedSplitTrend: [] };
+  const result = { monthly: [], mttr: null, mttrByOwner: [], backlogByOwner: [], backlogByOwnerLastRefresh: null, resolutionTimeTrend: [], resolutionTimeSplitTrend: [], backlogTrend: [], submittedSplitTrend: [], solvedSplitTrend: [] };
   let currentHeading = '';
   function walk(nodes) {
     nodes.forEach(function(node) {
@@ -1085,6 +1086,7 @@ function parseTrendsCanvasHtml(html) {
         currentHeading = node.textContent.trim();
       } else if (tag === 'TABLE') {
         const rows = Array.from(node.querySelectorAll('tr')).slice(1); // skip header row
+        const headerCells = Array.from(node.querySelectorAll('tr')[0]?.children || []).map(function(c) { return c.textContent.trim().toLowerCase(); });
         if (/submitted vs solved/i.test(currentHeading)) {
           rows.forEach(function(tr) {
             const cells = Array.from(tr.children).map(function(c) { return c.textContent.trim(); });
@@ -1118,6 +1120,13 @@ function parseTrendsCanvasHtml(html) {
             const cells = Array.from(tr.children).map(function(c) { return c.textContent.trim(); });
             if (cells.length >= 2) {
               result.resolutionTimeTrend.push({ period: cells[0], medianDays: Number(cells[1]) || 0 });
+            }
+          });
+        } else if (/mttr/i.test(currentHeading) && headerCells[0] === 'owner') {
+          rows.forEach(function(tr) {
+            const cells = Array.from(tr.children).map(function(c) { return c.textContent.trim(); });
+            if (cells.length >= 3) {
+              result.mttrByOwner.push({ owner: cells[0], medianHours: Number(cells[1]) || 0, resolvedCount: Number(cells[2]) || 0 });
             }
           });
         } else if (/mttr/i.test(currentHeading)) {
@@ -1182,6 +1191,7 @@ async function fetchTrendsData() {
     const parsed = parseTrendsCanvasHtml(data.html || '');
     trendsDataState.monthly = parsed.monthly;
     trendsDataState.mttr = parsed.mttr;
+    trendsDataState.mttrByOwner = parsed.mttrByOwner;
     trendsDataState.backlogByOwner = parsed.backlogByOwner;
     trendsDataState.backlogByOwnerLastRefresh = parsed.backlogByOwnerLastRefresh;
     trendsDataState.resolutionTimeTrend = parsed.resolutionTimeTrend;
@@ -1723,6 +1733,33 @@ function renderTrends() {
     '</div>';
   }
 
+  // Median Time to Resolution (MTTR) — re-added to the UI with a per-owner
+  // breakdown and the same My Data/Team toggle as Case Backlog by Engineer.
+  // Was previously parsed but never rendered anywhere (removed from the UI
+  // at some earlier point, parsing left intact) — restored specifically to
+  // support this toggle, not a standalone decision to bring it back.
+  // "mine" mode looks up the logged-in person's own row in mttrByOwner;
+  // falls back to a clear "no data" message rather than showing nothing
+  // if their name doesn't match any owner in the canvas.
+  let mttrHtml = '';
+  if (trendsDataState.mttr && trendsDataState.mttr.median) {
+    const currentUserNameMttr = getTrendsCurrentUserName();
+    let valueHtml;
+    if (trendsViewScope === 'mine') {
+      const mine = (trendsDataState.mttrByOwner || []).find(function(o) { return o.owner.toLowerCase() === currentUserNameMttr.toLowerCase(); });
+      valueHtml = mine
+        ? mine.medianHours.toFixed(1) + ' hours (~' + (mine.medianHours / 24).toFixed(1) + ' days) · ' + mine.resolvedCount + ' resolved'
+        : 'No data found for "' + escHtml(currentUserNameMttr || '(no name set)') + '"';
+    } else {
+      valueHtml = escHtml(trendsDataState.mttr.median);
+    }
+    mttrHtml = '<div class="dash-card" style="margin-bottom:20px">' +
+      '<div class="dash-card-header"><div class="dash-card-title">MTTR (Support)</div><div style="margin-left:auto">' + buildTrendsScopeToggleHtml() + '</div></div>' +
+      '<div style="font-size:20px;font-weight:600">' + valueHtml + '</div>' +
+      '<div style="margin-top:8px;font-size:11px;color:var(--text-secondary)">Median time to resolution, since Jan 1, 2025. Not live — refreshed occasionally on request.</div>' +
+    '</div>';
+  }
+
   // Support Only vs R&D split — a distinct data source from everything
   // else here (two Salesforce report exports via Google Drive, not
   // Snowflake, since the Jira-linkage field isn't synced there). Sits
@@ -1774,7 +1811,7 @@ function renderTrends() {
     ? '<div style="display:flex;gap:16px;flex-wrap:wrap;align-items:flex-start">' + backlogTrendHtml + resolutionTimeSplitHtml + '</div>'
     : '';
 
-  el.innerHTML = sfLinksHtml + trendsReloadHtml + backlogHtml + backlogAndSplitRowHtml + snowflakeSectionHtml;
+  el.innerHTML = sfLinksHtml + trendsReloadHtml + backlogHtml + mttrHtml + backlogAndSplitRowHtml + snowflakeSectionHtml;
 }
 
 /* ============================================================
