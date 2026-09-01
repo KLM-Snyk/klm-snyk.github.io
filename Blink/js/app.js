@@ -1036,6 +1036,39 @@ const trendsDataState = {
   asOf: null,
 };
 
+// "My data" vs "Team" toggle for the Trends screen — currently only
+// affects Case Backlog by Engineer (the only section that's per-owner
+// today); other sections will hook into this same state as they gain
+// per-owner breakdowns. Persisted so it sticks across reloads, same
+// pattern as other user prefs in this file.
+let trendsViewScope = localStorage.getItem('uyt_trends_view_scope') || 'team'; // 'team' | 'mine'
+function setTrendsViewScope(scope) {
+  trendsViewScope = scope;
+  localStorage.setItem('uyt_trends_view_scope', scope);
+  renderTrends();
+}
+// Same "whose data is this" resolution used by the Support Cases screen's
+// own refresh scoping — kept as a separate small helper here (rather than
+// calling that one directly) since this file doesn't guarantee load order
+// between the two screens' code.
+function getTrendsCurrentUserName() {
+  return (calState.userProfile?.name || state.prefs.userName || '').trim();
+}
+// Small reusable toggle for any per-owner section — currently only used
+// by Case Backlog by Engineer, but built generic so other sections can
+// drop it in once they gain per-owner data too, rather than each building
+// its own copy. Uses --primary (a real, theme-adapting CSS var already
+// defined per data-theme) for the active state, so it looks consistent
+// across all 5 color themes without hardcoding a color here.
+function buildTrendsScopeToggleHtml() {
+  const isMine = trendsViewScope === 'mine';
+  const btn = function(scope, label, active) {
+    return '<button onclick="setTrendsViewScope(\'' + scope + '\')" class="connect-btn" style="padding:3px 10px;font-size:11px' +
+      (active ? ';background:var(--primary);color:#fff;border-color:var(--primary)' : '') + '">' + label + '</button>';
+  };
+  return '<div style="display:flex;gap:4px">' + btn('team', 'Team', !isMine) + btn('mine', 'My Data', isMine) + '</div>';
+}
+
 // Structurally similar to parseCasesCanvasHtml() — walks H2 headings and
 // associates the table immediately following each with that heading, but
 // differentiates parsing by heading text since the two tables here have
@@ -1613,12 +1646,20 @@ function renderTrends() {
   let backlogHtml = '';
   if (trendsDataState.backlogByOwner && trendsDataState.backlogByOwner.length) {
     const sorted = trendsDataState.backlogByOwner.slice().sort(function(a, b) { return a.owner.localeCompare(b.owner); });
+    // "mine" scope filters down to the logged-in person's own row — kept
+    // as a separate `displayed` list rather than filtering `sorted` in
+    // place, since the drill-down lookup below still needs the full list
+    // (it looks up an owner's raw counts regardless of current scope).
+    const currentUserName = getTrendsCurrentUserName();
+    const displayed = (trendsViewScope === 'mine' && currentUserName)
+      ? sorted.filter(function(o) { return o.owner.toLowerCase() === currentUserName.toLowerCase(); })
+      : sorted;
     const backlogLegend = '<div style="display:flex;gap:14px;margin-bottom:8px;font-size:11px;color:var(--text-secondary);flex-wrap:wrap">' +
       BACKLOG_STATUS_ORDER.map(function(key) {
         return '<span><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:' + BACKLOG_STATUS_COLORS[key] + ';margin-right:4px;vertical-align:middle"></span>' + BACKLOG_STATUS_LABELS[key] + '</span>';
       }).join('') +
     '</div>';
-    const totalBacklog = sorted.reduce(function(sum, o) { return sum + o.total; }, 0);
+    const totalBacklog = displayed.reduce(function(sum, o) { return sum + o.total; }, 0);
 
     // Drill-down panel — reuses case-level detail already loaded from the
     // Support Cases canvas (which holds every owner's individual cases,
@@ -1670,13 +1711,15 @@ function renderTrends() {
       return ' · Last updated ' + d.toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
     })();
     backlogHtml = '<div class="dash-card" style="margin-bottom:20px">' +
-      '<div class="dash-card-header"><div class="dash-card-title">Case Backlog by Engineer</div></div>' +
-      backlogLegend +
-      buildBacklogStackedBarSvg(sorted) +
-      '<div style="margin-top:12px;font-size:11px;color:var(--text-secondary)">' +
-        totalBacklog + ' open cases across ' + sorted.length + ' engineers · Refreshed automatically every 2 hours (8am–6pm ET, weekdays)' + escHtml(lastRefreshText) + '. Click a bar segment to see its cases.' +
-      '</div>' +
-      drilldownHtml +
+      '<div class="dash-card-header"><div class="dash-card-title">Case Backlog by Engineer</div><div style="margin-left:auto">' + buildTrendsScopeToggleHtml() + '</div></div>' +
+      (displayed.length === 0
+        ? '<div style="padding:24px;text-align:center;color:var(--text-secondary);font-size:12px">No backlog data found for "' + escHtml(currentUserName || '(no name set)') + '" — check Preferences if your name doesn\'t match how you appear in Salesforce.</div>'
+        : backlogLegend +
+          buildBacklogStackedBarSvg(displayed) +
+          '<div style="margin-top:12px;font-size:11px;color:var(--text-secondary)">' +
+            totalBacklog + ' open case' + (totalBacklog === 1 ? '' : 's') + ' across ' + displayed.length + ' engineer' + (displayed.length === 1 ? '' : 's') + ' · Refreshed automatically every 2 hours (8am–6pm ET, weekdays)' + escHtml(lastRefreshText) + '. Click a bar segment to see its cases.' +
+          '</div>' +
+          drilldownHtml) +
     '</div>';
   }
 
