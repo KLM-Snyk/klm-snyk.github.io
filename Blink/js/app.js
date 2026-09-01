@@ -1017,6 +1017,10 @@ const trendsDataState = {
   monthly: null,  // [{period, submitted, solved}, ...] — period is "YYYY-MM"
   mttr: null,     // {average, median, count} — raw display strings from the canvas
   backlogByOwner: null, // [{owner, open, pending, onHold, waitingForInternal, meetingScheduled, total}, ...]
+  // ISO timestamp string parsed from a "Last automated refresh: <ISO>" line
+  // in the canvas, set by the scheduled task that refreshes this section
+  // every 2 hours (8am-6pm ET, weekdays) — null until that line exists.
+  backlogByOwnerLastRefresh: null,
   resolutionTimeTrend: null, // [{period, medianDays}, ...] — period is "YYYY-MM"
   // [{period, supportOnlyMedianDays, rdMedianDays}, ...] — sourced from two
   // Salesforce report exports (Google Drive), not Snowflake — the Jira
@@ -1039,7 +1043,7 @@ const trendsDataState = {
 // backlog breakdown).
 function parseTrendsCanvasHtml(html) {
   const doc = new DOMParser().parseFromString(html, 'text/html');
-  const result = { monthly: [], mttr: null, backlogByOwner: [], resolutionTimeTrend: [], resolutionTimeSplitTrend: [], backlogTrend: [], submittedSplitTrend: [], solvedSplitTrend: [] };
+  const result = { monthly: [], mttr: null, backlogByOwner: [], backlogByOwnerLastRefresh: null, resolutionTimeTrend: [], resolutionTimeSplitTrend: [], backlogTrend: [], submittedSplitTrend: [], solvedSplitTrend: [] };
   let currentHeading = '';
   function walk(nodes) {
     nodes.forEach(function(node) {
@@ -1117,6 +1121,13 @@ function parseTrendsCanvasHtml(html) {
             }
           });
         }
+      } else if (/case backlog by engineer/i.test(currentHeading)) {
+        // Looks for a "Last automated refresh: <ISO timestamp>" line in
+        // any non-table text under this heading (set by the scheduled
+        // task that refreshes this section every 2 hours) — not present
+        // until that task has run at least once.
+        const m = (node.textContent || '').match(/last automated refresh:\s*(\S+)/i);
+        if (m) result.backlogByOwnerLastRefresh = m[1];
       }
       if (node.children && node.children.length) walk(Array.from(node.children));
     });
@@ -1139,6 +1150,7 @@ async function fetchTrendsData() {
     trendsDataState.monthly = parsed.monthly;
     trendsDataState.mttr = parsed.mttr;
     trendsDataState.backlogByOwner = parsed.backlogByOwner;
+    trendsDataState.backlogByOwnerLastRefresh = parsed.backlogByOwnerLastRefresh;
     trendsDataState.resolutionTimeTrend = parsed.resolutionTimeTrend;
     trendsDataState.resolutionTimeSplitTrend = parsed.resolutionTimeSplitTrend;
     trendsDataState.backlogTrend = parsed.backlogTrend;
@@ -1640,12 +1652,21 @@ function renderTrends() {
       }
     }
 
+    // Last-refresh timestamp is parsed from a "Last automated refresh: <ISO>"
+    // line the scheduled task writes into the canvas — absent until that
+    // task has run at least once, hence the fallback text below.
+    const lastRefreshText = (function() {
+      if (!trendsDataState.backlogByOwnerLastRefresh) return ' (not yet run)';
+      const d = new Date(trendsDataState.backlogByOwnerLastRefresh);
+      if (isNaN(d.getTime())) return ' (not yet run)';
+      return ' · Last updated ' + d.toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+    })();
     backlogHtml = '<div class="dash-card" style="margin-bottom:20px">' +
       '<div class="dash-card-header"><div class="dash-card-title">Case Backlog by Engineer</div></div>' +
       backlogLegend +
       buildBacklogStackedBarSvg(sorted) +
       '<div style="margin-top:12px;font-size:11px;color:var(--text-secondary)">' +
-        totalBacklog + ' open cases across ' + sorted.length + ' engineers · Not live — refreshed occasionally on request. Click a bar segment to see its cases.' +
+        totalBacklog + ' open cases across ' + sorted.length + ' engineers · Refreshed automatically every 2 hours (8am–6pm ET, weekdays)' + escHtml(lastRefreshText) + '. Click a bar segment to see its cases.' +
       '</div>' +
       drilldownHtml +
     '</div>';
