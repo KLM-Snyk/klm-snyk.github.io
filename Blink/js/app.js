@@ -1028,6 +1028,10 @@ const trendsDataState = {
   // linkage field isn't synced there. See canvas note for details.
   resolutionTimeSplitTrend: null,
   backlogTrend: null, // [{period, allOpen, withRnd}, ...] — month-over-month overlap count, not a snapshot; withRnd sourced from Jira, not Snowflake
+  // [{period, owner, allOpen}, ...] — Jan 2026-Aug 2026 only (not the full
+  // 20-month history), All Open only — With R&D can't be split by owner
+  // (Jira issues don't carry a Salesforce case owner directly).
+  backlogTrendByOwner: null,
   // [{period, supportOnly, rd}, ...] — replaced the old combined "monthly"
   // (Submitted vs Solved) field above, which is no longer populated by the
   // canvas (heading changed) but left defined rather than removed.
@@ -1077,7 +1081,7 @@ function buildTrendsScopeToggleHtml() {
 // backlog breakdown).
 function parseTrendsCanvasHtml(html) {
   const doc = new DOMParser().parseFromString(html, 'text/html');
-  const result = { monthly: [], mttr: null, mttrByOwner: [], backlogByOwner: [], backlogByOwnerLastRefresh: null, resolutionTimeTrend: [], resolutionTimeSplitTrend: [], backlogTrend: [], submittedSplitTrend: [], solvedSplitTrend: [] };
+  const result = { monthly: [], mttr: null, mttrByOwner: [], backlogByOwner: [], backlogByOwnerLastRefresh: null, resolutionTimeTrend: [], resolutionTimeSplitTrend: [], backlogTrend: [], backlogTrendByOwner: [], submittedSplitTrend: [], solvedSplitTrend: [] };
   let currentHeading = '';
   function walk(nodes) {
     nodes.forEach(function(node) {
@@ -1155,6 +1159,13 @@ function parseTrendsCanvasHtml(html) {
               });
             }
           });
+        } else if (/case backlog month-over-month/i.test(currentHeading) && headerCells[1] === 'owner') {
+          rows.forEach(function(tr) {
+            const cells = Array.from(tr.children).map(function(c) { return c.textContent.trim(); });
+            if (cells.length >= 3) {
+              result.backlogTrendByOwner.push({ period: cells[0], owner: cells[1], allOpen: Number(cells[2]) || 0 });
+            }
+          });
         } else if (/case backlog month-over-month/i.test(currentHeading)) {
           rows.forEach(function(tr) {
             const cells = Array.from(tr.children).map(function(c) { return c.textContent.trim(); });
@@ -1197,6 +1208,7 @@ async function fetchTrendsData() {
     trendsDataState.resolutionTimeTrend = parsed.resolutionTimeTrend;
     trendsDataState.resolutionTimeSplitTrend = parsed.resolutionTimeSplitTrend;
     trendsDataState.backlogTrend = parsed.backlogTrend;
+    trendsDataState.backlogTrendByOwner = parsed.backlogTrendByOwner;
     trendsDataState.submittedSplitTrend = parsed.submittedSplitTrend;
     trendsDataState.solvedSplitTrend = parsed.solvedSplitTrend;
     trendsDataState.asOf = new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
@@ -1520,6 +1532,47 @@ function buildGenericSplitChartSvg(monthlyData, keyA, keyB, colorA, colorB, labe
     '</svg>';
 }
 
+// Single-series variant of the above — used for "My Data" mode on charts
+// where the second series can't be split by owner (e.g. Case Backlog
+// Month-over-Month's With R&D), so only one line is drawn at all rather
+// than showing a fake/zero second line.
+function buildGenericSingleSeriesChartSvg(monthlyData, key, color, label, yAxisLabel, unitSuffix) {
+  const W = 700, H = 260;
+  const padL = 46, padR = 16, padT = 24, padB = 46;
+  const plotW = W - padL - padR, plotH = H - padT - padB;
+  const n = monthlyData.length;
+  const maxVal = Math.max.apply(null, monthlyData.map(function(m) { return m[key]; }).concat([1])) * 1.08;
+  const xFor = function(i) { return n <= 1 ? padL : padL + (i / (n - 1)) * plotW; };
+  const yFor = function(v) { return padT + plotH - (v / maxVal) * plotH; };
+
+  const points = monthlyData.map(function(m, i) { return xFor(i).toFixed(1) + ',' + yFor(m[key]).toFixed(1); }).join(' ');
+  const markers = monthlyData.map(function(m, i) {
+    const x = xFor(i), y = yFor(m[key]);
+    const tipText = escHtml(m.period) + ' ' + label + ': ' + m[key] + unitSuffix;
+    return '<circle cx="' + x.toFixed(1) + '" cy="' + y.toFixed(1) + '" r="2.5" fill="' + color + '"></circle>' +
+      '<circle cx="' + x.toFixed(1) + '" cy="' + y.toFixed(1) + '" r="9" fill="transparent" pointer-events="all" style="cursor:default" onmouseenter="chartTooltipShow(event,\'' + tipText + '\')" onmousemove="chartTooltipShow(event,\'' + tipText + '\')" onmouseleave="chartTooltipHide()"></circle>';
+  }).join('');
+  const xLabels = monthlyData.map(function(m, i) {
+    const x = xFor(i);
+    const parts = m.period.split('-');
+    const lbl = new Date(Number(parts[0]), Number(parts[1]) - 1, 1).toLocaleDateString('en-US', { month: 'short', year: '2-digit' });
+    const labelY = padT + plotH + 14;
+    return '<text x="' + x.toFixed(1) + '" y="' + labelY + '" font-size="9" fill="var(--text-secondary)" text-anchor="end" transform="rotate(-30 ' + x.toFixed(1) + ' ' + labelY + ')">' + escHtml(lbl) + '</text>';
+  }).join('');
+  const zeroY = yFor(0).toFixed(1);
+  const yAxisTitle = '<text x="14" y="' + (padT + plotH / 2) + '" font-size="9" fill="var(--text-secondary)" text-anchor="middle" transform="rotate(-90 14 ' + (padT + plotH / 2) + ')">' + escHtml(yAxisLabel) + '</text>';
+  const gridlines = buildYAxisGridlines(maxVal, yFor, padL, padR, W);
+
+  return '<svg viewBox="0 0 ' + W + ' ' + H + '" style="width:100%;height:auto;display:block" xmlns="http://www.w3.org/2000/svg">' +
+    yAxisTitle +
+    gridlines +
+    '<line x1="' + padL + '" y1="' + zeroY + '" x2="' + (W - padR) + '" y2="' + zeroY + '" stroke="var(--border)" stroke-width="1"></line>' +
+    '<polyline points="' + points + '" fill="none" stroke="' + color + '" stroke-width="2"></polyline>' +
+    markers +
+    xLabels +
+    '</svg>';
+}
+
 // Stacked bar chart for backlog-by-engineer — one bar per owner, segments
 // colored by status, matching the visual pattern of the Salesforce report
 // this was built to mirror. Horizontally scrollable rather than squeezed
@@ -1782,15 +1835,38 @@ function renderTrends() {
 
   // Case Backlog Month-over-Month — an overlap count (any case open at
   // some point during the month), distinct from the Case Backlog by
-  // Engineer snapshot above.
+  // Engineer snapshot above. "mine" mode uses a different dataset
+  // (backlogTrendByOwner, Jan-Aug 2026 only, All Open only) since With
+  // R&D can't be split by owner — see buildGenericSingleSeriesChartSvg's
+  // comment for why. Falls back to a clear "no data" message rather than
+  // an empty chart if the logged-in person's name doesn't match any
+  // owner in that dataset.
   let backlogTrendHtml = '';
-  if (trendsDataState.backlogTrend && trendsDataState.backlogTrend.length) {
+  const isMineBacklogTrend = trendsViewScope === 'mine';
+  if (isMineBacklogTrend) {
+    const currentUserNameBacklogTrend = getTrendsCurrentUserName();
+    const mineData = (trendsDataState.backlogTrendByOwner || []).filter(function(m) { return m.owner.toLowerCase() === currentUserNameBacklogTrend.toLowerCase(); });
+    if (mineData.length) {
+      backlogTrendHtml = '<div class="dash-card" style="margin-bottom:20px;flex:1 1 380px;min-width:0">' +
+        '<div class="dash-card-header"><div><div class="dash-card-title">Case Backlog Month-over-Month</div><div class="dash-card-sub" style="margin-top:2px">Jan\u2013Aug 2026</div></div><div style="margin-left:auto">' + buildTrendsScopeToggleHtml() + '</div></div>' +
+        buildGenericSingleSeriesChartSvg(mineData, 'allOpen', '#8B5CF6', 'All Open', 'Cases', ' cases') +
+        '<div style="margin-top:12px;font-size:11px;color:var(--text-secondary)">' +
+          'With R&D isn\u2019t shown here — it can\u2019t yet be split by owner (Jira issues don\u2019t carry a Salesforce case owner directly), though that data should become available before too long. Jan 2026\u2013Aug 2026 only, not the full 20-month history. Not live — refreshed occasionally on request.' +
+        '</div>' +
+      '</div>';
+    } else if (trendsDataState.backlogTrendByOwner) {
+      backlogTrendHtml = '<div class="dash-card" style="margin-bottom:20px;flex:1 1 380px;min-width:0">' +
+        '<div class="dash-card-header"><div class="dash-card-title">Case Backlog Month-over-Month</div><div style="margin-left:auto">' + buildTrendsScopeToggleHtml() + '</div></div>' +
+        '<div style="padding:24px;text-align:center;color:var(--text-secondary);font-size:12px">No backlog trend data found for "' + escHtml(currentUserNameBacklogTrend || '(no name set)') + '".</div>' +
+      '</div>';
+    }
+  } else if (trendsDataState.backlogTrend && trendsDataState.backlogTrend.length) {
     const backlogTrendLegend = '<div style="display:flex;gap:16px;margin-bottom:8px;font-size:11px;color:var(--text-secondary)">' +
       '<span><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#8B5CF6;margin-right:4px;vertical-align:middle"></span>All Open</span>' +
       '<span><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#DC2626;margin-right:4px;vertical-align:middle"></span>With R&D</span>' +
     '</div>';
     backlogTrendHtml = '<div class="dash-card" style="margin-bottom:20px;flex:1 1 380px;min-width:0">' +
-      '<div class="dash-card-header"><div><div class="dash-card-title">Case Backlog Month-over-Month</div><div class="dash-card-sub" style="margin-top:2px">Since January 2025</div></div></div>' +
+      '<div class="dash-card-header"><div><div class="dash-card-title">Case Backlog Month-over-Month</div><div class="dash-card-sub" style="margin-top:2px">Since January 2025</div></div><div style="margin-left:auto">' + buildTrendsScopeToggleHtml() + '</div></div>' +
       backlogTrendLegend +
       buildBacklogTrendChartSvg(trendsDataState.backlogTrend) +
       // Explains the Jan 2026 dip in With R&D — a confirmed one-time event,
