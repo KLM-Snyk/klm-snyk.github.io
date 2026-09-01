@@ -1539,8 +1539,9 @@ function renderTrends() {
   // independent of any single card, so it can't be lost again the next
   // time a card on this screen changes. Refreshes all Trends data at
   // once (fetchTrendsData covers every section on this screen).
-  const trendsReloadHtml = '<div style="text-align:right;margin-bottom:12px">' +
-    '<button class="connect-btn" onclick="fetchTrendsData()" style="padding:4px 10px;font-size:11px">↺ Reload</button>' +
+  const trendsReloadHtml = '<div style="display:flex;justify-content:flex-end;align-items:center;gap:8px;margin-bottom:12px">' +
+    '<span style="font-size:11px;color:var(--text-secondary)">Submitted, Solved &amp; Median Resolution Time (Support vs R&amp;D) need a manual Salesforce export first — reload won\'t update those</span>' +
+    '<button class="connect-btn" onclick="fetchTrendsData()" style="padding:4px 10px;font-size:11px" title="Pulls the latest canvas data for every chart. Submitted, Solved, and Median Resolution Time — Support Only vs R&D are sourced from manually-provided Salesforce exports, not a live query — this button alone won\'t refresh those three.">↺ Reload</button>' +
   '</div>';
 
   // Submitted and Solved, each split Support Only vs R&D — replaced the
