@@ -1551,8 +1551,17 @@ function renderTrends() {
   // independent of any single card, so it can't be lost again the next
   // time a card on this screen changes. Refreshes all Trends data at
   // once (fetchTrendsData covers every section on this screen).
+  // Shows a visible "Reloading…" state whenever loading is true, regardless
+  // of whether data already exists — without this, clicking Reload when
+  // data is already loaded (the common case) gave zero visual feedback: no
+  // spinner, no disabled state, nothing, since the loading-screen branch
+  // below only fires on the very first load. If the underlying canvas data
+  // happens not to have changed since the last fetch, the whole screen
+  // looked identical before and after a click, reading as a dead button.
   const trendsReloadHtml = '<div style="text-align:right;margin-bottom:12px">' +
-    '<button class="connect-btn" onclick="fetchTrendsData()" style="padding:4px 10px;font-size:11px" title="Pulls the latest canvas data for every chart. Submitted, Solved, and Median Resolution Time — Support Only vs R&D are sourced from manually-provided Salesforce exports, not a live query — this button alone won\'t refresh those three.">↺ Reload</button>' +
+    (trendsDataState.loading
+      ? '<button class="connect-btn" disabled style="padding:4px 10px;font-size:11px;opacity:0.6;cursor:default">⏳ Reloading…</button>'
+      : '<button class="connect-btn" onclick="fetchTrendsData()" style="padding:4px 10px;font-size:11px" title="Pulls the latest canvas data for every chart. Submitted, Solved, and Median Resolution Time — Support Only vs R&D are sourced from manually-provided Salesforce exports, not a live query — this button alone won\'t refresh those three.">↺ Reload</button>') +
   '</div>';
 
   // Submitted and Solved, each split Support Only vs R&D — replaced the
