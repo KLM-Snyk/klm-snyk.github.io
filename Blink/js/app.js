@@ -1059,6 +1059,46 @@ function setTrendsViewScope(scope) {
 function getTrendsCurrentUserName() {
   return (calState.userProfile?.name || state.prefs.userName || '').trim();
 }
+// Managers who can view any team member's per-owner data, not just their
+// own — confirmed list, lowercase for case-insensitive matching against
+// getTrendsCurrentUserName(). For everyone else, "mine" always means their
+// own name; for these 4, it means whoever they've picked in the dropdown.
+const TRENDS_MANAGER_NAMES = ['kar marsten', 'josana de hesselle', 'ioana mihaela botan', 'steven guayaquil'];
+function isTrendsManager() {
+  return TRENDS_MANAGER_NAMES.indexOf(getTrendsCurrentUserName().toLowerCase()) !== -1;
+}
+// Persisted separately from trendsViewScope since it's meaningless for
+// non-managers and shouldn't be confused with "mine" itself — a manager's
+// selected name, not a scope value.
+let trendsViewAsOwner = localStorage.getItem('uyt_trends_view_as_owner') || '';
+function setTrendsViewAsOwner(name) {
+  trendsViewAsOwner = name;
+  trendsViewScope = 'mine';
+  localStorage.setItem('uyt_trends_view_as_owner', name);
+  localStorage.setItem('uyt_trends_view_scope', 'mine');
+  renderTrends();
+}
+// The name every per-owner section's "mine" filter should actually match
+// against — for managers with a selection made, that selection; otherwise
+// (everyone else, or a manager who hasn't picked anyone yet) their own
+// name. Replaces direct getTrendsCurrentUserName() calls in per-owner
+// filter logic so the manager dropdown "just works" without each section
+// needing its own manager-awareness.
+function getTrendsEffectiveOwnerName() {
+  if (isTrendsManager() && trendsViewAsOwner) return trendsViewAsOwner;
+  return getTrendsCurrentUserName();
+}
+// Deduplicated, alphabetized list of every owner name across all three
+// per-owner datasets — populates the manager dropdown. The three sections
+// don't share identical owner lists (different data sources, different
+// time windows), so this unions all of them rather than picking just one.
+function getTrendsAllOwnerNames() {
+  const names = {};
+  (trendsDataState.backlogByOwner || []).forEach(function(o) { names[o.owner] = true; });
+  (trendsDataState.mttrByOwner || []).forEach(function(o) { names[o.owner] = true; });
+  (trendsDataState.backlogTrendByOwner || []).forEach(function(o) { names[o.owner] = true; });
+  return Object.keys(names).sort();
+}
 // Small reusable toggle for any per-owner section — currently only used
 // by Case Backlog by Engineer, but built generic so other sections can
 // drop it in once they gain per-owner data too, rather than each building
@@ -1067,11 +1107,24 @@ function getTrendsCurrentUserName() {
 // across all 5 color themes without hardcoding a color here.
 function buildTrendsScopeToggleHtml() {
   const isMine = trendsViewScope === 'mine';
-  const btn = function(scope, label, active) {
-    return '<button onclick="setTrendsViewScope(\'' + scope + '\')" class="connect-btn" style="padding:3px 10px;font-size:11px' +
-      (active ? ';background:var(--primary);color:#fff;border-color:var(--primary)' : '') + '">' + label + '</button>';
-  };
-  return '<div style="display:flex;gap:4px">' + btn('team', 'Team', !isMine) + btn('mine', 'My Data', isMine) + '</div>';
+  const teamBtn = '<button onclick="setTrendsViewScope(\'team\')" class="connect-btn" style="padding:3px 10px;font-size:11px' +
+    (!isMine ? ';background:var(--primary);color:#fff;border-color:var(--primary)' : '') + '">Team</button>';
+  if (isTrendsManager()) {
+    // Managers get a name dropdown instead of a plain "My Data" button —
+    // defaults to their own name until they pick someone else, so it
+    // behaves like "My Data" out of the box.
+    const names = getTrendsAllOwnerNames();
+    const currentSelection = trendsViewAsOwner || getTrendsCurrentUserName();
+    const options = names.map(function(n) {
+      return '<option value="' + escHtml(n) + '"' + (n === currentSelection ? ' selected' : '') + '>' + escHtml(n) + '</option>';
+    }).join('');
+    const dropdown = '<select onchange="setTrendsViewAsOwner(this.value)" style="padding:3px 6px;font-size:11px;border-radius:6px;border:1px solid var(--border);' +
+      (isMine ? 'background:var(--primary);color:#fff' : 'background:var(--surface);color:var(--text)') + '">' + options + '</select>';
+    return '<div style="display:flex;gap:4px;align-items:center">' + teamBtn + dropdown + '</div>';
+  }
+  const mineBtn = '<button onclick="setTrendsViewScope(\'mine\')" class="connect-btn" style="padding:3px 10px;font-size:11px' +
+    (isMine ? ';background:var(--primary);color:#fff;border-color:var(--primary)' : '') + '">My Data</button>';
+  return '<div style="display:flex;gap:4px">' + teamBtn + mineBtn + '</div>';
 }
 
 // Structurally similar to parseCasesCanvasHtml() — walks H2 headings and
@@ -1713,7 +1766,7 @@ function renderTrends() {
     // as a separate `displayed` list rather than filtering `sorted` in
     // place, since the drill-down lookup below still needs the full list
     // (it looks up an owner's raw counts regardless of current scope).
-    const currentUserName = getTrendsCurrentUserName();
+    const currentUserName = getTrendsEffectiveOwnerName();
     const displayed = (trendsViewScope === 'mine' && currentUserName)
       ? sorted.filter(function(o) { return o.owner.toLowerCase() === currentUserName.toLowerCase(); })
       : sorted;
@@ -1796,7 +1849,7 @@ function renderTrends() {
   // if their name doesn't match any owner in the canvas.
   let mttrHtml = '';
   if (trendsDataState.mttr && trendsDataState.mttr.median) {
-    const currentUserNameMttr = getTrendsCurrentUserName();
+    const currentUserNameMttr = getTrendsEffectiveOwnerName();
     let valueHtml;
     if (trendsViewScope === 'mine') {
       const mine = (trendsDataState.mttrByOwner || []).find(function(o) { return o.owner.toLowerCase() === currentUserNameMttr.toLowerCase(); });
@@ -1844,14 +1897,14 @@ function renderTrends() {
   let backlogTrendHtml = '';
   const isMineBacklogTrend = trendsViewScope === 'mine';
   if (isMineBacklogTrend) {
-    const currentUserNameBacklogTrend = getTrendsCurrentUserName();
+    const currentUserNameBacklogTrend = getTrendsEffectiveOwnerName();
     const mineData = (trendsDataState.backlogTrendByOwner || []).filter(function(m) { return m.owner.toLowerCase() === currentUserNameBacklogTrend.toLowerCase(); });
     if (mineData.length) {
       backlogTrendHtml = '<div class="dash-card" style="margin-bottom:20px;flex:1 1 380px;min-width:0">' +
-        '<div class="dash-card-header"><div><div class="dash-card-title">Case Backlog Month-over-Month</div><div class="dash-card-sub" style="margin-top:2px">Jan\u2013Aug 2026</div></div><div style="margin-left:auto">' + buildTrendsScopeToggleHtml() + '</div></div>' +
+        '<div class="dash-card-header"><div><div class="dash-card-title">Case Backlog Month-over-Month</div><div class="dash-card-sub" style="margin-top:2px">Jan\u2013Sep 2026</div></div><div style="margin-left:auto">' + buildTrendsScopeToggleHtml() + '</div></div>' +
         buildGenericSingleSeriesChartSvg(mineData, 'allOpen', '#8B5CF6', 'All Open', 'Cases', ' cases') +
         '<div style="margin-top:12px;font-size:11px;color:var(--text-secondary)">' +
-          'With R&D isn\u2019t shown here — it can\u2019t yet be split by owner (Jira issues don\u2019t carry a Salesforce case owner directly), though that data should become available before too long. Jan 2026\u2013Aug 2026 only, not the full 20-month history. Not live — refreshed occasionally on request.' +
+          'With R&D isn\u2019t shown here — it can\u2019t yet be split by owner (Jira issues don\u2019t carry a Salesforce case owner directly), though that data should become available before too long. Jan 2026\u2013Sep 2026 only, not the full 20-month history. Not live — refreshed occasionally on request.' +
         '</div>' +
       '</div>';
     } else if (trendsDataState.backlogTrendByOwner) {
