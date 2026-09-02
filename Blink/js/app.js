@@ -1257,6 +1257,20 @@ function parseTrendsCanvasHtml(html) {
   return result;
 }
 
+// Translates a raw error into something a person can actually act on.
+// "missing_scope" specifically means the user's Slack token predates a
+// scope (chat:write, files:read) added after they first connected —
+// Slack doesn't retroactively grant new scopes to an existing token, so
+// re-fetching won't help; only reconnecting Slack will. Kept as a
+// generic-shaped {friendly, message} result rather than just a string,
+// so the caller can swap "Try again" for "Open Settings" when it matters.
+function getFriendlyTrendsErrorMessage(rawError) {
+  if (rawError && /missing_scope/i.test(rawError)) {
+    return { friendly: true, message: 'Your Slack connection needs to be refreshed to load this data — disconnect and reconnect Slack in Settings, then try again.' };
+  }
+  return { friendly: false, message: rawError };
+}
+
 async function fetchTrendsData() {
   const token = localStorage.getItem('uyt_slack_token');
   if (!token) return;
@@ -1750,7 +1764,12 @@ function renderTrends() {
   } else if (trendsDataState.loading && !trendsDataState.submittedSplitTrend) {
     snowflakeSectionHtml = '<div class="cal-connect-prompt" style="margin-bottom:20px"><div class="cal-connect-icon">⏳</div><h3>Loading trends…</h3></div>';
   } else if (trendsDataState.error) {
-    snowflakeSectionHtml = '<div class="cal-connect-prompt" style="margin-bottom:20px"><div class="cal-connect-icon">⚠️</div><h3>Error loading trends</h3><p>' + escHtml(trendsDataState.error) + '</p><button class="connect-btn" onclick="fetchTrendsData()">Try again</button></div>';
+    const trendsErrInfo = getFriendlyTrendsErrorMessage(trendsDataState.error);
+    snowflakeSectionHtml = '<div class="cal-connect-prompt" style="margin-bottom:20px"><div class="cal-connect-icon">⚠️</div><h3>Error loading trends</h3><p>' + escHtml(trendsErrInfo.message) + '</p>' +
+      (trendsErrInfo.friendly
+        ? '<button class="connect-btn" onclick="openSettings()">Open Settings</button>'
+        : '<button class="connect-btn" onclick="fetchTrendsData()">Try again</button>') +
+    '</div>';
   } else if (trendsDataState.submittedSplitTrend && trendsDataState.submittedSplitTrend.length) {
     const splitLegendHtml = function(colorA, colorB) {
       return '<div style="display:flex;gap:16px;margin-bottom:8px;font-size:11px;color:var(--text-secondary)">' +
