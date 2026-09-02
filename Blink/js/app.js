@@ -1088,16 +1088,16 @@ function getTrendsEffectiveOwnerName() {
   if (isTrendsManager() && trendsViewAsOwner) return trendsViewAsOwner;
   return getTrendsCurrentUserName();
 }
-// Deduplicated, alphabetized list of every owner name across all three
-// per-owner datasets — populates the manager dropdown. The three sections
-// don't share identical owner lists (different data sources, different
-// time windows), so this unions all of them rather than picking just one.
+// Alphabetized list of owner names for the manager dropdown — sourced
+// only from Case Backlog by Engineer (a live snapshot of who currently
+// has open cases), not MTTR or Case Backlog Month-over-Month, since
+// those two pull from a longer historical window and include former/
+// inactive staff and non-engineer entries (e.g. "SFDC Integration",
+// "Zendesk Deleted User [Inactive]") that shouldn't appear as pickable
+// people. This is a deliberate choice of the cleanest available list,
+// not an oversight — don't union in the other two datasets.
 function getTrendsAllOwnerNames() {
-  const names = {};
-  (trendsDataState.backlogByOwner || []).forEach(function(o) { names[o.owner] = true; });
-  (trendsDataState.mttrByOwner || []).forEach(function(o) { names[o.owner] = true; });
-  (trendsDataState.backlogTrendByOwner || []).forEach(function(o) { names[o.owner] = true; });
-  return Object.keys(names).sort();
+  return (trendsDataState.backlogByOwner || []).map(function(o) { return o.owner; }).sort();
 }
 // Small reusable toggle for any per-owner section — currently only used
 // by Case Backlog by Engineer, but built generic so other sections can
@@ -1707,7 +1707,16 @@ function renderTrends() {
   // below only fires on the very first load. If the underlying canvas data
   // happens not to have changed since the last fetch, the whole screen
   // looked identical before and after a click, reading as a dead button.
-  const trendsReloadHtml = '<div style="text-align:right;margin-bottom:12px">' +
+  // Scope toggle moved here (screen-level, next to Reload) rather than
+  // repeated in each of the three per-owner cards' headers — it's shared
+  // state (trendsViewScope/trendsViewAsOwner) affecting all three at once,
+  // so one control makes more sense than three copies that just stay in
+  // sync with each other. Only shown once there's per-owner data to toggle
+  // at all (gated on backlogByOwner, the same dataset the dropdown itself
+  // is sourced from).
+  const trendsScopeToggleTopHtml = (trendsDataState.backlogByOwner && trendsDataState.backlogByOwner.length) ? buildTrendsScopeToggleHtml() : '';
+  const trendsReloadHtml = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;gap:8px">' +
+    '<div>' + trendsScopeToggleTopHtml + '</div>' +
     (trendsDataState.loading
       ? '<button class="connect-btn" disabled style="padding:4px 10px;font-size:11px;opacity:0.6;cursor:default">⏳ Reloading…</button>'
       : '<button class="connect-btn" onclick="fetchTrendsData()" style="padding:4px 10px;font-size:11px" title="Pulls the latest canvas data for every chart. Submitted, Solved, and Median Resolution Time — Support Only vs R&D are sourced from manually-provided Salesforce exports, not a live query — this button alone won\'t refresh those three.">↺ Reload</button>') +
@@ -1827,7 +1836,7 @@ function renderTrends() {
       return ' · Last updated ' + d.toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
     })();
     backlogHtml = '<div class="dash-card" style="margin-bottom:20px">' +
-      '<div class="dash-card-header"><div class="dash-card-title">Case Backlog by Engineer</div><div style="margin-left:auto">' + buildTrendsScopeToggleHtml() + '</div></div>' +
+      '<div class="dash-card-header"><div class="dash-card-title">Case Backlog by Engineer</div></div>' +
       (displayed.length === 0
         ? '<div style="padding:24px;text-align:center;color:var(--text-secondary);font-size:12px">No backlog data found for "' + escHtml(currentUserName || '(no name set)') + '" — check Preferences if your name doesn\'t match how you appear in Salesforce.</div>'
         : backlogLegend +
@@ -1860,7 +1869,7 @@ function renderTrends() {
       valueHtml = escHtml(trendsDataState.mttr.median);
     }
     mttrHtml = '<div class="dash-card" style="margin-bottom:20px">' +
-      '<div class="dash-card-header"><div class="dash-card-title">MTTR (Support)</div><div style="margin-left:auto">' + buildTrendsScopeToggleHtml() + '</div></div>' +
+      '<div class="dash-card-header"><div class="dash-card-title">MTTR (Support)</div></div>' +
       '<div style="font-size:20px;font-weight:600">' + valueHtml + '</div>' +
       '<div style="margin-top:8px;font-size:11px;color:var(--text-secondary)">Median time to resolution, since Jan 1, 2025. Not live — refreshed occasionally on request.</div>' +
     '</div>';
@@ -1901,7 +1910,7 @@ function renderTrends() {
     const mineData = (trendsDataState.backlogTrendByOwner || []).filter(function(m) { return m.owner.toLowerCase() === currentUserNameBacklogTrend.toLowerCase(); });
     if (mineData.length) {
       backlogTrendHtml = '<div class="dash-card" style="margin-bottom:20px;flex:1 1 380px;min-width:0">' +
-        '<div class="dash-card-header"><div><div class="dash-card-title">Case Backlog Month-over-Month</div><div class="dash-card-sub" style="margin-top:2px">Jan\u2013Sep 2026</div></div><div style="margin-left:auto">' + buildTrendsScopeToggleHtml() + '</div></div>' +
+        '<div class="dash-card-header"><div><div class="dash-card-title">Case Backlog Month-over-Month</div><div class="dash-card-sub" style="margin-top:2px">Jan\u2013Sep 2026</div></div></div>' +
         buildGenericSingleSeriesChartSvg(mineData, 'allOpen', '#8B5CF6', 'All Open', 'Cases', ' cases') +
         '<div style="margin-top:12px;font-size:11px;color:var(--text-secondary)">' +
           'With R&D isn\u2019t shown here — it can\u2019t yet be split by owner (Jira issues don\u2019t carry a Salesforce case owner directly), though that data should become available before too long. Jan 2026\u2013Sep 2026 only, not the full 20-month history. Not live — refreshed occasionally on request.' +
@@ -1909,7 +1918,7 @@ function renderTrends() {
       '</div>';
     } else if (trendsDataState.backlogTrendByOwner) {
       backlogTrendHtml = '<div class="dash-card" style="margin-bottom:20px;flex:1 1 380px;min-width:0">' +
-        '<div class="dash-card-header"><div class="dash-card-title">Case Backlog Month-over-Month</div><div style="margin-left:auto">' + buildTrendsScopeToggleHtml() + '</div></div>' +
+        '<div class="dash-card-header"><div class="dash-card-title">Case Backlog Month-over-Month</div></div>' +
         '<div style="padding:24px;text-align:center;color:var(--text-secondary);font-size:12px">No backlog trend data found for "' + escHtml(currentUserNameBacklogTrend || '(no name set)') + '".</div>' +
       '</div>';
     }
@@ -1919,7 +1928,7 @@ function renderTrends() {
       '<span><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#DC2626;margin-right:4px;vertical-align:middle"></span>With R&D</span>' +
     '</div>';
     backlogTrendHtml = '<div class="dash-card" style="margin-bottom:20px;flex:1 1 380px;min-width:0">' +
-      '<div class="dash-card-header"><div><div class="dash-card-title">Case Backlog Month-over-Month</div><div class="dash-card-sub" style="margin-top:2px">Since January 2025</div></div><div style="margin-left:auto">' + buildTrendsScopeToggleHtml() + '</div></div>' +
+      '<div class="dash-card-header"><div><div class="dash-card-title">Case Backlog Month-over-Month</div><div class="dash-card-sub" style="margin-top:2px">Since January 2025</div></div></div>' +
       backlogTrendLegend +
       buildBacklogTrendChartSvg(trendsDataState.backlogTrend) +
       // Explains the Jan 2026 dip in With R&D — a confirmed one-time event,
