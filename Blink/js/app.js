@@ -1117,7 +1117,14 @@ function buildTrendsScopeToggleHtml() {
   // default for either.
   const activeStyle = 'background:var(--primary);color:#fff;border:1px solid var(--primary)';
   const inactiveStyle = 'background:transparent;color:var(--text);border:1px solid var(--border)';
-  const commonStyle = 'margin-top:0;padding:4px 10px;font-size:11px;border-radius:var(--radius-sm);line-height:1.4;box-sizing:border-box;cursor:pointer;vertical-align:middle';
+  // Explicit height + appearance:none on top of matching padding/radius —
+  // a <button> and a <select> render at different intrinsic heights even
+  // with identical padding (the select reserves extra space for its
+  // native dropdown arrow and follows different font-metric rules), which
+  // made the same 8px border-radius look far more rounded on the shorter
+  // button than on the taller select. Forcing both to the same fixed
+  // height removes that mismatch instead of chasing padding values.
+  const commonStyle = 'margin-top:0;height:26px;padding:0 10px;font-size:11px;border-radius:var(--radius-sm);box-sizing:border-box;cursor:pointer;vertical-align:middle;appearance:none;-webkit-appearance:none';
   const teamBtn = '<button onclick="setTrendsViewScope(\'team\')" class="connect-btn" style="' + commonStyle + ';' + (!isMine ? activeStyle : inactiveStyle) + '">Team</button>';
   if (isTrendsManager()) {
     // Managers get a name dropdown instead of a plain "My Data" button —
