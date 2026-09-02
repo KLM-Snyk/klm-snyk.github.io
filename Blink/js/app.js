@@ -1107,8 +1107,18 @@ function getTrendsAllOwnerNames() {
 // across all 5 color themes without hardcoding a color here.
 function buildTrendsScopeToggleHtml() {
   const isMine = trendsViewScope === 'mine';
-  const teamBtn = '<button onclick="setTrendsViewScope(\'team\')" class="connect-btn" style="padding:3px 10px;font-size:11px' +
-    (!isMine ? ';background:var(--primary);color:#fff;border-color:var(--primary)' : '') + '">Team</button>';
+  // .connect-btn (defined in styles.css) carries its own margin-top: 12px
+  // and background: var(--primary), neither of which this toggle wants
+  // unconditionally — margin-top pushed the button out of alignment with
+  // the plain <select> next to it, and background meant an "inactive"
+  // button never actually looked inactive (it kept the class's primary
+  // background regardless of state). Both are explicitly overridden below
+  // for every state, active or not, rather than relying on the class
+  // default for either.
+  const activeStyle = 'background:var(--primary);color:#fff;border:1px solid var(--primary)';
+  const inactiveStyle = 'background:transparent;color:var(--text);border:1px solid var(--border)';
+  const commonStyle = 'margin-top:0;padding:4px 10px;font-size:11px;border-radius:var(--radius-sm);line-height:1.4;box-sizing:border-box;cursor:pointer;vertical-align:middle';
+  const teamBtn = '<button onclick="setTrendsViewScope(\'team\')" class="connect-btn" style="' + commonStyle + ';' + (!isMine ? activeStyle : inactiveStyle) + '">Team</button>';
   if (isTrendsManager()) {
     // Managers get a name dropdown instead of a plain "My Data" button —
     // defaults to their own name until they pick someone else, so it
@@ -1118,13 +1128,11 @@ function buildTrendsScopeToggleHtml() {
     const options = names.map(function(n) {
       return '<option value="' + escHtml(n) + '"' + (n === currentSelection ? ' selected' : '') + '>' + escHtml(n) + '</option>';
     }).join('');
-    const dropdown = '<select onchange="setTrendsViewAsOwner(this.value)" style="padding:3px 6px;font-size:11px;border-radius:6px;border:1px solid var(--border);' +
-      (isMine ? 'background:var(--primary);color:#fff' : 'background:var(--surface);color:var(--text)') + '">' + options + '</select>';
+    const dropdown = '<select onchange="setTrendsViewAsOwner(this.value)" style="' + commonStyle + ';' + (isMine ? activeStyle : inactiveStyle) + '">' + options + '</select>';
     return '<div style="display:flex;gap:4px;align-items:center">' + teamBtn + dropdown + '</div>';
   }
-  const mineBtn = '<button onclick="setTrendsViewScope(\'mine\')" class="connect-btn" style="padding:3px 10px;font-size:11px' +
-    (isMine ? ';background:var(--primary);color:#fff;border-color:var(--primary)' : '') + '">My Data</button>';
-  return '<div style="display:flex;gap:4px">' + teamBtn + mineBtn + '</div>';
+  const mineBtn = '<button onclick="setTrendsViewScope(\'mine\')" class="connect-btn" style="' + commonStyle + ';' + (isMine ? activeStyle : inactiveStyle) + '">My Data</button>';
+  return '<div style="display:flex;gap:4px;align-items:center">' + teamBtn + mineBtn + '</div>';
 }
 
 // Structurally similar to parseCasesCanvasHtml() — walks H2 headings and
