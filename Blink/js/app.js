@@ -1258,15 +1258,15 @@ function parseTrendsCanvasHtml(html) {
 }
 
 // Translates a raw error into something a person can actually act on.
-// "missing_scope" specifically means the user's Slack token predates a
-// scope (chat:write, files:read) added after they first connected —
-// Slack doesn't retroactively grant new scopes to an existing token, so
-// re-fetching won't help; only reconnecting Slack will. Kept as a
+// "missing_scope" here has turned out to mean the person wasn't actually
+// logged into Slack in their browser when the OAuth flow ran, not a
+// stale/outdated token scope as first assumed — confirmed by the person
+// hitting it, not by re-deriving the cause from source alone. Kept as a
 // generic-shaped {friendly, message} result rather than just a string,
 // so the caller can swap "Try again" for "Open Settings" when it matters.
 function getFriendlyTrendsErrorMessage(rawError) {
   if (rawError && /missing_scope/i.test(rawError)) {
-    return { friendly: true, message: 'Your Slack connection needs to be refreshed to load this data — disconnect and reconnect Slack in Settings, then try again.' };
+    return { friendly: true, message: 'This usually means you weren\u2019t logged into Slack when you connected it. Log into Slack in your browser first, then reconnect Slack in Settings and try again.' };
   }
   return { friendly: false, message: rawError };
 }
