@@ -1197,13 +1197,15 @@ function parseTrendsCanvasHtml(html) {
         } else if (/mttr/i.test(currentHeading) && headerCells[0] === 'owner') {
           rows.forEach(function(tr) {
             const cells = Array.from(tr.children).map(function(c) { return c.textContent.trim(); });
-            if (cells.length >= 5) {
+            if (cells.length >= 7) {
               result.mttrByOwner.push({
                 owner: cells[0],
                 supportOnlyMedianHours: Number(cells[1]) || 0,
-                supportOnlyCount: Number(cells[2]) || 0,
-                rdMedianHours: Number(cells[3]) || 0,
-                rdCount: Number(cells[4]) || 0,
+                supportOnlyOpened: Number(cells[2]) || 0,
+                supportOnlyClosed: Number(cells[3]) || 0,
+                rdMedianHours: Number(cells[4]) || 0,
+                rdOpened: Number(cells[5]) || 0,
+                rdClosed: Number(cells[6]) || 0,
               });
             }
           });
@@ -1214,8 +1216,8 @@ function parseTrendsCanvasHtml(html) {
             if (cells.length >= 2) metrics[cells[0].toLowerCase()] = cells[1];
           });
           result.mttr = {
-            supportOnlyMedian: metrics['support only median'] || '',
-            rdMedian: metrics['r&d median'] || '',
+            supportOnlyMedian: metrics['support only'] || '',
+            rdMedian: metrics['r&d'] || '',
           };
         } else if (/case backlog by engineer/i.test(currentHeading)) {
           rows.forEach(function(tr) {
@@ -1887,30 +1889,48 @@ function renderTrends() {
     '</div>';
   }
 
-  // Median Time to Resolution (MTTR) — split Support Only vs R&D since
-  // Sept 2026 (previously one combined value). "mine" mode looks up the
+  // Median Time to Resolution (MTTR) — split into two visual cells,
+  // Support Only and R&D, each showing Median Hours/Days plus Cases
+  // Opened and Cases Closed (year to date). "mine" mode looks up the
   // logged-in person's own row in mttrByOwner; falls back to a clear
   // "no data" message rather than showing nothing if their name doesn't
-  // match any owner in the canvas. Year-to-date window, not "since Jan
-  // 1, 2025" like the old combined version — a deliberate change, not
-  // an oversight.
+  // match any owner in the canvas.
   let mttrHtml = '';
   if (trendsDataState.mttr && (trendsDataState.mttr.supportOnlyMedian || trendsDataState.mttr.rdMedian)) {
     const currentUserNameMttr = getTrendsEffectiveOwnerName();
-    let valueHtml;
+    // One consistently-styled cell per group — used for both Team mode
+    // (built from the pre-formatted canvas string) and My Data mode
+    // (built from raw mttrByOwner numbers), so the two visual states
+    // can't drift apart in styling even though their data sources differ.
+    const cellStyle = 'flex:1 1 200px;min-width:0;padding:12px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--surface2)';
+    const buildCell = function(label, color, bodyHtml) {
+      return '<div style="' + cellStyle + '">' +
+        '<div style="font-size:11px;font-weight:600;color:' + color + ';margin-bottom:6px">' + escHtml(label) + '</div>' +
+        bodyHtml +
+      '</div>';
+    };
+    let cellsHtml;
     if (trendsViewScope === 'mine') {
       const mine = (trendsDataState.mttrByOwner || []).find(function(o) { return o.owner.toLowerCase() === currentUserNameMttr.toLowerCase(); });
-      valueHtml = mine
-        ? '<div>Support Only: ' + mine.supportOnlyMedianHours.toFixed(1) + ' hours (~' + (mine.supportOnlyMedianHours / 24).toFixed(1) + ' days) · ' + mine.supportOnlyCount + ' resolved</div>' +
-          '<div style="margin-top:4px">R&D: ' + (mine.rdCount ? mine.rdMedianHours.toFixed(1) + ' hours (~' + (mine.rdMedianHours / 24).toFixed(1) + ' days)' : 'no R&D cases') + ' · ' + mine.rdCount + ' resolved</div>'
-        : 'No data found for "' + escHtml(currentUserNameMttr || '(no name set)') + '"';
+      if (mine) {
+        const soBody = '<div style="font-size:16px;font-weight:600">' + mine.supportOnlyMedianHours.toFixed(1) + ' hrs <span style="font-size:12px;font-weight:400;color:var(--text-secondary)">(~' + (mine.supportOnlyMedianHours / 24).toFixed(1) + ' days)</span></div>' +
+          '<div style="margin-top:4px;font-size:11px;color:var(--text-secondary)">' + mine.supportOnlyOpened + ' opened · ' + mine.supportOnlyClosed + ' closed</div>';
+        const rdBody = mine.rdClosed
+          ? '<div style="font-size:16px;font-weight:600">' + mine.rdMedianHours.toFixed(1) + ' hrs <span style="font-size:12px;font-weight:400;color:var(--text-secondary)">(~' + (mine.rdMedianHours / 24).toFixed(1) + ' days)</span></div>' +
+            '<div style="margin-top:4px;font-size:11px;color:var(--text-secondary)">' + mine.rdOpened + ' opened · ' + mine.rdClosed + ' closed</div>'
+          : '<div style="font-size:13px;color:var(--text-secondary)">No R&D cases closed this year' + (mine.rdOpened ? ' (' + mine.rdOpened + ' opened, still in progress)' : '') + '</div>';
+        cellsHtml = buildCell('Support Only', '#8B5CF6', soBody) + buildCell('R&D', '#DC2626', rdBody);
+      } else {
+        cellsHtml = '<div style="padding:24px;text-align:center;color:var(--text-secondary);font-size:12px;flex:1 1 100%">No data found for "' + escHtml(currentUserNameMttr || '(no name set)') + '"</div>';
+      }
     } else {
-      valueHtml = '<div>Support Only: ' + escHtml(trendsDataState.mttr.supportOnlyMedian) + '</div>' +
-        '<div style="margin-top:4px">R&D: ' + escHtml(trendsDataState.mttr.rdMedian) + '</div>';
+      const soBody = '<div style="font-size:16px;font-weight:600">' + escHtml(trendsDataState.mttr.supportOnlyMedian) + '</div>';
+      const rdBody = '<div style="font-size:16px;font-weight:600">' + escHtml(trendsDataState.mttr.rdMedian) + '</div>';
+      cellsHtml = buildCell('Support Only', '#8B5CF6', soBody) + buildCell('R&D', '#DC2626', rdBody);
     }
     mttrHtml = '<div class="dash-card" style="margin-bottom:20px">' +
       '<div class="dash-card-header"><div class="dash-card-title">MTTR (Support)</div></div>' +
-      '<div style="font-size:18px;font-weight:600">' + valueHtml + '</div>' +
+      '<div style="display:flex;gap:12px;flex-wrap:wrap">' + cellsHtml + '</div>' +
       '<div style="margin-top:8px;font-size:11px;color:var(--text-secondary)">Median time to resolution, split by whether the case needed R&D. Year to date. Refreshed automatically once a week (Monday 8am ET).</div>' +
     '</div>';
   }
