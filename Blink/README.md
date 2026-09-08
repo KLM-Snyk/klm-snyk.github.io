@@ -52,13 +52,15 @@ Blink is a browser-native workday dashboard for support managers. It provides a 
 - Each issue links directly to Jira
 
 ### Support Case Trends & Data
-- **Case Backlog by Engineer** — stacked bar chart of all open Support cases by current owner and status; click a bar segment to drill into the individual cases behind it
-- **Case Backlog Month-over-Month** — overlap count of cases open at any point during each month (not a snapshot), split All Open vs With R&D (cases linked to a Jira issue)
-- **Median Resolution Time** — monthly line chart since January 2025, reproduced from a live Salesforce report and verified against it, plus a Support Only vs R&D split
+- **Case Backlog by Engineer** — stacked bar chart of all open Support cases by current owner and status; click a bar segment to drill into the individual cases behind it. Refreshes automatically every 2 hours (8am–6pm ET, weekdays)
+- **MTTR (Support)** — two side-by-side cells, Support Only and R&D, each showing median hours/days to resolution plus cases opened and cases closed, year to date
+- **Median Resolution Time** — monthly line chart since January 2025, reproduced from a live Salesforce report and verified against it, plus a Support Only vs R&D split of the same metric
+- **Case Backlog Month-over-Month** — overlap count of cases open at any point during each month (not a snapshot), split All Open vs With R&D (cases with a linked Jira issue)
 - **Submitted** and **Solved** — each split Support Only vs R&D as its own chart
+- **My Data / Team toggle** — one shared control at the top of the screen (not repeated per chart) filters Case Backlog by Engineer, MTTR, and Case Backlog Month-over-Month down to just your own numbers. A small set of managers get a dropdown instead of "My Data", letting them view any engineer's numbers, not just their own
 - Consistent color coding across every chart on this screen: purple for Support Only / All Open, red for R&D
 - Y-axis gridlines with auto-scaled value labels on every chart, hover any point for the exact value
-- Most of this is sourced from Snowflake and relayed into a Slack Canvas ("Blink Trends & Data") that Blink reads — there's no live Snowflake access from the browser, so this is refreshed occasionally on request (via the `blink-trends-refresh` skill), not real-time. The Support Only/R&D splits (Submitted, Solved, and Median Resolution Time) come from Salesforce report exports instead, and the With R&D series in Case Backlog Month-over-Month comes from Jira — none of that linkage data is synced into Snowflake
+- Everything on this screen is sourced from Snowflake and relayed into a Slack Canvas ("Blink Trends & Data") that Blink reads — there's no live Snowflake access from the browser. Case Backlog by Engineer refreshes every 2 hours; everything else refreshes weekly (Monday 8am ET) — both via scheduled tasks, not purely on-demand. As of September 2026, every Support-vs-R&D split on this screen (previously dependent on manual Salesforce report exports or a separate Jira query) is Snowflake-native, using a case-level Jira-linkage field — no more manual export step anywhere on this screen
 - No Looker dependency — the Looker-embedded dashboards this screen originally used were removed; see "Removed features" below
 - This is Blink's primary path for Salesforce-derived case data — there's no direct Salesforce integration; a Salesforce Cases URL quick link is still available in Settings for anyone who wants it, but it's not part of the wizard
 
@@ -146,7 +148,8 @@ Add managers as Contributors on the app at developer.atlassian.com.
 
 ## Coming Soon
 - Per-action Workday quick-link URLs (currently all point to the home page)
-- More dashboards on Support Case Trends & Data — this screen will keep growing
+- A Technical Support backlog split for Support Case Trends & Data
+- Claude Tag setup, if on-demand (not just scheduled) canvas refreshes are wanted for Support Case Trends & Data later
 
 ---
 
