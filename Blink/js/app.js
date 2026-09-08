@@ -1230,8 +1230,8 @@ function parseTrendsCanvasHtml(html) {
         } else if (/case backlog month-over-month/i.test(currentHeading) && headerCells[1] === 'owner') {
           rows.forEach(function(tr) {
             const cells = Array.from(tr.children).map(function(c) { return c.textContent.trim(); });
-            if (cells.length >= 3) {
-              result.backlogTrendByOwner.push({ period: cells[0], owner: cells[1], allOpen: Number(cells[2]) || 0 });
+            if (cells.length >= 4) {
+              result.backlogTrendByOwner.push({ period: cells[0], owner: cells[1], allOpen: Number(cells[2]) || 0, withRnd: Number(cells[3]) || 0 });
             }
           });
         } else if (/case backlog month-over-month/i.test(currentHeading)) {
@@ -1932,22 +1932,29 @@ function renderTrends() {
   // Case Backlog Month-over-Month — an overlap count (any case open at
   // some point during the month), distinct from the Case Backlog by
   // Engineer snapshot above. "mine" mode uses a different dataset
-  // (backlogTrendByOwner, Jan-Aug 2026 only, All Open only) since With
-  // R&D can't be split by owner — see buildGenericSingleSeriesChartSvg's
-  // comment for why. Falls back to a clear "no data" message rather than
-  // an empty chart if the logged-in person's name doesn't match any
-  // owner in that dataset.
+  // (backlogTrendByOwner, Jan-Sep 2026 only, not the full 20-month
+  // history — see Section 7's skill entry for why) but now includes both
+  // series, since Snowflake access to MOST_RECENT_JIRA_ISSUE_C means With
+  // R&D no longer needs cross-referencing Jira issues back to a case
+  // owner. Falls back to a clear "no data" message rather than an empty
+  // chart if the logged-in person's name doesn't match any owner in that
+  // dataset.
   let backlogTrendHtml = '';
   const isMineBacklogTrend = trendsViewScope === 'mine';
   if (isMineBacklogTrend) {
     const currentUserNameBacklogTrend = getTrendsEffectiveOwnerName();
     const mineData = (trendsDataState.backlogTrendByOwner || []).filter(function(m) { return m.owner.toLowerCase() === currentUserNameBacklogTrend.toLowerCase(); });
     if (mineData.length) {
+      const mineLegend = '<div style="display:flex;gap:16px;margin-bottom:8px;font-size:11px;color:var(--text-secondary)">' +
+        '<span><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#8B5CF6;margin-right:4px;vertical-align:middle"></span>All Open</span>' +
+        '<span><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#DC2626;margin-right:4px;vertical-align:middle"></span>With R&D</span>' +
+      '</div>';
       backlogTrendHtml = '<div class="dash-card" style="margin-bottom:20px;flex:1 1 380px;min-width:0">' +
         '<div class="dash-card-header"><div><div class="dash-card-title">Case Backlog Month-over-Month</div><div class="dash-card-sub" style="margin-top:2px">Jan\u2013Sep 2026</div></div></div>' +
-        buildGenericSingleSeriesChartSvg(mineData, 'allOpen', '#8B5CF6', 'All Open', 'Cases', ' cases') +
+        mineLegend +
+        buildGenericSplitChartSvg(mineData, 'allOpen', 'withRnd', '#8B5CF6', '#DC2626', 'All Open', 'With R&D', 'Cases', ' cases') +
         '<div style="margin-top:12px;font-size:11px;color:var(--text-secondary)">' +
-          'With R&D isn\u2019t shown here — it can\u2019t yet be split by owner (Jira issues don\u2019t carry a Salesforce case owner directly), though that data should become available before too long. Jan 2026\u2013Sep 2026 only, not the full 20-month history. Not live — refreshed occasionally on request.' +
+          'Jan 2026\u2013Sep 2026 only, not the full 20-month history. Not live — refreshed occasionally on request.' +
         '</div>' +
       '</div>';
     } else if (trendsDataState.backlogTrendByOwner) {
@@ -1965,14 +1972,8 @@ function renderTrends() {
       '<div class="dash-card-header"><div><div class="dash-card-title">Case Backlog Month-over-Month</div><div class="dash-card-sub" style="margin-top:2px">Since January 2025</div></div></div>' +
       backlogTrendLegend +
       buildBacklogTrendChartSvg(trendsDataState.backlogTrend) +
-      // Explains the Jan 2026 dip in With R&D — a confirmed one-time event,
-      // not a trend, traced to a specific person, count, and date via the
-      // Jira changelog (see conversation history for how this was found).
-      '<div style="margin-top:12px;padding:10px 12px;background:var(--surface2);border-left:3px solid #F59E0B;border-radius:var(--radius-sm);font-size:12px;color:var(--text)">' +
-        '<strong>Why With R&D drops in Jan 2026:</strong> Owen Feehan resolved 218 Code Analysis (CA) project issues on Dec 9, 2025, while migrating them from the Goose project — a one-time cleanup, not an ongoing trend.' +
-      '</div>' +
       '<div style="margin-top:12px;font-size:11px;color:var(--text-secondary)">' +
-        'Cases open at any point during each month (not a snapshot) — includes cases opened and closed within the same month. With R&D is sourced from Jira (issues with a linked Case Number), a different source than All Open (Snowflake). Not live — refreshed occasionally on request.' +
+        'Cases open at any point during each month (not a snapshot) — includes cases opened and closed within the same month. Both series now sourced from Snowflake (MOST_RECENT_JIRA_ISSUE_C splits With R&D from All Open). Not live — refreshed occasionally on request.' +
       '</div>' +
     '</div>';
   }
