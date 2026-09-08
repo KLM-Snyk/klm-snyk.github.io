@@ -2,7 +2,7 @@
 
 **Your workday in the blink of an eye.**
 
-Blink is a browser-native workday dashboard for support managers. It provides a single pane of glass for your key tools — no installs, no separate logins, no context switching.
+Blink is a browser-native workday dashboard for support engineers and managers. It provides a single pane of glass for your key tools — no installs, no separate logins, no context switching.
 
 **Live:** https://klm-snyk.github.io/Blink/
 
