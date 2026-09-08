@@ -1929,9 +1929,9 @@ function renderTrends() {
       cellsHtml = buildCell('Support Only', '#8B5CF6', soBody) + buildCell('R&D', '#DC2626', rdBody);
     }
     mttrHtml = '<div class="dash-card" style="margin-bottom:20px">' +
-      '<div class="dash-card-header"><div class="dash-card-title">MTTR (Support)</div></div>' +
+      '<div class="dash-card-header"><div><div class="dash-card-title">MTTR (Support)</div><div class="dash-card-sub" style="margin-top:2px">Year to Date (Jan 2026)</div></div></div>' +
       '<div style="display:flex;gap:12px;flex-wrap:wrap">' + cellsHtml + '</div>' +
-      '<div style="margin-top:8px;font-size:11px;color:var(--text-secondary)">Median time to resolution, split by whether the case needed R&D. Year to date. Refreshed automatically once a week (Monday 8am ET).</div>' +
+      '<div style="margin-top:8px;font-size:11px;color:var(--text-secondary)">Median time to resolution, split by whether the case needed R&D. Refreshed automatically once a week (Monday 8am ET).</div>' +
     '</div>';
   }
 
