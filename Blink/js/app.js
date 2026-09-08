@@ -1197,8 +1197,14 @@ function parseTrendsCanvasHtml(html) {
         } else if (/mttr/i.test(currentHeading) && headerCells[0] === 'owner') {
           rows.forEach(function(tr) {
             const cells = Array.from(tr.children).map(function(c) { return c.textContent.trim(); });
-            if (cells.length >= 3) {
-              result.mttrByOwner.push({ owner: cells[0], medianHours: Number(cells[1]) || 0, resolvedCount: Number(cells[2]) || 0 });
+            if (cells.length >= 5) {
+              result.mttrByOwner.push({
+                owner: cells[0],
+                supportOnlyMedianHours: Number(cells[1]) || 0,
+                supportOnlyCount: Number(cells[2]) || 0,
+                rdMedianHours: Number(cells[3]) || 0,
+                rdCount: Number(cells[4]) || 0,
+              });
             }
           });
         } else if (/mttr/i.test(currentHeading)) {
@@ -1208,9 +1214,8 @@ function parseTrendsCanvasHtml(html) {
             if (cells.length >= 2) metrics[cells[0].toLowerCase()] = cells[1];
           });
           result.mttr = {
-            average: metrics['average'] || '',
-            median: metrics['median'] || '',
-            count: metrics['resolved cases in window'] || '',
+            supportOnlyMedian: metrics['support only median'] || '',
+            rdMedian: metrics['r&d median'] || '',
           };
         } else if (/case backlog by engineer/i.test(currentHeading)) {
           rows.forEach(function(tr) {
@@ -1882,30 +1887,31 @@ function renderTrends() {
     '</div>';
   }
 
-  // Median Time to Resolution (MTTR) — re-added to the UI with a per-owner
-  // breakdown and the same My Data/Team toggle as Case Backlog by Engineer.
-  // Was previously parsed but never rendered anywhere (removed from the UI
-  // at some earlier point, parsing left intact) — restored specifically to
-  // support this toggle, not a standalone decision to bring it back.
-  // "mine" mode looks up the logged-in person's own row in mttrByOwner;
-  // falls back to a clear "no data" message rather than showing nothing
-  // if their name doesn't match any owner in the canvas.
+  // Median Time to Resolution (MTTR) — split Support Only vs R&D since
+  // Sept 2026 (previously one combined value). "mine" mode looks up the
+  // logged-in person's own row in mttrByOwner; falls back to a clear
+  // "no data" message rather than showing nothing if their name doesn't
+  // match any owner in the canvas. Year-to-date window, not "since Jan
+  // 1, 2025" like the old combined version — a deliberate change, not
+  // an oversight.
   let mttrHtml = '';
-  if (trendsDataState.mttr && trendsDataState.mttr.median) {
+  if (trendsDataState.mttr && (trendsDataState.mttr.supportOnlyMedian || trendsDataState.mttr.rdMedian)) {
     const currentUserNameMttr = getTrendsEffectiveOwnerName();
     let valueHtml;
     if (trendsViewScope === 'mine') {
       const mine = (trendsDataState.mttrByOwner || []).find(function(o) { return o.owner.toLowerCase() === currentUserNameMttr.toLowerCase(); });
       valueHtml = mine
-        ? mine.medianHours.toFixed(1) + ' hours (~' + (mine.medianHours / 24).toFixed(1) + ' days) · ' + mine.resolvedCount + ' resolved'
+        ? '<div>Support Only: ' + mine.supportOnlyMedianHours.toFixed(1) + ' hours (~' + (mine.supportOnlyMedianHours / 24).toFixed(1) + ' days) · ' + mine.supportOnlyCount + ' resolved</div>' +
+          '<div style="margin-top:4px">R&D: ' + (mine.rdCount ? mine.rdMedianHours.toFixed(1) + ' hours (~' + (mine.rdMedianHours / 24).toFixed(1) + ' days)' : 'no R&D cases') + ' · ' + mine.rdCount + ' resolved</div>'
         : 'No data found for "' + escHtml(currentUserNameMttr || '(no name set)') + '"';
     } else {
-      valueHtml = escHtml(trendsDataState.mttr.median);
+      valueHtml = '<div>Support Only: ' + escHtml(trendsDataState.mttr.supportOnlyMedian) + '</div>' +
+        '<div style="margin-top:4px">R&D: ' + escHtml(trendsDataState.mttr.rdMedian) + '</div>';
     }
     mttrHtml = '<div class="dash-card" style="margin-bottom:20px">' +
       '<div class="dash-card-header"><div class="dash-card-title">MTTR (Support)</div></div>' +
-      '<div style="font-size:20px;font-weight:600">' + valueHtml + '</div>' +
-      '<div style="margin-top:8px;font-size:11px;color:var(--text-secondary)">Median time to resolution, since Jan 1, 2025. Refreshed automatically once a week (Monday 8am ET).</div>' +
+      '<div style="font-size:18px;font-weight:600">' + valueHtml + '</div>' +
+      '<div style="margin-top:8px;font-size:11px;color:var(--text-secondary)">Median time to resolution, split by whether the case needed R&D. Year to date. Refreshed automatically once a week (Monday 8am ET).</div>' +
     '</div>';
   }
 
