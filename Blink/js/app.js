@@ -1782,7 +1782,7 @@ function renderTrends() {
       splitLegendHtml('#8B5CF6', '#DC2626') +
       buildGenericSplitChartSvg(trendsDataState.submittedSplitTrend, 'supportOnly', 'rd', '#8B5CF6', '#DC2626', 'Support Only', 'R&D', 'Number of Cases', ' cases') +
       '<div style="margin-top:12px;font-size:11px;color:var(--text-secondary)">' +
-        'Sourced from Salesforce report exports, not Snowflake — split by whether the case needed R&D. Not live — refreshed occasionally on request.' +
+        'Sourced directly from Snowflake (MOST_RECENT_JIRA_ISSUE_C) — split by whether the case needed R&D. Refreshed automatically once a week (Monday 8am ET).' +
       '</div>' +
     '</div>';
     const solvedCard = (trendsDataState.solvedSplitTrend && trendsDataState.solvedSplitTrend.length)
@@ -1791,7 +1791,7 @@ function renderTrends() {
         splitLegendHtml('#8B5CF6', '#DC2626') +
         buildGenericSplitChartSvg(trendsDataState.solvedSplitTrend, 'supportOnly', 'rd', '#8B5CF6', '#DC2626', 'Support Only', 'R&D', 'Number of Cases', ' cases') +
         '<div style="margin-top:12px;font-size:11px;color:var(--text-secondary)">' +
-          'Sourced from Salesforce report exports, not Snowflake — split by whether the case needed R&D. Not live — refreshed occasionally on request.' +
+          'Sourced directly from Snowflake (MOST_RECENT_JIRA_ISSUE_C) — split by whether the case needed R&D. Refreshed automatically once a week (Monday 8am ET).' +
         '</div>' +
       '</div>'
       : '';
@@ -1905,14 +1905,14 @@ function renderTrends() {
     mttrHtml = '<div class="dash-card" style="margin-bottom:20px">' +
       '<div class="dash-card-header"><div class="dash-card-title">MTTR (Support)</div></div>' +
       '<div style="font-size:20px;font-weight:600">' + valueHtml + '</div>' +
-      '<div style="margin-top:8px;font-size:11px;color:var(--text-secondary)">Median time to resolution, since Jan 1, 2025. Not live — refreshed occasionally on request.</div>' +
+      '<div style="margin-top:8px;font-size:11px;color:var(--text-secondary)">Median time to resolution, since Jan 1, 2025. Refreshed automatically once a week (Monday 8am ET).</div>' +
     '</div>';
   }
 
-  // Support Only vs R&D split — a distinct data source from everything
-  // else here (two Salesforce report exports via Google Drive, not
-  // Snowflake, since the Jira-linkage field isn't synced there). Sits
-  // side by side with Case Backlog Month-over-Month, below.
+  // Support Only vs R&D split — sourced directly from Snowflake
+  // (MOST_RECENT_JIRA_ISSUE_C on the case row) since Sept 2026, no longer
+  // via Salesforce report exports. Sits side by side with Case Backlog
+  // Month-over-Month, below.
   let resolutionTimeSplitHtml = '';
   if (trendsDataState.resolutionTimeSplitTrend && trendsDataState.resolutionTimeSplitTrend.length) {
     const splitLegend = '<div style="display:flex;gap:16px;margin-bottom:8px;font-size:11px;color:var(--text-secondary)">' +
@@ -1924,7 +1924,7 @@ function renderTrends() {
       splitLegend +
       buildResolutionTimeSplitChartSvg(trendsDataState.resolutionTimeSplitTrend) +
       '<div style="margin-top:12px;font-size:11px;color:var(--text-secondary)">' +
-        'Sourced from Salesforce report exports, not Snowflake — split by whether the case has a linked Jira issue. Not live — refreshed occasionally on request.' +
+        'Sourced directly from Snowflake (MOST_RECENT_JIRA_ISSUE_C) — split by whether the case has a linked Jira issue. Refreshed automatically once a week (Monday 8am ET).' +
       '</div>' +
     '</div>';
   }
@@ -1954,7 +1954,7 @@ function renderTrends() {
         mineLegend +
         buildGenericSplitChartSvg(mineData, 'allOpen', 'withRnd', '#8B5CF6', '#DC2626', 'All Open', 'With R&D', 'Cases', ' cases') +
         '<div style="margin-top:12px;font-size:11px;color:var(--text-secondary)">' +
-          'Jan 2026\u2013Sep 2026 only, not the full 20-month history. Not live — refreshed occasionally on request.' +
+          'Jan 2026\u2013Sep 2026 only, not the full 20-month history. Refreshed automatically once a week (Monday 8am ET).' +
         '</div>' +
       '</div>';
     } else if (trendsDataState.backlogTrendByOwner) {
@@ -1973,7 +1973,7 @@ function renderTrends() {
       backlogTrendLegend +
       buildBacklogTrendChartSvg(trendsDataState.backlogTrend) +
       '<div style="margin-top:12px;font-size:11px;color:var(--text-secondary)">' +
-        'Cases open at any point during each month (not a snapshot) — includes cases opened and closed within the same month. Both series now sourced from Snowflake (MOST_RECENT_JIRA_ISSUE_C splits With R&D from All Open). Not live — refreshed occasionally on request.' +
+        'Cases open at any point during each month (not a snapshot) — includes cases opened and closed within the same month. Both series sourced directly from Snowflake (MOST_RECENT_JIRA_ISSUE_C splits With R&D from All Open). Refreshed automatically once a week (Monday 8am ET).' +
       '</div>' +
     '</div>';
   }
