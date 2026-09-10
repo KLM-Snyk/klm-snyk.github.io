@@ -3365,9 +3365,12 @@ function renderDashboard() {
       <div class="dash-card-value" style="font-size:16px;font-weight:500">All clear</div>
       <div class="dash-card-sub">No more events today</div>`;
   } else {
-    const todayEvents = calTodayEvents();
+    // "left today" — the point of this tile is what's still ahead, not
+    // the day's full count (which calTodayEvents() would give). Reuses
+    // `events` from calUpcomingEvents() above rather than a fresh count,
+    // since that's already the remaining-today list this card displays.
     eventsCardContent = `
-      <div class="dash-card-value" style="font-size:22px">${todayEvents.length} today</div>
+      <div class="dash-card-value" style="font-size:22px">${events.length} left today</div>
       <div class="event-list">
         ${events.slice(0, 4).map(e => `
           <a class="event-item" href="${escHtml(e.link)}" target="_blank">
@@ -3960,7 +3963,7 @@ function renderCalDayView() {
     const isCurrent = isToday && now.getHours() === h;
     const hourEvents = dayEvents.filter(e => eventHour(e) === h);
     const pills = hourEvents.map(e =>
-      `<a class="time-block-meeting-pill" href="${escHtml(e.link)}" target="_blank">${escHtml(e.title)}</a>`
+      `<a class="time-block-meeting-pill" href="${escHtml(e.link)}" target="_blank">${calFormatEventTime(e)} \u00b7 ${escHtml(e.title)}</a>`
     ).join('');
     html += `
       <div class="time-block${isCurrent ? ' current-hour' : ''}">
@@ -4003,7 +4006,7 @@ function renderCalWeekView() {
       const dayEvents = eventsForDate(d).filter(e => eventHour(e) === h);
       rows += `<div class="week-cell${isCurrent ? ' current-hour' : ''}">
         ${dayEvents.map(e =>
-          `<a class="week-event-pill" href="${escHtml(e.link)}" target="_blank">${escHtml(e.title)}</a>`
+          `<a class="week-event-pill" href="${escHtml(e.link)}" target="_blank">${calFormatEventTime(e)} \u00b7 ${escHtml(e.title)}</a>`
         ).join('')}
       </div>`;
     });
