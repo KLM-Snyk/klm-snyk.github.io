@@ -1954,6 +1954,18 @@ html, body {
   opacity: 0.5;
 }
 
+/* Previous month's trailing days shown to fill out the grid's first row —
+   same dimmed look as .month-cell--empty, but showing real day numbers
+   and events rather than nothing, since those days can have meetings too. */
+.month-cell--other-month {
+  background: var(--surface);
+  opacity: 0.55;
+}
+
+.month-cell--other-month .month-cell-num {
+  color: var(--text-secondary);
+}
+
 .month-cell.today {
   background: var(--primary-light);
 }

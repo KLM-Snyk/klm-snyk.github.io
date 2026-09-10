@@ -1050,6 +1050,13 @@ let trendsViewScope = localStorage.getItem('uyt_trends_view_scope') || 'team'; /
 function setTrendsViewScope(scope) {
   trendsViewScope = scope;
   localStorage.setItem('uyt_trends_view_scope', scope);
+  // Case Backlog by Engineer's drill-down selection is keyed to a specific
+  // owner, independent of trendsViewScope/trendsViewAsOwner — switching
+  // scope without clearing it left a stale prior owner's case detail
+  // showing under the newly-selected scope. Set directly (not via
+  // backlogDrilldownClear(), which also calls renderTrends() itself and
+  // would double-render alongside this function's own call below).
+  backlogDrilldownSelection = null;
   renderTrends();
 }
 // Same "whose data is this" resolution used by the Support Cases screen's
@@ -1076,6 +1083,10 @@ function setTrendsViewAsOwner(name) {
   trendsViewScope = 'mine';
   localStorage.setItem('uyt_trends_view_as_owner', name);
   localStorage.setItem('uyt_trends_view_scope', 'mine');
+  // Same reasoning as setTrendsViewScope's clear — a drill-down selection
+  // from whoever the manager was previously viewing shouldn't silently
+  // carry over to the newly-picked engineer.
+  backlogDrilldownSelection = null;
   renderTrends();
 }
 // The name every per-owner section's "mine" filter should actually match
@@ -4010,8 +4021,26 @@ function renderCalMonthView() {
   const headers = dayNames.map(n => `<div class="month-day-name">${n}</div>`).join('');
 
   let cells = '';
+  // Previous month's trailing days, filling out the grid's first row —
+  // shown dimmed with real day numbers and events (not blank placeholder
+  // cells), since those days can have real meetings too. Display-only,
+  // no click handler — clicking through to select a day in a different
+  // month than the one currently shown isn't supported by
+  // _selectedMonthDay's month-scoped state (see the default-selection
+  // check above), so wiring one up here would just get silently
+  // overridden back to this month's default on the very next render.
+  const prevMonthLastDay = new Date(year, month, 0).getDate();
   for (let i = 0; i < startPad; i++) {
-    cells += '<div class="month-cell month-cell--empty"></div>';
+    const dayNum = prevMonthLastDay - startPad + i + 1;
+    const cellDate = new Date(year, month - 1, dayNum);
+    const dayEvents = eventsForDate(cellDate);
+    cells += `<div class="month-cell month-cell--other-month">
+      <span class="month-cell-num">${dayNum}</span>
+      ${dayEvents.slice(0, 2).map(e =>
+        `<span class="month-event-pill">${calFormatEventTime(e)} \u00b7 ${escHtml(e.title)}</span>`
+      ).join('')}
+      ${dayEvents.length > 2 ? `<span class="month-more">+${dayEvents.length - 2} more</span>` : ''}
+    </div>`;
   }
   for (let day = 1; day <= lastDay.getDate(); day++) {
     const cellDate = new Date(year, month, day);
@@ -4023,7 +4052,7 @@ function renderCalMonthView() {
                    onclick="selectMonthDay('${cellKey}')">
       <span class="month-cell-num${isToday ? ' today' : ''}">${day}</span>
       ${dayEvents.slice(0, 2).map(e =>
-        `<span class="month-event-pill">${escHtml(e.title)}</span>`
+        `<span class="month-event-pill">${calFormatEventTime(e)} \u00b7 ${escHtml(e.title)}</span>`
       ).join('')}
       ${dayEvents.length > 2 ? `<span class="month-more">+${dayEvents.length - 2} more</span>` : ''}
     </div>`;

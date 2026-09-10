@@ -354,16 +354,26 @@ async function calFetchUpcoming(daysAhead = 7) {
   const end = new Date(now);
   end.setDate(end.getDate() + daysAhead);
 
+  // Month view's grid shows leading days from the previous month to fill
+  // out the first row (whenever the 1st doesn't land on a Sunday) — back
+  // up timeMin to that grid's actual first visible cell, not just the
+  // 1st, or those leading cells silently get no event data at all even
+  // once the grid itself renders them.
+  const firstOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+  const gridStart = new Date(firstOfMonth);
+  gridStart.setDate(gridStart.getDate() - firstOfMonth.getDay());
+
   const params = new URLSearchParams({
     calendarId:   'primary',
-    timeMin:      new Date(now.getFullYear(), now.getMonth(), 1).toISOString(),
+    timeMin:      gridStart.toISOString(),
     timeMax:      end.toISOString(),
-    // Fetches from the 1st of the month (needed for the Month view grid),
-    // not from "now" — for anyone with a dense calendar, results ordered
-    // chronologically from the 1st can exhaust a small cap before ever
-    // reaching today, silently truncating away later meetings today and
-    // beyond. Raised well above the old 100 to leave real headroom; Google
-    // Calendar's API allows up to 2500 per request.
+    // Fetches from the Month view grid's first visible cell (which can
+    // fall in the previous month), not from "now" — for anyone with a
+    // dense calendar, results ordered chronologically from that point
+    // can exhaust a small cap before ever reaching today, silently
+    // truncating away later meetings today and beyond. Raised well
+    // above the old 100 to leave real headroom; Google Calendar's API
+    // allows up to 2500 per request.
     maxResults:   500,
     singleEvents: 'true',
     orderBy:      'startTime',
