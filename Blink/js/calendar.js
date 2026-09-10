@@ -346,11 +346,11 @@ function calIsConnected() {
 
 // ── API calls ────────────────────────────────────────────────
 
-async function calFetchUpcoming(daysAhead = 7) {
+async function calFetchUpcoming(daysAhead = 7, referenceDate = new Date(), merge = false) {
   calState.fetchError = null;
   if (!calState.token) return [];
 
-  const now = new Date();
+  const now = referenceDate;
   const end = new Date(now);
   end.setDate(end.getDate() + daysAhead);
 
@@ -404,7 +404,7 @@ async function calFetchUpcoming(daysAhead = 7) {
     }
 
     const data = await res.json();
-    calState.events = (data.items || [])
+    const newEvents = (data.items || [])
       .filter(e => {
         if (e.status === 'cancelled') return false;
         const selfAttendee = (e.attendees || []).find(a => a.self);
@@ -421,6 +421,14 @@ async function calFetchUpcoming(daysAhead = 7) {
         link:     item.htmlLink || '',
         color:    item.colorId  || null,
       }));
+
+    // merge=true (used when Month view navigates to a different month)
+    // appends to the existing today-centered fetch rather than replacing
+    // it outright — Dashboard tiles and other screens depend on
+    // calState.events still holding today's data even after navigating
+    // Month view elsewhere. Dedup below then catches any overlap between
+    // the two fetched ranges, not just duplicate calendar subscriptions.
+    calState.events = merge ? calState.events.concat(newEvents) : newEvents;
 
     // Deduplicate by title+date in case of duplicate calendar subscriptions
     const seenTD = new Set();

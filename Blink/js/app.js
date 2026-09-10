@@ -1682,8 +1682,12 @@ const BACKLOG_STATUS_ORDER = ['open', 'pending', 'onHold', 'waitingForInternal',
 const BACKLOG_STATUS_COLORS = { open: '#67E8C4', pending: '#10B981', onHold: '#1E293B', waitingForInternal: '#F5D485', meetingScheduled: '#3B82F6' };
 const BACKLOG_STATUS_LABELS = { open: 'Open', pending: 'Pending', onHold: 'On-Hold', waitingForInternal: 'Waiting for Internal', meetingScheduled: 'Meeting Scheduled' };
 
-// Which owner+status segment is currently drilled into, if any — cleared
-// on re-render of a different selection, not persisted across screens.
+// Which owner+status segment is currently drilled into, if any — reset by
+// clicking a different segment or the Close button (backlogDrilldownClear),
+// and also by setTrendsViewScope/setTrendsViewAsOwner (switching the My
+// Data/Team toggle or the manager dropdown) — a prior owner's drill-down
+// used to keep showing after switching to a different one, since this
+// variable was never wired to either of those.
 let backlogDrilldownSelection = null; // {owner, statusKey} | null
 
 function backlogDrilldownClick(owner, statusKey) {
@@ -3892,6 +3896,13 @@ function weekStart(date) {
 function setCalView(mode) {
   calView.mode = mode;
   renderCalendar();
+  // Covers switching into Month view after having navigated calView.date
+  // elsewhere first (e.g. paged forward several weeks in Week view, then
+  // switched to Month) — same gap calendarNav's own fetch closes for
+  // in-Month-view navigation, just from a different entry point.
+  if (mode === 'month' && calIsConnected()) {
+    calFetchUpcoming(31, calView.date, true).then(() => renderCalendar());
+  }
 }
 
 function calendarNav(delta) {
@@ -3901,6 +3912,16 @@ function calendarNav(delta) {
   if (calView.mode === 'month') d.setMonth(d.getMonth() + delta);
   calView.date = d;
   renderCalendar();
+  // Month view can land on a month whose events were never fetched —
+  // calFetchUpcoming's range is centered on "today", not whatever month
+  // is currently displayed. Re-fetch specifically for the newly-shown
+  // month, merging into calState.events rather than replacing it (today's
+  // data, which Dashboard tiles depend on, would otherwise be lost), then
+  // re-render once that resolves so the grid picks up the fetched events
+  // instead of showing empty/stale ones until some unrelated re-render.
+  if (calView.mode === 'month' && calIsConnected()) {
+    calFetchUpcoming(31, d, true).then(() => renderCalendar());
+  }
 }
 
 function calendarGoToday() {
