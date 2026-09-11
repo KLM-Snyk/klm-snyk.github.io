@@ -954,6 +954,12 @@ function signOutAll() {
   calDisconnect();
   if (typeof slackDisconnect === 'function') slackDisconnect();
   jiraDisconnect();
+  // Without this, the next page load's isSetupComplete() check (SETUP_KEY,
+  // set once by the wizard and otherwise never touched) still reads true
+  // even though every token was just cleared above — skipping straight
+  // past the wizard into calInit()'s silent-refresh path, which attempts
+  // an unprompted Google OAuth popup instead of the proper reconnect flow.
+  localStorage.removeItem('uyt_setup_complete');
   if (typeof renderDashboard === 'function') renderDashboard();
 }
 
