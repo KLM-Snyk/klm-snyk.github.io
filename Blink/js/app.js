@@ -2134,7 +2134,7 @@ function renderTrends() {
     ? '<div style="display:flex;gap:16px;flex-wrap:wrap;align-items:flex-start">' + firstResponseSlaHtml + updateCadenceSloHtml + '</div>'
     : '';
 
-  el.innerHTML = sfLinksHtml + trendsReloadHtml + backlogHtml + mttrHtml + slaSloRowHtml + backlogAndSplitRowHtml + snowflakeSectionHtml;
+  el.innerHTML = sfLinksHtml + trendsReloadHtml + slaSloRowHtml + backlogHtml + mttrHtml + backlogAndSplitRowHtml + snowflakeSectionHtml;
 }
 
 /* ============================================================
