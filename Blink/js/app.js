@@ -2116,8 +2116,14 @@ function renderTrends() {
         valueHtml = mine.compliancePct.toFixed(1) + '%';
         subText = mine.totalRecords + ' records';
       } else {
+        // Confirmed with the user this is a real, common outcome, not a
+        // lookup failure — SLO Timer milestones often complete within
+        // seconds to minutes of starting, so someone with open cases can
+        // easily have zero still-open (not-yet-completed) milestones at
+        // any given moment. "No data found" read like something was
+        // broken; this wording reflects what's actually true instead.
         valueHtml = '\u2014';
-        subText = 'No data found for "' + escHtml(currentUserNameUcSlo || '(no name set)') + '"';
+        subText = 'No open SLO Timer milestones right now';
       }
     } else {
       valueHtml = escHtml(trendsDataState.updateCadenceSlo.compliancePct);
