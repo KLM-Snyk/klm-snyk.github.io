@@ -1357,6 +1357,10 @@ async function fetchTrendsData() {
     trendsDataState.backlogTrendByOwner = parsed.backlogTrendByOwner;
     trendsDataState.submittedSplitTrend = parsed.submittedSplitTrend;
     trendsDataState.solvedSplitTrend = parsed.solvedSplitTrend;
+    trendsDataState.firstResponseSla = parsed.firstResponseSla;
+    trendsDataState.firstResponseSlaByOwner = parsed.firstResponseSlaByOwner;
+    trendsDataState.updateCadenceSlo = parsed.updateCadenceSlo;
+    trendsDataState.updateCadenceSloByOwner = parsed.updateCadenceSloByOwner;
     trendsDataState.asOf = new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
   } catch (e) {
     trendsDataState.error = e.message;
