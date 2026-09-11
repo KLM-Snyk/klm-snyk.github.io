@@ -227,7 +227,17 @@ function navigate(screen) {
     el.classList.toggle('active', el.id === `screen-${screen}`);
   });
 
-  if (screen === 'dashboard') renderDashboard();
+  if (screen === 'dashboard') {
+    renderDashboard();
+    // The Support Cases tile reads supportCasesState.cases but never
+    // triggered its own fetch — it only ever got populated by actually
+    // visiting the Support Cases screen at least once, so the tile showed
+    // a generic "View cases" placeholder instead of the real status
+    // breakdown until then. fetchSupportCases() already re-renders the
+    // dashboard itself once it resolves, same pattern as the other
+    // screens below.
+    if (!supportCasesState.cases && !supportCasesState.loading && localStorage.getItem('uyt_slack_token')) fetchSupportCases();
+  }
   if (screen === 'calendar')  renderCalendar();
   if (screen === 'slack')     renderSlackAndAutoFetch();
   if (screen === 'mail') {
