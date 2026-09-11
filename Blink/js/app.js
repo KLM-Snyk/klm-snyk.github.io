@@ -1160,7 +1160,7 @@ function buildTrendsScopeToggleHtml() {
 // backlog breakdown).
 function parseTrendsCanvasHtml(html) {
   const doc = new DOMParser().parseFromString(html, 'text/html');
-  const result = { monthly: [], mttr: null, mttrByOwner: [], backlogByOwner: [], backlogByOwnerLastRefresh: null, resolutionTimeTrend: [], resolutionTimeSplitTrend: [], backlogTrend: [], backlogTrendByOwner: [], submittedSplitTrend: [], solvedSplitTrend: [] };
+  const result = { monthly: [], mttr: null, mttrByOwner: [], backlogByOwner: [], backlogByOwnerLastRefresh: null, resolutionTimeTrend: [], resolutionTimeSplitTrend: [], backlogTrend: [], backlogTrendByOwner: [], submittedSplitTrend: [], solvedSplitTrend: [], firstResponseSla: null, firstResponseSlaByOwner: [], updateCadenceSlo: null, updateCadenceSloByOwner: [] };
   let currentHeading = '';
   function walk(nodes) {
     nodes.forEach(function(node) {
@@ -1259,6 +1259,52 @@ function parseTrendsCanvasHtml(html) {
               result.backlogTrend.push({ period: cells[0], allOpen: Number(cells[1]) || 0, withRnd: Number(cells[2]) || 0 });
             }
           });
+        } else if (/first response sla/i.test(currentHeading) && headerCells[0] === 'owner') {
+          rows.forEach(function(tr) {
+            const cells = Array.from(tr.children).map(function(c) { return c.textContent.trim(); });
+            if (cells.length >= 5) {
+              result.firstResponseSlaByOwner.push({
+                owner: cells[0],
+                totalRecords: Number(cells[1]) || 0,
+                totalViolation: Number(cells[2]) || 0,
+                totalCompleted: Number(cells[3]) || 0,
+                slaRate: parseFloat(cells[4]) || 0,
+              });
+            }
+          });
+        } else if (/first response sla/i.test(currentHeading)) {
+          const metrics = {};
+          rows.forEach(function(tr) {
+            const cells = Array.from(tr.children).map(function(c) { return c.textContent.trim(); });
+            if (cells.length >= 2) metrics[cells[0].toLowerCase()] = cells[1];
+          });
+          result.firstResponseSla = {
+            totalRecords: metrics['total records'] || '',
+            totalViolation: metrics['total violation'] || '',
+            totalCompleted: metrics['total completed'] || '',
+            slaRate: metrics['sla achievement rate'] || '',
+          };
+        } else if (/update cadence slo/i.test(currentHeading) && headerCells[0] === 'owner') {
+          rows.forEach(function(tr) {
+            const cells = Array.from(tr.children).map(function(c) { return c.textContent.trim(); });
+            if (cells.length >= 3) {
+              result.updateCadenceSloByOwner.push({
+                owner: cells[0],
+                totalRecords: Number(cells[1]) || 0,
+                compliancePct: parseFloat(cells[2]) || 0,
+              });
+            }
+          });
+        } else if (/update cadence slo/i.test(currentHeading)) {
+          const metrics = {};
+          rows.forEach(function(tr) {
+            const cells = Array.from(tr.children).map(function(c) { return c.textContent.trim(); });
+            if (cells.length >= 2) metrics[cells[0].toLowerCase()] = cells[1];
+          });
+          result.updateCadenceSlo = {
+            totalRecords: metrics['total records'] || '',
+            compliancePct: metrics['compliance percentage'] || '',
+          };
         }
       } else if (/case backlog by engineer/i.test(currentHeading)) {
         // Looks for a "Last automated refresh: <ISO timestamp>" line in
@@ -2025,7 +2071,66 @@ function renderTrends() {
     ? '<div style="display:flex;gap:16px;flex-wrap:wrap;align-items:flex-start">' + backlogTrendHtml + resolutionTimeSplitHtml + '</div>'
     : '';
 
-  el.innerHTML = sfLinksHtml + trendsReloadHtml + backlogHtml + mttrHtml + backlogAndSplitRowHtml + snowflakeSectionHtml;
+  // First Response SLA and Update Cadence SLO — both single-value callouts
+  // sourced from Salesforce Milestone data (not the case row itself), a
+  // different underlying table than everything else on this screen.
+  // Verified directly against the Salesforce dashboard tiles of the same
+  // names before building (see the canvas section's own note for the
+  // comparison numbers) — the 30-day window and exact filter set for each
+  // came from screenshots of those tiles' own report filters, not assumed.
+  let firstResponseSlaHtml = '';
+  if (trendsDataState.firstResponseSla && trendsDataState.firstResponseSla.slaRate) {
+    const currentUserNameFrSla = getTrendsEffectiveOwnerName();
+    let valueHtml, subText;
+    if (trendsViewScope === 'mine') {
+      const mine = (trendsDataState.firstResponseSlaByOwner || []).find(function(o) { return o.owner.toLowerCase() === currentUserNameFrSla.toLowerCase(); });
+      if (mine) {
+        valueHtml = mine.slaRate.toFixed(1) + '%';
+        subText = mine.totalRecords + ' records \u00b7 ' + mine.totalViolation + ' violated \u00b7 ' + mine.totalCompleted + ' completed';
+      } else {
+        valueHtml = '\u2014';
+        subText = 'No data found for "' + escHtml(currentUserNameFrSla || '(no name set)') + '"';
+      }
+    } else {
+      valueHtml = escHtml(trendsDataState.firstResponseSla.slaRate);
+      subText = escHtml(trendsDataState.firstResponseSla.totalRecords) + ' records \u00b7 ' + escHtml(trendsDataState.firstResponseSla.totalViolation) + ' violated \u00b7 ' + escHtml(trendsDataState.firstResponseSla.totalCompleted) + ' completed';
+    }
+    firstResponseSlaHtml = '<div class="dash-card" style="margin-bottom:20px;flex:1 1 280px;min-width:0">' +
+      '<div class="dash-card-header"><div><div class="dash-card-title">First Response SLA</div><div class="dash-card-sub" style="margin-top:2px">Last 30 Days</div></div></div>' +
+      '<div style="font-size:28px;font-weight:600">' + valueHtml + '</div>' +
+      '<div style="margin-top:6px;font-size:11px;color:var(--text-secondary)">' + subText + '</div>' +
+    '</div>';
+  }
+
+  let updateCadenceSloHtml = '';
+  if (trendsDataState.updateCadenceSlo && trendsDataState.updateCadenceSlo.compliancePct) {
+    const currentUserNameUcSlo = getTrendsEffectiveOwnerName();
+    let valueHtml, subText;
+    if (trendsViewScope === 'mine') {
+      const mine = (trendsDataState.updateCadenceSloByOwner || []).find(function(o) { return o.owner.toLowerCase() === currentUserNameUcSlo.toLowerCase(); });
+      if (mine) {
+        valueHtml = mine.compliancePct.toFixed(1) + '%';
+        subText = mine.totalRecords + ' records';
+      } else {
+        valueHtml = '\u2014';
+        subText = 'No data found for "' + escHtml(currentUserNameUcSlo || '(no name set)') + '"';
+      }
+    } else {
+      valueHtml = escHtml(trendsDataState.updateCadenceSlo.compliancePct);
+      subText = escHtml(trendsDataState.updateCadenceSlo.totalRecords) + ' records';
+    }
+    updateCadenceSloHtml = '<div class="dash-card" style="margin-bottom:20px;flex:1 1 280px;min-width:0">' +
+      '<div class="dash-card-header"><div><div class="dash-card-title">Update Cadence SLO</div><div class="dash-card-sub" style="margin-top:2px">Last 30 Days</div></div></div>' +
+      '<div style="font-size:28px;font-weight:600">' + valueHtml + '</div>' +
+      '<div style="margin-top:6px;font-size:11px;color:var(--text-secondary)">' + subText + '</div>' +
+    '</div>';
+  }
+
+  const slaSloRowHtml = (firstResponseSlaHtml || updateCadenceSloHtml)
+    ? '<div style="display:flex;gap:16px;flex-wrap:wrap;align-items:flex-start">' + firstResponseSlaHtml + updateCadenceSloHtml + '</div>'
+    : '';
+
+  el.innerHTML = sfLinksHtml + trendsReloadHtml + backlogHtml + mttrHtml + slaSloRowHtml + backlogAndSplitRowHtml + snowflakeSectionHtml;
 }
 
 /* ============================================================
