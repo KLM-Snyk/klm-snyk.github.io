@@ -387,9 +387,15 @@ async function calFetchUserProfile() {
 }
 
 function calDisconnect() {
-  if (calState.token && typeof google !== 'undefined') {
-    google.accounts.oauth2.revoke(calState.token, () => {});
-  }
+  // Deliberately not calling google.accounts.oauth2.revoke() here — it
+  // was showing a full Google account chooser/sign-in screen immediately
+  // on "Sign out" (root cause not fully confirmed, but strongly suspected
+  // to be revoke() being handed an already-expired token and falling back
+  // to an interactive re-auth flow to identify the account, undocumented
+  // behavior for that case). Revoking Blink's Google grant isn't actually
+  // needed for our own sign-out to work correctly — clearing the local
+  // token below is sufficient; the user can separately revoke access via
+  // Google's own account settings if they want to fully unlink it.
   calClearToken();
   calState.events = [];
   calState.unreadCount = null;
