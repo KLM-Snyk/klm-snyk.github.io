@@ -133,6 +133,40 @@ function _calSilentRefresh() {
   tokenClient.requestAccessToken({ prompt: '' });
 }
 
+// Leaner, awaitable sibling of _calSilentRefresh() for mid-session 401s —
+// that function does a full re-init (re-fetches everything, re-renders
+// every screen), appropriate for calInit()'s "app just loaded with an
+// expired token" case but overkill mid-session, where only the one
+// request that just got a 401 needs retrying. Resolves true/false rather
+// than firing off its own fetches, so callers can retry just their own
+// request, same pattern as refreshJiraToken()/refreshSlackToken().
+function refreshGoogleToken() {
+  return new Promise(function(resolve) {
+    if (typeof google === 'undefined' || !google.accounts?.oauth2 || !calState.clientId) {
+      resolve(false);
+      return;
+    }
+    const tokenClient = google.accounts.oauth2.initTokenClient({
+      client_id: calState.clientId,
+      scope: CAL_SCOPE,
+      prompt: '',
+      callback: function(resp) {
+        if (resp.error) {
+          console.warn('Silent Google token refresh failed:', resp.error);
+          resolve(false);
+          return;
+        }
+        calState.token = resp.access_token;
+        const expiry = Date.now() + (resp.expires_in || 3600) * 1000;
+        localStorage.setItem(CAL_TOKEN_KEY, calState.token);
+        localStorage.setItem(CAL_EXPIRY_KEY, String(expiry));
+        resolve(true);
+      },
+    });
+    tokenClient.requestAccessToken({ prompt: '' });
+  });
+}
+
 function loadUserProfile() {
   try {
     return JSON.parse(localStorage.getItem(USER_PROFILE_KEY) || 'null');
@@ -217,10 +251,19 @@ async function calFetchUnreadCount() {
     // (sometimes well past a few minutes). messagesUnread is updated in real
     // time as messages are read/unread, so it doesn't have that lag.
     const excluded = JSON.parse(localStorage.getItem('uyt_gmail_excluded_labels') || '[]');
-    const res = await fetch(
+    let res = await fetch(
       'https://gmail.googleapis.com/gmail/v1/users/me/labels',
       { headers: { Authorization: 'Bearer ' + calState.token } }
     );
+    if (res.status === 401) {
+      const refreshed = await refreshGoogleToken();
+      if (refreshed) {
+        res = await fetch(
+          'https://gmail.googleapis.com/gmail/v1/users/me/labels',
+          { headers: { Authorization: 'Bearer ' + calState.token } }
+        );
+      }
+    }
     if (!res.ok) { calState.unreadCount = null; return; }
     const data = await res.json();
     const labels = (data.labels || []).filter(function(l) {
@@ -232,6 +275,7 @@ async function calFetchUnreadCount() {
 
     const details = [];
     let authFailures = 0;
+    let refreshAttempted = false;
     for (const l of labels) {
       try {
         const r = await fetch(
@@ -239,6 +283,25 @@ async function calFetchUnreadCount() {
           { headers: { Authorization: 'Bearer ' + calState.token } }
         );
         if (r.status === 401) {
+          // Try a refresh once, on the first 401 hit — if it succeeds,
+          // calState.token is updated and every remaining loop iteration
+          // (which reads it fresh each call) benefits automatically, not
+          // just a single retried request.
+          if (!refreshAttempted) {
+            refreshAttempted = true;
+            const refreshed = await refreshGoogleToken();
+            if (refreshed) {
+              const r2 = await fetch(
+                'https://gmail.googleapis.com/gmail/v1/users/me/labels/' + l.id,
+                { headers: { Authorization: 'Bearer ' + calState.token } }
+              );
+              if (r2.ok) {
+                const d2 = await r2.json();
+                details.push({ id: l.id, name: l.name, unread: d2.messagesUnread || 0 });
+                continue;
+              }
+            }
+          }
           authFailures++;
           // Fail fast rather than grinding through dozens more calls that
           // will almost certainly also fail — this account can have 80+
@@ -297,9 +360,17 @@ async function calFetchGmailLabelBreakdown() {
 async function calFetchUserProfile() {
   if (!calState.token) return;
   try {
-    const res = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+    let res = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
       headers: { Authorization: `Bearer ${calState.token}` },
     });
+    if (res.status === 401) {
+      const refreshed = await refreshGoogleToken();
+      if (refreshed) {
+        res = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+          headers: { Authorization: `Bearer ${calState.token}` },
+        });
+      }
+    }
     if (!res.ok) return;
     const data = await res.json();
     // Only save if we got a valid email — don't overwrite good data with empty
@@ -380,9 +451,23 @@ async function calFetchUpcoming(daysAhead = 7, referenceDate = new Date(), merge
   });
 
   try {
-    const res = await fetch(`${CAL_API_BASE}/calendars/primary/events?${params}`, {
+    let res = await fetch(`${CAL_API_BASE}/calendars/primary/events?${params}`, {
       headers: { Authorization: `Bearer ${calState.token}` },
     });
+
+    // Google access tokens last ~1 hour — without this retry, the
+    // connection would silently start failing after that, requiring a
+    // full manual reconnect even though a silent (no-prompt) refresh
+    // was available the whole time. Same pattern as
+    // refreshJiraToken()/refreshSlackToken() elsewhere in the app.
+    if (res.status === 401) {
+      const refreshed = await refreshGoogleToken();
+      if (refreshed) {
+        res = await fetch(`${CAL_API_BASE}/calendars/primary/events?${params}`, {
+          headers: { Authorization: `Bearer ${calState.token}` },
+        });
+      }
+    }
 
     if (res.status === 401) {
       calClearToken();
@@ -463,10 +548,19 @@ async function calFetchOncall() {
       orderBy: 'startTime',
       maxResults: 50,
     });
-    const res = await fetch(
+    let res = await fetch(
       `${CAL_API_BASE}/calendars/${ONCALL_CAL_ID}/events?${params}`,
       { headers: { Authorization: `Bearer ${calState.token}` } }
     );
+    if (res.status === 401) {
+      const refreshed = await refreshGoogleToken();
+      if (refreshed) {
+        res = await fetch(
+          `${CAL_API_BASE}/calendars/${ONCALL_CAL_ID}/events?${params}`,
+          { headers: { Authorization: `Bearer ${calState.token}` } }
+        );
+      }
+    }
     if (!res.ok) { calState.oncall = null; return; }
     const data = await res.json();
     const items = data.items || [];
@@ -543,10 +637,19 @@ async function calFetchOOO() {
       orderBy: 'startTime',
       maxResults: 20,
     });
-    const res = await fetch(
+    let res = await fetch(
       `${CAL_API_BASE}/calendars/${OOO_CAL_ID}/events?${params}`,
       { headers: { Authorization: `Bearer ${calState.token}` } }
     );
+    if (res.status === 401) {
+      const refreshed = await refreshGoogleToken();
+      if (refreshed) {
+        res = await fetch(
+          `${CAL_API_BASE}/calendars/${OOO_CAL_ID}/events?${params}`,
+          { headers: { Authorization: `Bearer ${calState.token}` } }
+        );
+      }
+    }
     if (!res.ok) { calState.ooo = []; return; }
     const data = await res.json();
     calState.ooo = (data.items || [])
@@ -577,12 +680,23 @@ async function calFetchUpcomingEvents() {
     });
 
     // Fetch from both OOO and Recharge calendars in parallel
-    const [oooRes, rechargeRes] = await Promise.all([
+    let [oooRes, rechargeRes] = await Promise.all([
       fetch(`${CAL_API_BASE}/calendars/${OOO_CAL_ID}/events?${params}`,
         { headers: { Authorization: `Bearer ${calState.token}` } }),
       fetch(`${CAL_API_BASE}/calendars/${RECHARGE_CAL_ID}/events?${params}`,
         { headers: { Authorization: `Bearer ${calState.token}` } }),
     ]);
+    if (oooRes.status === 401 || rechargeRes.status === 401) {
+      const refreshed = await refreshGoogleToken();
+      if (refreshed) {
+        [oooRes, rechargeRes] = await Promise.all([
+          fetch(`${CAL_API_BASE}/calendars/${OOO_CAL_ID}/events?${params}`,
+            { headers: { Authorization: `Bearer ${calState.token}` } }),
+          fetch(`${CAL_API_BASE}/calendars/${RECHARGE_CAL_ID}/events?${params}`,
+            { headers: { Authorization: `Bearer ${calState.token}` } }),
+        ]);
+      }
+    }
 
     const keywords = ['holiday', 'due', 'deadline', 'all hands', 'all-hands', 'offsite', 'kickoff'];
     let events = [];
@@ -696,9 +810,17 @@ async function calFetchDriveShared() {
       orderBy: 'modifiedTime desc',
       pageSize: 10,
     });
-    const res = await fetch(`https://www.googleapis.com/drive/v3/files?${params}`, {
+    let res = await fetch(`https://www.googleapis.com/drive/v3/files?${params}`, {
       headers: { Authorization: `Bearer ${calState.token}` },
     });
+    if (res.status === 401) {
+      const refreshed = await refreshGoogleToken();
+      if (refreshed) {
+        res = await fetch(`https://www.googleapis.com/drive/v3/files?${params}`, {
+          headers: { Authorization: `Bearer ${calState.token}` },
+        });
+      }
+    }
     if (!res.ok) { calState.driveShared = []; return; }
     const data = await res.json();
     calState.driveShared = (data.files || []).map(f => ({
@@ -733,22 +855,36 @@ async function calFetchDriveMentions() {
     console.log('[mentions] checking', filesToCheck.length, 'files for', email);
 
     const mentionedFiles = [];
-    await Promise.all(filesToCheck.map(async f => {
-      try {
-        const cRes = await fetch(
-          `https://www.googleapis.com/drive/v3/files/${f.id}/comments?fields=comments(content,resolved)&pageSize=100`,
-          { headers: { Authorization: `Bearer ${calState.token}` } }
-        );
-        if (!cRes.ok) return;
-        const cData = await cRes.json();
-        const comments = cData.comments || [];
-        const mentioned = comments.some(c =>
-          !c.resolved &&
-          c.content?.includes(`@${email}`)
-        );
-        if (mentioned) mentionedFiles.push(f);
-      } catch (e) { /* skip */ }
-    }));
+    let got401 = false;
+    const checkFiles = async function() {
+      mentionedFiles.length = 0;
+      got401 = false;
+      await Promise.all(filesToCheck.map(async f => {
+        try {
+          const cRes = await fetch(
+            `https://www.googleapis.com/drive/v3/files/${f.id}/comments?fields=comments(content,resolved)&pageSize=100`,
+            { headers: { Authorization: `Bearer ${calState.token}` } }
+          );
+          if (cRes.status === 401) { got401 = true; return; }
+          if (!cRes.ok) return;
+          const cData = await cRes.json();
+          const comments = cData.comments || [];
+          const mentioned = comments.some(c =>
+            !c.resolved &&
+            c.content?.includes(`@${email}`)
+          );
+          if (mentioned) mentionedFiles.push(f);
+        } catch (e) { /* skip */ }
+      }));
+    };
+    await checkFiles();
+    // All requests in this batch share the same token, so one 401 usually
+    // means all of them will be — a single refresh-and-rerun covers every
+    // file at once rather than retrying each individually.
+    if (got401) {
+      const refreshed = await refreshGoogleToken();
+      if (refreshed) await checkFiles();
+    }
 
     calState.driveMentions = mentionedFiles;
   } catch (e) {
@@ -768,9 +904,17 @@ async function calFetchDriveCreated() {
       orderBy: 'createdTime desc',
       pageSize: 10,
     });
-    const res = await fetch(`https://www.googleapis.com/drive/v3/files?${params}`, {
+    let res = await fetch(`https://www.googleapis.com/drive/v3/files?${params}`, {
       headers: { Authorization: `Bearer ${calState.token}` },
     });
+    if (res.status === 401) {
+      const refreshed = await refreshGoogleToken();
+      if (refreshed) {
+        res = await fetch(`https://www.googleapis.com/drive/v3/files?${params}`, {
+          headers: { Authorization: `Bearer ${calState.token}` },
+        });
+      }
+    }
     if (!res.ok) { calState.driveCreated = []; return; }
     const data = await res.json();
     calState.driveCreated = (data.files || []).map(f => ({

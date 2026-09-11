@@ -566,19 +566,29 @@ async function fetchMailPage(pageToken, extraQuery) {
   const q = 'is:unread -in:spam -in:trash' + exclusionClause + (extraQuery ? ' ' + extraQuery : '');
   const params = new URLSearchParams({ q, maxResults: 100 });
   if (pageToken) params.set('pageToken', pageToken);
-  const listRes = await fetch(
+  let listRes = await fetch(
     'https://gmail.googleapis.com/gmail/v1/users/me/messages?' + params,
     { headers: { Authorization: 'Bearer ' + calState.token } }
   );
+  if (listRes.status === 401) {
+    const refreshed = await refreshGoogleToken();
+    if (refreshed) {
+      listRes = await fetch(
+        'https://gmail.googleapis.com/gmail/v1/users/me/messages?' + params,
+        { headers: { Authorization: 'Bearer ' + calState.token } }
+      );
+    }
+  }
   if (!listRes.ok) throw new Error('Failed to list messages');
   const listData = await listRes.json();
   const ids = (listData.messages || []).map(function(m) { return m.id; });
-  const messages = (await Promise.all(ids.map(async function(id) {
+  const fetchMessageDetails = async function(id) {
     try {
       const r = await fetch(
         'https://gmail.googleapis.com/gmail/v1/users/me/messages/' + id + '?format=metadata&metadataHeaders=From&metadataHeaders=Subject&metadataHeaders=Date',
         { headers: { Authorization: 'Bearer ' + calState.token } }
       );
+      if (r.status === 401) return '401';
       if (!r.ok) return null;
       const d = await r.json();
       const headers = d.payload ? d.payload.headers || [] : [];
@@ -613,7 +623,17 @@ async function fetchMailPage(pageToken, extraQuery) {
         inInbox,
       };
     } catch(e) { return null; }
-  }))).filter(Boolean);
+  };
+  let rawResults = await Promise.all(ids.map(fetchMessageDetails));
+  // Same reasoning as the Drive mentions batch — all these requests share
+  // one token, so if any of them hit 401 the rest almost certainly would
+  // too. One refresh-and-rerun covers the whole batch rather than retrying
+  // each message individually.
+  if (rawResults.includes('401')) {
+    const refreshed = await refreshGoogleToken();
+    if (refreshed) rawResults = await Promise.all(ids.map(fetchMessageDetails));
+  }
+  const messages = rawResults.filter(function(m) { return m && m !== '401'; });
   return { messages, nextPageToken: listData.nextPageToken || null };
 }
 
