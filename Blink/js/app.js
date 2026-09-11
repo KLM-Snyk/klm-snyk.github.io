@@ -1153,6 +1153,18 @@ function buildTrendsScopeToggleHtml() {
   return '<div style="display:flex;gap:4px;align-items:center">' + teamBtn + mineBtn + '</div>';
 }
 
+// Shared formatter for the "Last refreshed"/"Last automated refresh"
+// timestamps sections write into the canvas — used by First Response SLA
+// and Update Cadence SLO (both manually refreshed, not on a schedule).
+// Returns an empty string if the timestamp is missing or invalid, so
+// callers can just append the result without an extra presence check.
+function formatTrendsLastRefreshText(isoString) {
+  if (!isoString) return '';
+  const d = new Date(isoString);
+  if (isNaN(d.getTime())) return '';
+  return ' \u00b7 Last refreshed ' + d.toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+}
+
 // Structurally similar to parseCasesCanvasHtml() — walks H2 headings and
 // associates the table immediately following each with that heading, but
 // differentiates parsing by heading text since the two tables here have
@@ -1160,7 +1172,7 @@ function buildTrendsScopeToggleHtml() {
 // backlog breakdown).
 function parseTrendsCanvasHtml(html) {
   const doc = new DOMParser().parseFromString(html, 'text/html');
-  const result = { monthly: [], mttr: null, mttrByOwner: [], backlogByOwner: [], backlogByOwnerLastRefresh: null, resolutionTimeTrend: [], resolutionTimeSplitTrend: [], backlogTrend: [], backlogTrendByOwner: [], submittedSplitTrend: [], solvedSplitTrend: [], firstResponseSla: null, firstResponseSlaByOwner: [], updateCadenceSlo: null, updateCadenceSloByOwner: [] };
+  const result = { monthly: [], mttr: null, mttrByOwner: [], backlogByOwner: [], backlogByOwnerLastRefresh: null, resolutionTimeTrend: [], resolutionTimeSplitTrend: [], backlogTrend: [], backlogTrendByOwner: [], submittedSplitTrend: [], solvedSplitTrend: [], firstResponseSla: null, firstResponseSlaByOwner: [], firstResponseSlaLastRefresh: null, updateCadenceSlo: null, updateCadenceSloByOwner: [], updateCadenceSloLastRefresh: null };
   let currentHeading = '';
   function walk(nodes) {
     nodes.forEach(function(node) {
@@ -1313,6 +1325,16 @@ function parseTrendsCanvasHtml(html) {
         // until that task has run at least once.
         const m = (node.textContent || '').match(/last automated refresh:\s*(\S+)/i);
         if (m) result.backlogByOwnerLastRefresh = m[1];
+      } else if (/first response sla/i.test(currentHeading)) {
+        // Same pattern as Case Backlog by Engineer's refresh timestamp,
+        // but this section isn't on a schedule — the line just records
+        // whenever it was last manually refreshed, via "Last refreshed:"
+        // rather than "Last automated refresh:".
+        const m = (node.textContent || '').match(/last refreshed:\s*(\S+)/i);
+        if (m) result.firstResponseSlaLastRefresh = m[1];
+      } else if (/update cadence slo/i.test(currentHeading)) {
+        const m = (node.textContent || '').match(/last refreshed:\s*(\S+)/i);
+        if (m) result.updateCadenceSloLastRefresh = m[1];
       }
       if (node.children && node.children.length) walk(Array.from(node.children));
     });
@@ -1359,8 +1381,10 @@ async function fetchTrendsData() {
     trendsDataState.solvedSplitTrend = parsed.solvedSplitTrend;
     trendsDataState.firstResponseSla = parsed.firstResponseSla;
     trendsDataState.firstResponseSlaByOwner = parsed.firstResponseSlaByOwner;
+    trendsDataState.firstResponseSlaLastRefresh = parsed.firstResponseSlaLastRefresh;
     trendsDataState.updateCadenceSlo = parsed.updateCadenceSlo;
     trendsDataState.updateCadenceSloByOwner = parsed.updateCadenceSloByOwner;
+    trendsDataState.updateCadenceSloLastRefresh = parsed.updateCadenceSloLastRefresh;
     trendsDataState.asOf = new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
   } catch (e) {
     trendsDataState.error = e.message;
@@ -2098,6 +2122,7 @@ function renderTrends() {
     } else {
       valueHtml = escHtml(trendsDataState.firstResponseSla.slaRate);
       subText = escHtml(trendsDataState.firstResponseSla.totalRecords) + ' records \u00b7 ' + escHtml(trendsDataState.firstResponseSla.totalViolation) + ' violated \u00b7 ' + escHtml(trendsDataState.firstResponseSla.totalCompleted) + ' completed';
+      subText += formatTrendsLastRefreshText(trendsDataState.firstResponseSlaLastRefresh);
     }
     firstResponseSlaHtml = '<div class="dash-card" style="margin-bottom:20px;flex:1 1 280px;min-width:0">' +
       '<div class="dash-card-header"><div><div class="dash-card-title">First Response SLA</div><div class="dash-card-sub" style="margin-top:2px">Last 30 Days</div></div></div>' +
@@ -2128,6 +2153,7 @@ function renderTrends() {
     } else {
       valueHtml = escHtml(trendsDataState.updateCadenceSlo.compliancePct);
       subText = escHtml(trendsDataState.updateCadenceSlo.totalRecords) + ' records';
+      subText += formatTrendsLastRefreshText(trendsDataState.updateCadenceSloLastRefresh);
     }
     updateCadenceSloHtml = '<div class="dash-card" style="margin-bottom:20px;flex:1 1 280px;min-width:0">' +
       '<div class="dash-card-header"><div><div class="dash-card-title">Update Cadence SLO</div><div class="dash-card-sub" style="margin-top:2px">Last 30 Days</div></div></div>' +
