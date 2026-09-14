@@ -1208,7 +1208,7 @@ function formatTrendsLastRefreshText(isoString) {
 // backlog breakdown).
 function parseTrendsCanvasHtml(html) {
   const doc = new DOMParser().parseFromString(html, 'text/html');
-  const result = { monthly: [], mttr: null, mttrByOwner: [], backlogByOwner: [], backlogByOwnerLastRefresh: null, resolutionTimeTrend: [], resolutionTimeSplitTrend: [], backlogTrend: [], backlogTrendByOwner: [], submittedSplitTrend: [], solvedSplitTrend: [], firstResponseSla: null, firstResponseSlaByOwner: [], firstResponseSlaLastRefresh: null, updateCadenceSlo: null, updateCadenceSloByOwner: [], updateCadenceSloLastRefresh: null };
+  const result = { monthly: [], mttr: null, mttrByOwner: [], mttrLastRefresh: null, backlogByOwner: [], backlogByOwnerLastRefresh: null, resolutionTimeTrend: [], resolutionTimeSplitTrend: [], resolutionTimeSplitLastRefresh: null, backlogTrend: [], backlogTrendByOwner: [], backlogTrendLastRefresh: null, submittedSplitTrend: [], submittedSplitLastRefresh: null, solvedSplitTrend: [], solvedSplitLastRefresh: null, firstResponseSla: null, firstResponseSlaByOwner: [], firstResponseSlaLastRefresh: null, updateCadenceSlo: null, updateCadenceSloByOwner: [], updateCadenceSloLastRefresh: null };
   let currentHeading = '';
   function walk(nodes) {
     nodes.forEach(function(node) {
@@ -1361,6 +1361,26 @@ function parseTrendsCanvasHtml(html) {
         // until that task has run at least once.
         const m = (node.textContent || '').match(/last automated refresh:\s*(\S+)/i);
         if (m) result.backlogByOwnerLastRefresh = m[1];
+      } else if (/^submitted/i.test(currentHeading)) {
+        // Sections 1, 2, 3, 6, 7 all joined the weekly scheduled task once
+        // the Salesforce-export dependency went away (see the intro's own
+        // note on this) — each now writes the same "Last refreshed:" line
+        // Sections 8/9 already used, previously the only cards with any
+        // staleness indicator on this whole screen (SUPENG-124).
+        const m = (node.textContent || '').match(/last refreshed:\s*(\S+)/i);
+        if (m) result.submittedSplitLastRefresh = m[1];
+      } else if (/^solved/i.test(currentHeading)) {
+        const m = (node.textContent || '').match(/last refreshed:\s*(\S+)/i);
+        if (m) result.solvedSplitLastRefresh = m[1];
+      } else if (/mttr/i.test(currentHeading)) {
+        const m = (node.textContent || '').match(/last refreshed:\s*(\S+)/i);
+        if (m) result.mttrLastRefresh = m[1];
+      } else if (/median resolution time/i.test(currentHeading) && /support only vs r&d/i.test(currentHeading)) {
+        const m = (node.textContent || '').match(/last refreshed:\s*(\S+)/i);
+        if (m) result.resolutionTimeSplitLastRefresh = m[1];
+      } else if (/case backlog month-over-month/i.test(currentHeading)) {
+        const m = (node.textContent || '').match(/last refreshed:\s*(\S+)/i);
+        if (m) result.backlogTrendLastRefresh = m[1];
       } else if (/first response sla/i.test(currentHeading)) {
         // Same pattern as Case Backlog by Engineer's refresh timestamp,
         // but this section isn't on a schedule — the line just records
@@ -1407,14 +1427,19 @@ async function fetchTrendsData() {
     trendsDataState.monthly = parsed.monthly;
     trendsDataState.mttr = parsed.mttr;
     trendsDataState.mttrByOwner = parsed.mttrByOwner;
+    trendsDataState.mttrLastRefresh = parsed.mttrLastRefresh;
     trendsDataState.backlogByOwner = parsed.backlogByOwner;
     trendsDataState.backlogByOwnerLastRefresh = parsed.backlogByOwnerLastRefresh;
     trendsDataState.resolutionTimeTrend = parsed.resolutionTimeTrend;
     trendsDataState.resolutionTimeSplitTrend = parsed.resolutionTimeSplitTrend;
+    trendsDataState.resolutionTimeSplitLastRefresh = parsed.resolutionTimeSplitLastRefresh;
     trendsDataState.backlogTrend = parsed.backlogTrend;
     trendsDataState.backlogTrendByOwner = parsed.backlogTrendByOwner;
+    trendsDataState.backlogTrendLastRefresh = parsed.backlogTrendLastRefresh;
     trendsDataState.submittedSplitTrend = parsed.submittedSplitTrend;
+    trendsDataState.submittedSplitLastRefresh = parsed.submittedSplitLastRefresh;
     trendsDataState.solvedSplitTrend = parsed.solvedSplitTrend;
+    trendsDataState.solvedSplitLastRefresh = parsed.solvedSplitLastRefresh;
     trendsDataState.firstResponseSla = parsed.firstResponseSla;
     trendsDataState.firstResponseSlaByOwner = parsed.firstResponseSlaByOwner;
     trendsDataState.firstResponseSlaLastRefresh = parsed.firstResponseSlaLastRefresh;
@@ -1914,7 +1939,7 @@ function renderTrends() {
       splitLegendHtml('#8B5CF6', '#DC2626') +
       buildGenericSplitChartSvg(trendsDataState.submittedSplitTrend, 'supportOnly', 'rd', '#8B5CF6', '#DC2626', 'Support Only', 'R&D', 'Number of Cases', ' cases') +
       '<div style="margin-top:12px;font-size:11px;color:var(--text-secondary)">' +
-        'Sourced directly from Snowflake (MOST_RECENT_JIRA_ISSUE_C) — split by whether the case needed R&D. Refreshed automatically once a week (Monday 8am ET).' +
+        'Sourced directly from Snowflake (MOST_RECENT_JIRA_ISSUE_C) — split by whether the case needed R&D. Refreshed automatically once a week (Monday 8am ET).' + formatTrendsLastRefreshText(trendsDataState.submittedSplitLastRefresh) +
       '</div>' +
     '</div>';
     const solvedCard = (trendsDataState.solvedSplitTrend && trendsDataState.solvedSplitTrend.length)
@@ -1923,7 +1948,7 @@ function renderTrends() {
         splitLegendHtml('#8B5CF6', '#DC2626') +
         buildGenericSplitChartSvg(trendsDataState.solvedSplitTrend, 'supportOnly', 'rd', '#8B5CF6', '#DC2626', 'Support Only', 'R&D', 'Number of Cases', ' cases') +
         '<div style="margin-top:12px;font-size:11px;color:var(--text-secondary)">' +
-          'Sourced directly from Snowflake (MOST_RECENT_JIRA_ISSUE_C) — split by whether the case needed R&D. Refreshed automatically once a week (Monday 8am ET).' +
+          'Sourced directly from Snowflake (MOST_RECENT_JIRA_ISSUE_C) — split by whether the case needed R&D. Refreshed automatically once a week (Monday 8am ET).' + formatTrendsLastRefreshText(trendsDataState.solvedSplitLastRefresh) +
         '</div>' +
       '</div>'
       : '';
@@ -2056,7 +2081,7 @@ function renderTrends() {
     mttrHtml = '<div class="dash-card" style="margin-bottom:20px">' +
       '<div class="dash-card-header"><div><div class="dash-card-title">MTTR (Support)</div><div class="dash-card-sub" style="margin-top:2px">Year to Date (Jan 2026)</div></div></div>' +
       '<div style="display:flex;gap:12px;flex-wrap:wrap">' + cellsHtml + '</div>' +
-      '<div style="margin-top:8px;font-size:11px;color:var(--text-secondary)">Median time to resolution, split by whether the case needed R&D. Refreshed automatically once a week (Monday 8am ET).</div>' +
+      '<div style="margin-top:8px;font-size:11px;color:var(--text-secondary)">Median time to resolution, split by whether the case needed R&D. Refreshed automatically once a week (Monday 8am ET).' + formatTrendsLastRefreshText(trendsDataState.mttrLastRefresh) + '</div>' +
     '</div>';
   }
 
@@ -2075,7 +2100,7 @@ function renderTrends() {
       splitLegend +
       buildResolutionTimeSplitChartSvg(trendsDataState.resolutionTimeSplitTrend) +
       '<div style="margin-top:12px;font-size:11px;color:var(--text-secondary)">' +
-        'Sourced directly from Snowflake (MOST_RECENT_JIRA_ISSUE_C) — split by whether the case has a linked Jira issue. Refreshed automatically once a week (Monday 8am ET).' +
+        'Sourced directly from Snowflake (MOST_RECENT_JIRA_ISSUE_C) — split by whether the case has a linked Jira issue. Refreshed automatically once a week (Monday 8am ET).' + formatTrendsLastRefreshText(trendsDataState.resolutionTimeSplitLastRefresh) +
       '</div>' +
     '</div>';
   }
@@ -2105,7 +2130,7 @@ function renderTrends() {
         mineLegend +
         buildGenericSplitChartSvg(mineData, 'allOpen', 'withRnd', '#8B5CF6', '#DC2626', 'All Open', 'With R&D', 'Cases', ' cases') +
         '<div style="margin-top:12px;font-size:11px;color:var(--text-secondary)">' +
-          'Jan 2026\u2013Sep 2026 only, not the full 20-month history. Refreshed automatically once a week (Monday 8am ET).' +
+          'Jan 2026\u2013Sep 2026 only, not the full 20-month history. Refreshed automatically once a week (Monday 8am ET).' + formatTrendsLastRefreshText(trendsDataState.backlogTrendLastRefresh) +
         '</div>' +
       '</div>';
     } else if (trendsDataState.backlogTrendByOwner) {
@@ -2124,7 +2149,7 @@ function renderTrends() {
       backlogTrendLegend +
       buildBacklogTrendChartSvg(trendsDataState.backlogTrend) +
       '<div style="margin-top:12px;font-size:11px;color:var(--text-secondary)">' +
-        'Cases open at any point during each month (not a snapshot) — includes cases opened and closed within the same month. Both series sourced directly from Snowflake (MOST_RECENT_JIRA_ISSUE_C splits With R&D from All Open). Refreshed automatically once a week (Monday 8am ET).' +
+        'Cases open at any point during each month (not a snapshot) — includes cases opened and closed within the same month. Both series sourced directly from Snowflake (MOST_RECENT_JIRA_ISSUE_C splits With R&D from All Open). Refreshed automatically once a week (Monday 8am ET).' + formatTrendsLastRefreshText(trendsDataState.backlogTrendLastRefresh) +
       '</div>' +
     '</div>';
   }
