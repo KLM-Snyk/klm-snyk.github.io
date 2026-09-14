@@ -148,7 +148,6 @@ Add managers as Contributors on the app at developer.atlassian.com.
 
 ## Coming Soon
 - Per-action Workday quick-link URLs (currently all point to the home page)
-- A Technical Support backlog split for Support Case Trends & Data
 - Claude Tag setup, if on-demand (not just scheduled) canvas refreshes are wanted for Support Case Trends & Data later
 
 ---
